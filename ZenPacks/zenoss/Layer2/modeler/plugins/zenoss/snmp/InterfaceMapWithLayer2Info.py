@@ -259,34 +259,17 @@ class InterfaceMapWithLayer2Info(SnmpPlugin):
         Add port and client MAC to iftable
         """
         for ifindex, data in iftable.items():
-            iftable[ifindex]['baseport'] = 0
-            iftable[ifindex]['clientmac'] = ''
+            data['baseport'] = 0
+            data['clientmac'] = ''
+
             for port, row in dot1dBasePortEntry.items():
                 if int(ifindex) == row['dot1dBasePortIfIndex']:
-                    iftable[ifindex]['baseport'] = row['dot1dBasePort']
+                    data['baseport'] = row['dot1dBasePort']
 
                     for idx, item in dot1dTpFdbTable.items():
                         if (item['dot1dTpFdbStatus'] == 3) \
                         and (row['dot1dBasePort'] == item['dot1dTpFdbPort']):
-                            iftable[ifindex]['clientmac'] = self.asmac(item['dot1dTpFdbAddress'])
-
-        # from pprint import pprint
-        # print "=" * 80
-        # pprint(dot1dTpFdbTable)
-        # print "=" * 80
-        # # for port, row in dot1dBasePortEntry.items():
-        # #     if port == '.59':
-        # #         pprint(row)
-        # # # pprint(dot1dBasePortEntry)
-        # # print "=" * 80
-        # # for ifindex, row in iftable.items():
-        # #     if ifindex == '10605':
-        # #         pprint(row)
-        # # # pprint(iftable)
-        # print "=" * 80
-        # for ifindex, row in iftable.items():
-        #     if iftable[ifindex]['clientmac']:
-        #         pprint(row)
+                            data['clientmac'] += self.asmac(item['dot1dTpFdbAddress']) + ', '
 
     def processInt(self, log, device, iface):
         """

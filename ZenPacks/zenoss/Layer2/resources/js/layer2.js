@@ -37,7 +37,9 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
                 {name: 'duplex'},
                 {name: 'netmask'},
                 {name: 'clientmac'},
-                {name: 'baseport'}
+                {name: 'baseport'},
+                {name: 'ifindex'},
+                {name: 'getClientsLinks'}
             ],
             columns: [{
                 id: 'severity',
@@ -78,6 +80,11 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
                 header: _t('MAC Address'),
                 width: 120
             },{
+                id: 'ifindex',
+                dataIndex: 'ifindex',
+                header: _t('If Index'),
+                width: 50
+            },{
                 id: 'baseport',
                 dataIndex: 'baseport',
                 header: _t('Port'),
@@ -89,8 +96,24 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
             },{
                 id: 'clientmac',
                 dataIndex: 'clientmac',
-                header: _t('Client MAC Address'),
-                width: 120
+                header: _t('RAW MACs'),
+                width: 125,
+            },{
+                id: 'getClientsLinks',
+                dataIndex: 'getClientsLinks',
+                header: _t('Clients MAC Addresses'),
+                width: 150,
+                // renderer: function(clientmac) {
+                //     var returnString = '';
+                //     Ext.each(clientmac.split(', '), function(macaddress, index) {
+                //         if (macaddress) {
+                //             if (index > 0) returnString += ', ';
+                //             // returnString += Zenoss.render.link(macaddress, undefined, name);
+                //             returnString += '<a href="#">' + macaddress + '</a>';
+                //         }
+                //     });
+                //     return returnString;
+                // }
             },{
                 id: 'status',
                 dataIndex: 'status',

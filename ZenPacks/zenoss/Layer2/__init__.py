@@ -21,6 +21,8 @@ from Products.Zuul.infos import ProxyProperty
 from Products.ZenModel.IpInterface import IpInterface
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
+from Products.Zuul.interfaces import ICatalogTool
+from Products.AdvancedQuery import Eq
 
 unused(Globals)
 
@@ -40,3 +42,30 @@ IIpInterfaceInfo.baseport = schema.TextLine(
 
 IpInterfaceInfo.clientmac = ProxyProperty('clientmac')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
+
+def getClientsLinks(self):
+    macs = self._object.clientmac
+    if not macs:
+        return ""
+
+    links = []
+    for mac in macs.split(', '):
+        if not mac: continue
+        is_found = False
+
+        cat = ICatalogTool(self._object.dmd)
+        brains = cat.search("Products.ZenModel.IpInterface.IpInterface")
+        for brain in brains:
+            obj = brain.getObject()
+            if obj.macaddress == mac:
+                links.append('<a href="{}">{}</a>'.format(
+                    obj.getPrimaryUrlPath(), mac))
+                is_found = True
+                break
+
+        if not is_found:
+            links.append(mac)
+
+    return ', '.join(links)
+
+IpInterfaceInfo.getClientsLinks = getClientsLinks
