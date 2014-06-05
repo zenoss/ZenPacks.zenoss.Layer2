@@ -18,6 +18,7 @@ import Globals
 from Products.ZenUtils.Utils import unused
 from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
+from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
@@ -27,29 +28,54 @@ from Products.AdvancedQuery import Eq
 unused(Globals)
 
 
+# -- IP Interfaces overrides --------------------------------------------------
+
 # Monkey patching IpInterface and add Layer2 properties
-IpInterface.clientmac = ''
+IpInterface.clientmacs = []
 IpInterface.baseport = 0
 IpInterface._properties = IpInterface._properties + (
-    {'id':'clientmac', 'type':'string', 'mode':'w'},
+    {'id':'clientmacs', 'type':'string', 'mode':'w'},
     {'id':'baseport', 'type':'int', 'mode':'w'},
 )
 
-IIpInterfaceInfo.clientmac = schema.TextLine(
-    title=u"Client MAC Address", group="Details", order=13)
+def getIfInfoForLayer2(self):
+    res = {}
+    if self.os:
+        for interface in self.os.interfaces():
+            res[interface.id] = {
+                "ifindex": interface.ifindex,
+                "clientmacs": [],
+                "baseport": 0
+            }
+    return res
+
+def setIfInfoForLayer2(self, val):
+    return False
+
+Device.getIfInfoForLayer2 = getIfInfoForLayer2
+Device.setIfInfoForLayer2 = setIfInfoForLayer2
+
+
+IIpInterfaceInfo.clientmacs = schema.TextLine(
+    title=u"Clients MAC Addresses", group="Details", order=13)
 IIpInterfaceInfo.baseport = schema.TextLine(
     title=u"Physical Port", group="Details", order=14)
 
-IpInterfaceInfo.clientmac = ProxyProperty('clientmac')
+# -- UI overrides goes here --------------------------------------------------
+
+IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
 
 def getClientsLinks(self):
-    macs = self._object.clientmac
+    # Temporary returns raw MACs without links for debugging
+    return self._object.clientmacs
+    # TODO: need catalog to speed up linking to client devices:
+    macs = self._object.clientmacs
     if not macs:
         return ""
 
     links = []
-    for mac in macs.split(', '):
+    for mac in macs:
         if not mac: continue
         is_found = False
 

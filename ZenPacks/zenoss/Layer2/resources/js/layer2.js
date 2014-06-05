@@ -36,7 +36,7 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
                 {name: 'locking'},
                 {name: 'duplex'},
                 {name: 'netmask'},
-                {name: 'clientmac'},
+                {name: 'clientmacs'},
                 {name: 'baseport'},
                 {name: 'ifindex'},
                 {name: 'getClientsLinks'}
@@ -93,27 +93,16 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
                     if(baseport > 0) return baseport;
                     return '';
                 }
-            },{
-                id: 'clientmac',
-                dataIndex: 'clientmac',
-                header: _t('RAW MACs'),
-                width: 125,
+            // },{
+            //     id: 'clientmacs',
+            //     dataIndex: 'clientmacs',
+            //     header: _t('RAW MACs'),
+            //     width: 125,
             },{
                 id: 'getClientsLinks',
                 dataIndex: 'getClientsLinks',
                 header: _t('Clients MAC Addresses'),
                 width: 150,
-                // renderer: function(clientmac) {
-                //     var returnString = '';
-                //     Ext.each(clientmac.split(', '), function(macaddress, index) {
-                //         if (macaddress) {
-                //             if (index > 0) returnString += ', ';
-                //             // returnString += Zenoss.render.link(macaddress, undefined, name);
-                //             returnString += '<a href="#">' + macaddress + '</a>';
-                //         }
-                //     });
-                //     return returnString;
-                // }
             },{
                 id: 'status',
                 dataIndex: 'status',
