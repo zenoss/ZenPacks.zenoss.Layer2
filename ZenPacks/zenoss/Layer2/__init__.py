@@ -38,7 +38,7 @@ IpInterface._properties = IpInterface._properties + (
     {'id':'baseport', 'type':'int', 'mode':'w'},
 )
 
-def getIfInfoForLayer2(self):
+def get_ifinfo_for_layer2(self):
     res = {}
     if self.os:
         for interface in self.os.interfaces():
@@ -49,11 +49,7 @@ def getIfInfoForLayer2(self):
             }
     return res
 
-def setIfInfoForLayer2(self, val):
-    return False
-
-Device.getIfInfoForLayer2 = getIfInfoForLayer2
-Device.setIfInfoForLayer2 = setIfInfoForLayer2
+Device.get_ifinfo_for_layer2 = get_ifinfo_for_layer2
 
 
 IIpInterfaceInfo.clientmacs = schema.TextLine(
