@@ -117,7 +117,10 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             # res = sc.getResults()
             res = sc._tabledata.get(PLUGIN_NAME, {})
-            self._prep_iftable(res)
+            try:
+                self._prep_iftable(res)
+            except Exception:
+                pass
         
         maps = self.add_maps(ds0)
         if maps:
@@ -166,6 +169,12 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
             }))
+        res.append(ObjectMap(
+            modname='ZenPacks.zenoss.Layer2.Endpoint',
+            data=dict(
+                set_update_network_map='hello!'
+            )
+        ))
         return res
 
     def onSuccess(self, result, config):
@@ -173,6 +182,8 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         This method return a data structure with zero or more events, values
         and maps.  result - is what returned from collect.
         """
+        from pprint import pprint
+        pprint(result)
         for component in result['values'].keys():
             result['events'].append({
                 'component': component,
