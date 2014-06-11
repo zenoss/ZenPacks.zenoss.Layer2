@@ -75,7 +75,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         'zSnmpPrivType',
         'zSnmpPrivPassword',
         'zSnmpEngineId',
-        'getIfInfoForLayer2'
+        'get_ifinfo_for_layer2'
     )
 
     component = None
@@ -93,7 +93,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         options = Layer2Options()
         self.ifmap = Layer2SnmpPlugin()
 
-        self.iftable = ds0.getIfInfoForLayer2
+        self.iftable = ds0.get_ifinfo_for_layer2
         self.jobs = []
 
         self.community = ds0.zSnmpCommunity
