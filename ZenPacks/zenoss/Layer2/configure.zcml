@@ -28,12 +28,12 @@
         name="IL2SuppressEventsPlugin"
         />
 
-    <subscriber handler=".subscribers.onObjectAdded"/>
+    <!-- <subscriber handler=".subscribers.onObjectAdded"/>
 
     <subscriber
         for="Products.ZenUtils.guid.interfaces.IGloballyIdentifiable
              Products.Zuul.catalog.interfaces.IIndexingEvent"
         handler=".subscribers.publishModified"
-        />
+        /> -->
 
 </configure>

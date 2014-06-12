@@ -17,19 +17,19 @@ from Products.ZenUtils.guid.interfaces import IGloballyIdentifiable
 from Products.Zuul.catalog.interfaces import IIndexingEvent
 
 
-@adapter(IGloballyIndexed, IObjectAddedEvent)
-def onObjectAdded(ob, event):
-    """
-    Simple subscriber that fires the indexing event for all
-    indices.
-    """
-    print "=" * 80
-    print "EVENT!"
-    print "=" * 80
+# @adapter(IGloballyIndexed, IObjectAddedEvent)
+# def onObjectAdded(ob, event):
+#     """
+#     Simple subscriber that fires the indexing event for all
+#     indices.
+#     """
+#     print "=" * 80
+#     print "EVENT!"
+#     print "=" * 80
 
 
-@adapter(IGloballyIdentifiable, IIndexingEvent)
-def publishModified(ob, event):
-    print "=" * 80
-    print "EVENT #2!"
-    print "=" * 80
+# @adapter(IGloballyIdentifiable, IIndexingEvent)
+# def publishModified(ob, event):
+#     print "=" * 80
+#     print "EVENT #2!"
+#     print "=" * 80
