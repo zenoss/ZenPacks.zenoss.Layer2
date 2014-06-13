@@ -1,0 +1,39 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser = "http://namespaces.zope.org/browser"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    >
+
+    <!-- Browser Resources -->
+    <browser:resourceDirectory
+        name="ZenPacks_zenoss_Layer2"
+        directory="resources"
+        />
+
+    <!-- JavaScript needed for all Zenoss pages. -->
+    <browser:viewlet
+        name="js-layer2"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/layer2.js"
+        for="*"
+        weight="20"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+
+    <utility
+        component=".zeplugins.L2SuppressEventsPlugin"
+        provides="Products.ZenEvents.interfaces.IPostEventPlugin"
+        name="IL2SuppressEventsPlugin"
+        />
+
+    <!-- <subscriber handler=".subscribers.onObjectAdded"/>
+
+    <subscriber
+        for="Products.ZenUtils.guid.interfaces.IGloballyIdentifiable
+             Products.Zuul.catalog.interfaces.IIndexingEvent"
+        handler=".subscribers.publishModified"
+        /> -->
+
+</configure>
