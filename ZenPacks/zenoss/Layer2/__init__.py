@@ -15,7 +15,10 @@ log = logging.getLogger('zen.Layer2')
 
 import Globals
 
+from zope.component import getUtility
+
 from Products.ZenUtils.Utils import unused
+from Products.ZenUtils.Utils import monkeypatch
 from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
 from Products.ZenModel.Device import Device
@@ -24,6 +27,8 @@ from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq
+
+from .macs_catalog import IMACsCatalogFactory
 
 unused(Globals)
 
@@ -91,3 +96,24 @@ def getClientsLinks(self):
     return ', '.join(links)
 
 IpInterfaceInfo.getClientsLinks = getClientsLinks
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def index_object(self, idxs=None, noips=False):
+    original(self, idxs, noips)
+
+    if not hasattr(self.zport, 'macs_catalog'):
+        factory = getUtility(IMACsCatalogFactory)
+        factory.create(self.zport)
+        print 'Created macs_catalog'
+
+    self.zport.macs_catalog.add_device(self)
+    print '%s added to macs_catalog' % self
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def getSomething(self):
+    return True
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def update_network_graph(self):
+    for i in self.os.interfaces():
+        print i.macadress

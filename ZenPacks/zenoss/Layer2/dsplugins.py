@@ -169,12 +169,9 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
             }))
-        res.append(ObjectMap(
-            modname='ZenPacks.zenoss.Layer2.Endpoint',
-            data=dict(
-                set_update_network_map='hello!'
-            )
-        ))
+        res.append(ObjectMap({
+            'setSomething': 'please'
+        })
         return res
 
     def onSuccess(self, result, config):
