@@ -117,10 +117,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             # res = sc.getResults()
             res = sc._tabledata.get(PLUGIN_NAME, {})
-            try:
-                self._prep_iftable(res)
-            except Exception:
-                pass
+            self._prep_iftable(res)
         
         maps = self.add_maps(ds0)
         if maps:
@@ -169,9 +166,6 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
             }))
-        res.append(ObjectMap({
-            'setSomething': 'please'
-        })
         return res
 
     def onSuccess(self, result, config):

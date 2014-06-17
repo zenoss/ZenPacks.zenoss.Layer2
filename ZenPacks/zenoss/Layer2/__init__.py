@@ -10,6 +10,7 @@
 Custom ZenPack initialization code. All code defined in this module will be
 executed at startup time in all Zope clients.
 """
+
 import logging
 log = logging.getLogger('zen.Layer2')
 
@@ -100,20 +101,4 @@ IpInterfaceInfo.getClientsLinks = getClientsLinks
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-
-    if not hasattr(self.zport, 'macs_catalog'):
-        factory = getUtility(IMACsCatalogFactory)
-        factory.create(self.zport)
-        print 'Created macs_catalog'
-
-    self.zport.macs_catalog.add_device(self)
-    print '%s added to macs_catalog' % self
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def getSomething(self):
-    return True
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def update_network_graph(self):
-    for i in self.os.interfaces():
-        print i.macadress
+    add_device_to_catalog(self.zport, self)

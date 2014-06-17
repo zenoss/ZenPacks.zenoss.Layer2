@@ -1,3 +1,15 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
+
+import logging
+log = logging.getLogger('zen.Layer2')
+
 from zope.interface import implements
 from zope.component import adapts
 
@@ -69,3 +81,13 @@ def initializeMACsCatalog(catalog):
     catalog.addColumn('id')
     catalog.addColumn('macaddresses')
     catalog.addColumn('clientmacs')
+
+
+def add_device_to_catalog(zport, device)
+    if not hasattr(self.zport, MACsCatalogId):
+        factory = getUtility(IMACsCatalogFactory)
+        factory.create(self.zport)
+        log.info('Created %s' % MACsCatalogId)
+
+    getattr(self.zport, MACsCatalogId).add_device(self)
+    log.info('%s added to %s' % (self, MACsCatalogId))
