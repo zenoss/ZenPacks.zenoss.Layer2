@@ -53,6 +53,7 @@ class MACsCatalogFactory(GlobalCatalogFactory):
 class DeviceConnections(object):
     implements(IIndexableWrapper)
     adapts(IGloballyIndexed)
+
     def __init__(self, device):
         self.device = device
 
@@ -65,12 +66,19 @@ class DeviceConnections(object):
 
     @property
     def macaddresses(self):
-        return [i.macadress for i in self.device.os.interfaces()]
+        return [i.macaddress
+            for i in self.device.os.interfaces()
+            if getattr(i, 'macaddress')
+        ]
 
     @property
     def clientmacs(self):
-        # return [x for x in i.clientmacs for i in self.device.os.interfaces()]
-        return [x for i in self.device.os.interfaces() for x in i.clientmacs]
+        return [x
+            for i in self.device.os.interfaces()
+            if getattr(i, 'clientmacs')
+            for x in i.clientmacs
+            if x
+        ]
 
 
 def initializeMACsCatalog(catalog):
@@ -83,11 +91,39 @@ def initializeMACsCatalog(catalog):
     catalog.addColumn('clientmacs')
 
 
-def add_device_to_catalog(zport, device)
-    if not hasattr(self.zport, MACsCatalogId):
-        factory = getUtility(IMACsCatalogFactory)
-        factory.create(self.zport)
-        log.info('Created %s' % MACsCatalogId)
+class CatalogAPI(object):
+    catalog = None
+    def __init__(self, zport):
+        self.zport = zport
 
-    getattr(self.zport, MACsCatalogId).add_device(self)
-    log.info('%s added to %s' % (self, MACsCatalogId))
+    def get_catalog(self):
+        ''' Find catalog in zport if exists, or create it from scratch'''
+        if self.catalog:
+            return self.catalog
+
+        if not hasattr(self.zport, MACsCatalogId):
+            factory = getUtility(IMACsCatalogFactory)
+            factory.create(self.zport)
+            log.info('Created %s' % MACsCatalogId)
+
+        self.catalog = getattr(self.zport, MACsCatalogId)
+        return self.catalog
+
+    def reindex(self):
+        ''' Reindex objects in dmd'''
+        self.zport.dmd.Devices.reIndex()
+
+    def add_device_to_catalog(self, device):
+        self.get_catalog().add_device(device)
+        log.info('%s added to %s' % (self, MACsCatalogId))
+
+
+    def get_device_macadresses(self, device_id):
+        ''' Return list of macadresses for device with given id '''
+        res = self.get_catalog().search({
+            'id': device_id
+        })
+        if res:
+            return res[0].macaddresses
+        else:
+            raise IndexError('Device with id %r was not found' % device_id)

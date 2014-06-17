@@ -173,8 +173,6 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         This method return a data structure with zero or more events, values
         and maps.  result - is what returned from collect.
         """
-        from pprint import pprint
-        pprint(result)
         for component in result['values'].keys():
             result['events'].append({
                 'component': component,

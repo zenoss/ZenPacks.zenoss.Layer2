@@ -29,7 +29,7 @@ from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq
 
-from .macs_catalog import IMACsCatalogFactory
+from .macs_catalog import CatalogAPI
 
 unused(Globals)
 
@@ -101,4 +101,6 @@ IpInterfaceInfo.getClientsLinks = getClientsLinks
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-    add_device_to_catalog(self.zport, self)
+
+    catapi = CatalogAPI(self.zport)
+    catapi.add_device_to_catalog(self)

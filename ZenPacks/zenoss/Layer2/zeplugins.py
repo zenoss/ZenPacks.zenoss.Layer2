@@ -29,6 +29,7 @@ class L2SuppressEventsPlugin(object):
         """
         Apply the plugin to an event.
         """
+        print evtproxy.summary
 
         if not evtproxy.agent == "zenping": return
         if not "DOWN" in evtproxy.summary: return
