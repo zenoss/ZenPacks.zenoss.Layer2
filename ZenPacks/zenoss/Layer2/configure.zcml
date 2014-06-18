@@ -28,12 +28,8 @@
         name="IL2SuppressEventsPlugin"
         />
 
-    <!-- <subscriber handler=".subscribers.onObjectAdded"/>
-
-    <subscriber
-        for="Products.ZenUtils.guid.interfaces.IGloballyIdentifiable
-             Products.Zuul.catalog.interfaces.IIndexingEvent"
-        handler=".subscribers.publishModified"
-        /> -->
+    <utility factory=".macs_catalog.MACsCatalogFactory"
+        provides=".macs_catalog.IMACsCatalogFactory"
+        />
 
 </configure>
