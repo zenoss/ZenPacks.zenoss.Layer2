@@ -117,7 +117,11 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             # res = sc.getResults()
             res = sc._tabledata.get(PLUGIN_NAME, {})
-            self._prep_iftable(res)
+            try:
+                self._prep_iftable(res)
+            except Exception:
+                print 'TODO!!!!!!!!!!!!'
+                
         
         maps = self.add_maps(ds0)
         if maps:
@@ -162,10 +166,14 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         for ifid, data in self.iftable.items():
             res.append(ObjectMap({
                 "compname": "os/interfaces/%s" % ifid,
-                "modname": "Layer2: clients MACs added",
+                # "modname": "Layer2: clients MACs added", TODO: learn what compname and modname actually means
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
             }))
+
+        res.append(ObjectMap({
+            "set_reindex_maps": True,
+        }))
         return res
 
     def onSuccess(self, result, config):

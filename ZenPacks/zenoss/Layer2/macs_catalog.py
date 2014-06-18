@@ -12,6 +12,7 @@ log = logging.getLogger('zen.Layer2')
 
 from zope.interface import implements
 from zope.component import adapts
+from zope.component import getUtility
 
 from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
 from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex

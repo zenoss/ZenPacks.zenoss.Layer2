@@ -16,8 +16,6 @@ log = logging.getLogger('zen.Layer2')
 
 import Globals
 
-from zope.component import getUtility
-
 from Products.ZenUtils.Utils import unused
 from Products.ZenUtils.Utils import monkeypatch
 from Products.Zuul.form import schema
@@ -102,5 +100,21 @@ IpInterfaceInfo.getClientsLinks = getClientsLinks
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
 
+    log.info('Adding %s to catalog' % self)
     catapi = CatalogAPI(self.zport)
     catapi.add_device_to_catalog(self)
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def set_reindex_maps(self, value):
+    print '!' * 100
+    with open('/home/zenoss/out', 'a') as f:
+        f.write('Yes!\n')
+    self.index_object()
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def get_reindex_maps(self):
+    ''' Should return something distinct from value passed to
+        set_reindex_maps for set_reindex_maps to run
+    '''
+    return False
+
