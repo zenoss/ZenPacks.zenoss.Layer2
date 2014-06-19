@@ -13,6 +13,8 @@ from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq, In
 from zenoss.protocols.protobufs.zep_pb2 import STATUS_SUPPRESSED
 
+from .macs_catalog import CatalogAPI
+
 import logging
 
 log = logging.getLogger("zen.eventd")
@@ -36,26 +38,12 @@ class L2SuppressEventsPlugin(object):
 
         dev = dmd.Devices.findDevice(evtproxy.device)
         log.debug("Our Device is %s" % dev)
-        search = ICatalogTool(dev).search
-
-        # Collect MACs of current device's interfaces
-        macs = []
-        for brain in search('Products.ZenModel.IpInterface.IpInterface'):
-            macs.append(brain.getObject().macaddress)
 
         # Look up for upstream device(s)
-        upstream_routers = {}
-        cat = ICatalogTool(dmd.Devices)
-        brains = cat.search(
-            types=('Products.ZenModel.IpInterface.IpInterface'),
-            #query=In('clientmacs', macs)
-        )
-        for brain in brains:
+        cat = CatalogAPI(dmd.zport)
+        for brain in cat.get_upstream_devices(dev.id):
             obj = brain.getObject()
-            if any(x in macs for x in obj.clientmacs):
-                # up_dev = obj.device()
-                # upstream_routers[up_dev.id] = up_dev
-                if obj.device().getStatus() > 0:
-                    # Upstream router is DOWN, let suppress event
-                    log.debug("Upstream router is %s" % obj.device())
-                    evtproxy.eventState = STATUS_SUPPRESSED
+            if obj.getStatus() > 0:
+                # Upstream router is DOWN, let suppress event
+                log.debug("Upstream router is %s" % obj)
+                evtproxy.eventState = STATUS_SUPPRESSED

@@ -11,7 +11,7 @@ import logging
 log = logging.getLogger('zen.Layer2')
 
 from zope.interface import implements
-from zope.component import adapts
+from zope.component import adapts, getUtility
 
 from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
 from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
@@ -127,3 +127,17 @@ class CatalogAPI(object):
             return res[0].macaddresses
         else:
             raise IndexError('Device with id %r was not found' % device_id)
+
+    def get_upstream_devices(self, device_id):
+        '''
+        Returns list of devices' brains where given device mac addresses
+        found in client macs
+        '''
+        mac_addresses = self.get_device_macadresses(device_id)
+        # eliminate duplicate MACs, as several IFs of device can have same MAC
+        macs = list(set(mac_addresses))
+
+        res = []
+        for brain in self.get_catalog().search({'clientmacs': macs}):
+            res.append(brain)
+        return res
