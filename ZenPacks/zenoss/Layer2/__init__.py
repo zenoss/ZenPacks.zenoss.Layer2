@@ -118,3 +118,13 @@ def get_reindex_maps(self):
     '''
     return False
 
+@monkeypatch('Products.ZenModel.Device.Device')
+def setTriggerMe(self, value):
+    print '!' * 100
+    with open('/home/zenoss/out', 'a') as f:
+        f.write('Yes!!!!\n')
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def getTriggerMe(self):
+    return False
+

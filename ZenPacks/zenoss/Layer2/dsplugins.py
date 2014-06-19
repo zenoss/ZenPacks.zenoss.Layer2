@@ -13,7 +13,7 @@ log = getLogger('zen.Layer2Plugins')
 
 import re
 
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 
 from Products.DataCollector.SnmpClient import SnmpClient
 from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin, GetTableMap
@@ -25,6 +25,8 @@ from Products.ZenUtils.Driver import drive
 from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource \
     import PythonDataSourcePlugin
 
+from twisted.internet.defer import setDebugging
+setDebugging(True)
 
 PLUGIN_NAME = "Layer2Info"
 
@@ -120,7 +122,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             try:
                 self._prep_iftable(res)
             except Exception:
-                print 'TODO!!!!!!!!!!!!'
+                pass
                 
         
         maps = self.add_maps(ds0)
@@ -166,13 +168,13 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         for ifid, data in self.iftable.items():
             res.append(ObjectMap({
                 "compname": "os/interfaces/%s" % ifid,
-                # "modname": "Layer2: clients MACs added", TODO: learn what compname and modname actually means
+                "modname": "Layer2: clients MACs added",
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
             }))
-
         res.append(ObjectMap({
-            "set_reindex_maps": True,
+            "setTriggerMe": True,
+            "title": 'it works!',
         }))
         return res
 
@@ -192,6 +194,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         return result
 
     def onError(self, result, config):
+        print 'onError', result
         data = self.new_data()
         data['events'].append({
             'component': self.component,
@@ -200,4 +203,5 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             'eventClass': '/Status',
             'severity': ZenEventClasses.Error,
         })
+        print 'ok'
         return data
