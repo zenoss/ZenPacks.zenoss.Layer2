@@ -31,7 +31,7 @@ class L2SuppressEventsPlugin(object):
         """
         Apply the plugin to an event.
         """
-        # if not evtproxy.agent == "zenping": return
+        if not evtproxy.agent == "zenping": return
         if not "DOWN" in evtproxy.summary: return
 
         dev = dmd.Devices.findDevice(evtproxy.device)
