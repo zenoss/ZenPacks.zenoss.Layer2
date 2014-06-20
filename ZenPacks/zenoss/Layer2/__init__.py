@@ -106,9 +106,6 @@ def index_object(self, idxs=None, noips=False):
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def set_reindex_maps(self, value):
-    print '!' * 100
-    with open('/home/zenoss/out', 'a') as f:
-        f.write('Yes!\n')
     self.index_object()
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -117,14 +114,3 @@ def get_reindex_maps(self):
         set_reindex_maps for set_reindex_maps to run
     '''
     return False
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def setTriggerMe(self, value):
-    print '!' * 100
-    with open('/home/zenoss/out', 'a') as f:
-        f.write('Yes!!!!\n')
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def getTriggerMe(self):
-    return False
-

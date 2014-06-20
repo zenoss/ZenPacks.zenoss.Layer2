@@ -25,9 +25,6 @@ from Products.ZenUtils.Driver import drive
 from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource \
     import PythonDataSourcePlugin
 
-from twisted.internet.defer import setDebugging
-setDebugging(True)
-
 PLUGIN_NAME = "Layer2Info"
 
 class Layer2Options(object):
@@ -100,12 +97,8 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
 
         self.community = ds0.zSnmpCommunity
 
-        self.vlans = []
-        for ifid, row in self.iftable.items():
-            if 'vlan' in ifid.lower():
-                self.vlans.append(ifid.lower().replace('vlan', ''))
 
-        for vlan in self.vlans: # ["1", "951"]:
+        for vlan in self.get_vlans(): # ["1", "951"]:
             ds0.zSnmpCommunity = self.community + "@" + vlan
             sc = SnmpClient(
                 hostname=config.id,
@@ -119,17 +112,21 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             # res = sc.getResults()
             res = sc._tabledata.get(PLUGIN_NAME, {})
-            try:
-                self._prep_iftable(res)
-            except Exception:
-                pass
+            self._prep_iftable(res)
                 
         
-        maps = self.add_maps(ds0)
-        if maps:
-            results['maps'].extend(maps)
+        results['maps'] = list(self.get_maps())
 
         defer.returnValue(results)
+
+    def get_vlans(self):
+        '''
+        Yields serie of strings - vlans ids,
+        extracted from keys in self.iftable
+        '''
+        for ifid in self.iftable:
+            if 'vlan' in ifid.lower():
+                yield ifid.lower().replace('vlan', '')
 
     def _prep_iftable(self, res):
         """
@@ -156,27 +153,24 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                                 self.ifmap.asmac(item['dot1dTpFdbAddress'])
                             )
 
-    def add_maps(self, ds):
+    def get_maps(self):
         """
         Create Object/Relationship map for component remodeling.
 
         @param datasource: device datasourse
         @type datasource: instance of PythonDataSourceConfig
-        @return: ObjectMap|RelationshipMap
+        @yield: ObjectMap|RelationshipMap
         """
-        res = []
         for ifid, data in self.iftable.items():
-            res.append(ObjectMap({
+            yield ObjectMap({
                 "compname": "os/interfaces/%s" % ifid,
                 "modname": "Layer2: clients MACs added",
                 "clientmacs": data["clientmacs"],
                 "baseport": data["baseport"]
-            }))
-        res.append(ObjectMap({
-            "setTriggerMe": True,
-            "title": 'it works!',
-        }))
-        return res
+            })
+        yield ObjectMap({
+            "set_reindex_maps": True,
+        })
 
     def onSuccess(self, result, config):
         """
@@ -194,7 +188,6 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         return result
 
     def onError(self, result, config):
-        print 'onError', result
         data = self.new_data()
         data['events'].append({
             'component': self.component,
@@ -203,5 +196,4 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             'eventClass': '/Status',
             'severity': ZenEventClasses.Error,
         })
-        print 'ok'
         return data
