@@ -30,6 +30,7 @@ from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq
 
 from .macs_catalog import CatalogAPI
+from .patches import get_ifinfo_for_layer2, get_clients_links
 
 unused(Globals)
 
@@ -44,17 +45,6 @@ IpInterface._properties = IpInterface._properties + (
     {'id':'baseport', 'type':'int', 'mode':'w'},
 )
 
-def get_ifinfo_for_layer2(self):
-    res = {}
-    if self.os:
-        for interface in self.os.interfaces():
-            res[interface.id] = {
-                "ifindex": interface.ifindex,
-                "clientmacs": [],
-                "baseport": 0
-            }
-    return res
-
 Device.get_ifinfo_for_layer2 = get_ifinfo_for_layer2
 
 
@@ -68,35 +58,7 @@ IIpInterfaceInfo.baseport = schema.TextLine(
 IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
 
-def getClientsLinks(self):
-    # Temporary returns raw MACs without links for debugging
-    return self._object.clientmacs
-    # TODO: need catalog to speed up linking to client devices:
-    macs = self._object.clientmacs
-    if not macs:
-        return ""
-
-    links = []
-    for mac in macs:
-        if not mac: continue
-        is_found = False
-
-        cat = ICatalogTool(self._object.dmd)
-        brains = cat.search("Products.ZenModel.IpInterface.IpInterface")
-        for brain in brains:
-            obj = brain.getObject()
-            if obj.macaddress == mac:
-                links.append('<a href="{}">{}</a>'.format(
-                    obj.getPrimaryUrlPath(), mac))
-                is_found = True
-                break
-
-        if not is_found:
-            links.append(mac)
-
-    return ', '.join(links)
-
-IpInterfaceInfo.getClientsLinks = getClientsLinks
+IpInterfaceInfo.get_clients_links = get_clients_links
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
