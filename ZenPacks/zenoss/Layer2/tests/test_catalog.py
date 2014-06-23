@@ -18,6 +18,7 @@ from ZenPacks.zenoss.Layer2.dsplugins import Layer2InfoPlugin
 class TestDataSourcePlugin(BaseTestCase):
     def setUp(self):
         self.plugin = Layer2InfoPlugin()
+        self.plugin.component = sentinel.component
 
     def test_onSuccess(self):
         res = dict(
@@ -33,6 +34,14 @@ class TestDataSourcePlugin(BaseTestCase):
         self.assertEqual(events[0]['component'], sentinel.component)
         self.assertEqual(events[0]['severity'], ZenEventClasses.Clear)
 
+    def test_onError(self):
+        res = self.plugin.onError(2, sentinel.config)
+        events = res['events']
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['component'], sentinel.component)
+        self.assertEqual(events[0]['summary'], '2')
+        self.assertEqual(events[0]['severity'], ZenEventClasses.Error)
+
     def test_get_vlans(self):
         self.plugin.iftable = {
             'Vlan207': 0,
@@ -47,7 +56,7 @@ class TestDataSourcePlugin(BaseTestCase):
 
         self.assertEqual(res, ['207', '208', '1'])
 
-    def test_add_maps(self):
+    def test_get_maps(self):
         self.plugin.iftable = {
             'if1': {
                 'clientmacs': sentinel.clientmacs,

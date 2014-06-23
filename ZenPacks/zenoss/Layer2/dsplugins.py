@@ -25,6 +25,8 @@ from Products.ZenUtils.Driver import drive
 from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource \
     import PythonDataSourcePlugin
 
+from .utils import asmac
+
 PLUGIN_NAME = "Layer2Info"
 
 class Layer2Options(object):
@@ -79,6 +81,19 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
 
     component = None
 
+    def get_snmp_client(self, vlan, config, ds0):
+        ds0.zSnmpCommunity = self.community + "@" + vlan
+        sc = SnmpClient(
+            hostname=config.id,
+            ipaddr=config.manageIp,
+            options=Layer2Options(),
+            device=ds0,
+            datacollector=self,
+            plugins=[Layer2SnmpPlugin(),]
+        )
+        sc.initSnmpProxy()
+        return sc
+
     @defer.inlineCallbacks
     def collect(self, config):
         """
@@ -86,35 +101,20 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         with SNMP
         """
         results = self.new_data()
-        res = ''
         ds0 = config.datasources[0]
         ds0.id = config.id
-        options = Layer2Options()
-        self.ifmap = Layer2SnmpPlugin()
 
         self.iftable = ds0.get_ifinfo_for_layer2
         self.jobs = []
 
         self.community = ds0.zSnmpCommunity
 
-
         for vlan in self.get_vlans(): # ["1", "951"]:
-            ds0.zSnmpCommunity = self.community + "@" + vlan
-            sc = SnmpClient(
-                hostname=config.id,
-                ipaddr=config.manageIp,
-                options=options,
-                device=ds0,
-                datacollector=self,
-                plugins=[self.ifmap,]
-            )
-            sc.initSnmpProxy()
+            sc = self.get_snmp_client(vlan, config, ds0)
             yield drive(sc.doRun)
-            # res = sc.getResults()
             res = sc._tabledata.get(PLUGIN_NAME, {})
             self._prep_iftable(res)
                 
-        
         results['maps'] = list(self.get_maps())
 
         defer.returnValue(results)
@@ -150,7 +150,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                         if (item['dot1dTpFdbStatus'] == 3) \
                         and (row['dot1dBasePort'] == item['dot1dTpFdbPort']):
                             data['clientmacs'].append(
-                                self.ifmap.asmac(item['dot1dTpFdbAddress'])
+                                asmac(item['dot1dTpFdbAddress'])
                             )
 
     def get_maps(self):
