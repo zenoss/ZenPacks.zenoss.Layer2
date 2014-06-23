@@ -11,8 +11,9 @@ from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from Products.ZenEvents import ZenEventClasses
+from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 
-from ZenPacks.zenoss.Layer2.dsplugins import Layer2InfoPlugin
+from ZenPacks.zenoss.Layer2.dsplugins import Layer2InfoPlugin, PLUGIN_NAME
 
 
 class TestDataSourcePlugin(BaseTestCase):
@@ -71,6 +72,24 @@ class TestDataSourcePlugin(BaseTestCase):
         self.assertEqual(maps[0].compname, 'os/interfaces/if1')
         self.assertEqual(maps[0].clientmacs, sentinel.clientmacs)
         self.assertEqual(maps[0].baseport, sentinel.baseport)
+
+    def test_get_snmp_data(sc):
+        sc = Mock()
+        tablemap = GetTableMap(
+                'dot1dTpFdbTable',
+                '.1.3.6.1.2.1.17.4.3.1',
+                {'.1': 'dot1dTpFdbAddress'}
+        )
+        data = {
+            '.1.3.6.1.2.1.17.4.3.1.1': '????' # TODO: what here? 
+        }
+        sc._tabledata = {
+            PLUGIN_NAME: {
+                tablemap: data,
+            }
+        }
+        data = self.plugin.get_snmp_data(sc)
+        # TODO: finish this test
 
 
     def test_prep_iftable(self):
