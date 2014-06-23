@@ -73,7 +73,7 @@ class TestDataSourcePlugin(BaseTestCase):
         self.assertEqual(maps[0].clientmacs, sentinel.clientmacs)
         self.assertEqual(maps[0].baseport, sentinel.baseport)
 
-    def test_get_snmp_data(sc):
+    def test_get_snmp_data(self):
         sc = Mock()
         tablemap = GetTableMap(
                 'dot1dTpFdbTable',
