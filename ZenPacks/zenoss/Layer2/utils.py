@@ -7,15 +7,6 @@
 # 
 ##############################################################################
 
-import struct
-
 def asmac(val):
-    """Convert a byte string to a MAC address string.
-    """
-    mac = []
-    for char in val:
-        tmp = struct.unpack('B', char)[0]
-        tmp =  str(hex(tmp))[2:]
-        if len(tmp) == 1: tmp = '0' + tmp
-        mac.append(tmp)
-    return ":".join(mac).upper()
+    """Convert a byte string to a MAC address string.  """
+    return ':'.join('%02X' % ord(c) for c in val)

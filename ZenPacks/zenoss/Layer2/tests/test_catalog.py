@@ -14,7 +14,8 @@ from Products.ZenEvents import ZenEventClasses
 from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 
 from ZenPacks.zenoss.Layer2.dsplugins import Layer2InfoPlugin, PLUGIN_NAME
-
+from ZenPacks.zenoss.Layer2.dsplugins import ForwardingEntryStatus
+from ZenPacks.zenoss.Layer2.utils import asmac
 
 class TestDataSourcePlugin(BaseTestCase):
     def setUp(self):
@@ -75,29 +76,82 @@ class TestDataSourcePlugin(BaseTestCase):
 
     def test_get_snmp_data(self):
         sc = Mock()
+        base_oid = '.1.3.6.1.2.1.17.4.3.1'
         tablemap = GetTableMap(
-                'dot1dTpFdbTable',
-                '.1.3.6.1.2.1.17.4.3.1',
-                {'.1': 'dot1dTpFdbAddress'}
+            sentinel.table_map_name,
+            base_oid,
+            {
+                '.1': sentinel.suboid1,
+                '.2': sentinel.suboid2,
+            }
         )
         data = {
-            '.1.3.6.1.2.1.17.4.3.1.1': '????' # TODO: what here? 
+            base_oid + '.1': {
+                base_oid + '.1.1234': sentinel.value1,
+            },
+            base_oid + '.2': {
+                base_oid + '.2.1234': sentinel.value2,
+            }
         }
         sc._tabledata = {
             PLUGIN_NAME: {
                 tablemap: data,
             }
         }
-        data = self.plugin.get_snmp_data(sc)
-        # TODO: finish this test
 
+        data = self.plugin.get_snmp_data(sc)
+
+        self.assertEqual(data, {
+            sentinel.table_map_name: {
+                '1234': {
+                    sentinel.suboid1: sentinel.value1,
+                    sentinel.suboid2: sentinel.value2,
+                }
+            }
+        })
 
     def test_prep_iftable(self):
-        res = {}
+        res = {
+            'dot1dTpFdbTable': sentinel.forwarding_table,
+            'dot1dBasePortEntry': {
+                'key': {
+                    'dot1dBasePortIfIndex': 22,
+                    'dot1dBasePort': sentinel.baseport,
+                },
+            },
+        }
+        self.plugin.iftable = {
+            'if1': {
+                'ifindex': '22',
+                'clientmacs': [],
+            }
+        }
+        self.plugin._extract_clientmacs = Mock()
 
-        # self.plugin._prep_iftable(res)
+        self.plugin._prep_iftable(res)
 
-        
+        ifdata = self.plugin.iftable['if1']
+        self.assertEqual(ifdata.get('baseport'), sentinel.baseport)
+        self.plugin._extract_clientmacs.assertCalledWith(
+            sentinel.forwarding_table,
+            ifdata
+        )
+
+    def test_extract_clientmacs(self):
+        mac = 'asdf'
+        table = {'key': {
+            'dot1dTpFdbAddress': mac,
+            'dot1dTpFdbStatus': ForwardingEntryStatus.learned,
+            'dot1dTpFdbPort': sentinel.port,
+        }}
+        interface = {
+            'baseport': sentinel.port,
+            'clientmacs': [],
+        }
+
+        self.plugin._extract_clientmacs(table, interface)
+
+        self.assertEqual(interface['clientmacs'], [asmac(mac)])
 
 def test_suite():
     from unittest import TestSuite, makeSuite
