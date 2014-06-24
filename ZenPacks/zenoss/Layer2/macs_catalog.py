@@ -141,3 +141,25 @@ class CatalogAPI(object):
         for brain in self.get_catalog().search({'clientmacs': macs}):
             res.append(brain)
         return res
+
+    def get_if_upstream_devices(self, mac_addresses):
+        '''
+        Returns list of devices, connected to IpInterface by given MACs
+        '''
+        macs = list(set(mac_addresses))
+
+        res = []
+        for brain in self.get_catalog().search({'clientmacs': macs}):
+            res.append(brain)
+        return res
+
+    def get_if_client_devices(self, mac_addresses):
+        '''
+        Returns list of client devices, connected to IpInterface by given MACs
+        '''
+        macs = list(set(mac_addresses))
+
+        res = []
+        for brain in self.get_catalog().search({'macaddresses': macs}):
+            res.append(brain)
+        return res

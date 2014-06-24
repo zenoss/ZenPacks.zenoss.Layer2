@@ -39,7 +39,7 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
                 {name: 'clientmacs'},
                 {name: 'baseport'},
                 {name: 'ifindex'},
-                {name: 'getClientsLinks'}
+                {name: 'get_clients_links'}
             ],
             columns: [{
                 id: 'severity',
@@ -99,8 +99,8 @@ Ext.define("Zenoss.component.IpInterfacePanel", {
             //     header: _t('RAW MACs'),
             //     width: 125,
             },{
-                id: 'getClientsLinks',
-                dataIndex: 'getClientsLinks',
+                id: 'get_clients_links',
+                dataIndex: 'get_clients_links',
                 header: _t('Clients MAC Addresses'),
                 width: 150,
             },{

@@ -5,6 +5,17 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     >
 
+    <!-- Impact -->
+    <configure zcml:condition="installed ZenPacks.zenoss.Impact">
+        <include package="ZenPacks.zenoss.Impact" file="meta.zcml"/>
+
+        <subscriber
+            provides="ZenPacks.zenoss.Impact.impactd.interfaces.IRelationshipDataProvider"
+            for="Products.ZenModel.Device.Device"
+            factory=".impact.DeviceRelationsProvider"
+            />
+    </configure>
+
     <!-- Browser Resources -->
     <browser:resourceDirectory
         name="ZenPacks_zenoss_Layer2"
