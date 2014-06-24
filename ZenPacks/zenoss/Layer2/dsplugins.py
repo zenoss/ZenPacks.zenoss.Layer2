@@ -145,10 +145,13 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                     data['baseport'] = baseport
 
                     for idx, item in dot1dTpFdbTable.items():
-                        mac = item.get('dot1dTpFdbAddress')
-                        if mac and (item.get('dot1dTpFdbStatus') == 3) \
-                        and (baseport == item.get('dot1dTpFdbPort')):
-                            data['clientmacs'].append(self.ifmap.asmac(mac))
+                        try:
+                            mac = item.get('dot1dTpFdbAddress')
+                            if mac and (item.get('dot1dTpFdbStatus') == 3) \
+                            and (baseport == item.get('dot1dTpFdbPort')):
+                                data['clientmacs'].append(self.ifmap.asmac(mac))
+                        except KeyError:
+                            log.warning("MAC forwarding table row incomplete, skipping: %s" % item)
 
     def add_maps(self, ds):
         """
