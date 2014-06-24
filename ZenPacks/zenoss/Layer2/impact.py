@@ -13,6 +13,8 @@ from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 from ZenPacks.zenoss.Impact.impactd.relations import ImpactEdge
 
+from .macs_catalog import CatalogAPI
+
 
 RP = 'ZenPacks.zenoss.Layer2'
 AVAILABILITY = 'AVAILABILITY'
@@ -29,6 +31,9 @@ def edge(source, target):
 
 
 class BaseRelationsProvider(object):
+    '''
+    Basic class for impact relations
+    '''
     relationship_provider = RP
 
     impact_relationships = None
@@ -47,8 +52,11 @@ class BaseRelationsProvider(object):
         return self._guid
 
 class DeviceRelationsProvider(BaseRelationsProvider):
+    '''
+    Adds upstream router(s) as dependency to device on impact graph
+    '''
     def getEdges(self):
-        upstream_routers = []
-        if upstream_routers:
-            for router in upstream_routers:
-                yield edge(guid(router), self.guid())
+        cat = CatalogAPI(self._object.zport)
+        for brain in cat.get_upstream_devices(dev.id):
+            router = brain.getObject()
+            yield edge(guid(router), self.guid())

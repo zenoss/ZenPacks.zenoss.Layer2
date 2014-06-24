@@ -137,18 +137,18 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         dot1dBasePortEntry = tabledata.get("dot1dBasePortEntry", {})
 
         for ifid, data in self.iftable.items():
-            ifindex = data["ifindex"]
+            ifindex = int(data["ifindex"])
 
             for port, row in dot1dBasePortEntry.items():
-                if int(ifindex) == row['dot1dBasePortIfIndex']:
-                    data['baseport'] = row['dot1dBasePort']
+                if ifindex == row.get('dot1dBasePortIfIndex'):
+                    baseport = row.get('dot1dBasePort')
+                    data['baseport'] = baseport
 
                     for idx, item in dot1dTpFdbTable.items():
-                        if (item['dot1dTpFdbStatus'] == 3) \
-                        and (row['dot1dBasePort'] == item['dot1dTpFdbPort']):
-                            data['clientmacs'].append(
-                                self.ifmap.asmac(item['dot1dTpFdbAddress'])
-                            )
+                        mac = item.get('dot1dTpFdbAddress')
+                        if mac and (item.get('dot1dTpFdbStatus') == 3) \
+                        and (baseport == item.get('dot1dTpFdbPort')):
+                            data['clientmacs'].append(self.ifmap.asmac(mac))
 
     def add_maps(self, ds):
         """
