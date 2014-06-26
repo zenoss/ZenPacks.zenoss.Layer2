@@ -13,8 +13,11 @@ log = logging.getLogger('zen.Layer2')
 import Globals
 
 from Products.ZenUtils.Utils import unused
+from Products.ZenUtils.Utils import edgesToXML
+from Products.ZenUtils.Utils import monkeypatch
 
 from .macs_catalog import CatalogAPI
+from .network_tree2 import get_edges
 
 unused(Globals)
 
@@ -55,3 +58,37 @@ def get_clients_links(self):
             links.append(mac)
 
     return ', '.join(links)
+
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def index_object(self, idxs=None, noips=False):
+    original(self, idxs, noips)
+
+    log.info('Adding %s to catalog' % self)
+    catapi = CatalogAPI(self.zport)
+    catapi.add_device(self)
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def unindex_object(self):
+    original(self)
+
+    log.info('Removing %s from catalog' % self)
+    catapi = CatalogAPI(self.zport)
+    catapi.remove_device(self)
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def set_reindex_maps(self, value):
+    self.index_object()
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def get_reindex_maps(self):
+    ''' Should return something distinct from value passed to
+        set_reindex_maps for set_reindex_maps to run
+    '''
+    return False
+
+
+def getXMLEdges(self, depth=3, filter="/", start=()):
+    if not start: start=self.id
+    edges = get_edges(self, depth, withIcons=True, filter=filter)
+    return edgesToXML(edges, start)

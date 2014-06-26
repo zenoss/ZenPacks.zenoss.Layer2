@@ -17,11 +17,11 @@ log = logging.getLogger('zen.Layer2')
 import Globals
 
 from Products.ZenUtils.Utils import unused
-from Products.ZenUtils.Utils import monkeypatch
 from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
 from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
+from Products.ZenModel.IpNetwork import IpNetwork
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces import ICatalogTool
@@ -29,6 +29,7 @@ from Products.AdvancedQuery import Eq
 
 from .macs_catalog import CatalogAPI
 from .patches import get_ifinfo_for_layer2, get_clients_links
+from .patches import getXMLEdges
 
 unused(Globals)
 
@@ -44,6 +45,8 @@ IpInterface._properties = IpInterface._properties + (
 )
 
 Device.get_ifinfo_for_layer2 = get_ifinfo_for_layer2
+Device.getXMLEdges = getXMLEdges
+IpNetwork.getXMLEdges = getXMLEdges
 
 
 IIpInterfaceInfo.clientmacs = schema.TextLine(
@@ -57,22 +60,3 @@ IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
 
 IpInterfaceInfo.get_clients_links = get_clients_links
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def index_object(self, idxs=None, noips=False):
-    original(self, idxs, noips)
-
-    log.info('Adding %s to catalog' % self)
-    catapi = CatalogAPI(self.zport)
-    catapi.add_device_to_catalog(self)
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def set_reindex_maps(self, value):
-    self.index_object()
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def get_reindex_maps(self):
-    ''' Should return something distinct from value passed to
-        set_reindex_maps for set_reindex_maps to run
-    '''
-    return False
