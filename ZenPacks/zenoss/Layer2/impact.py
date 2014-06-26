@@ -57,6 +57,6 @@ class DeviceRelationsProvider(BaseRelationsProvider):
     '''
     def getEdges(self):
         cat = CatalogAPI(self._object.zport)
-        for brain in cat.get_upstream_devices(dev.id):
+        for brain in cat.get_upstream_devices(self._object.id):
             router = brain.getObject()
             yield edge(guid(router), self.guid())
