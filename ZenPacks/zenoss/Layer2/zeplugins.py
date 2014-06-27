@@ -43,5 +43,5 @@ class L2SuppressEventsPlugin(object):
             obj = brain.getObject()
             if obj.getStatus() > 0:
                 # Upstream router is DOWN, let suppress event
-                log.debug("Upstream router is %s" % obj)
+                log.debug("Upstream router is %s and it's DOWN. Suppressing event." % obj.titleOrId())
                 evtproxy.eventState = STATUS_SUPPRESSED

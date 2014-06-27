@@ -16,6 +16,16 @@
             />
     </configure>
 
+    <!-- Device Links -->
+    <configure zcml:condition="have zenoss:IExpandedLinkProvider">
+        <subscriber
+            provides='Products.ZenModel.interfaces.IExpandedLinkProvider'
+            for="Products.ZenModel.Device.Device"
+            factory='.links.DeviceLinkProvider'
+            />
+
+    </configure>
+
     <!-- Browser Resources -->
     <browser:resourceDirectory
         name="ZenPacks_zenoss_Layer2"
@@ -23,7 +33,7 @@
         />
 
     <!-- JavaScript needed for all Zenoss pages. -->
-    <browser:viewlet
+    <!-- <browser:viewlet
         name="js-layer2"
         paths="/++resource++ZenPacks_zenoss_Layer2/js/layer2.js"
         for="*"
@@ -31,7 +41,7 @@
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
         class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
         permission="zope2.Public"
-        />
+        /> -->
 
     <utility
         component=".zeplugins.L2SuppressEventsPlugin"
