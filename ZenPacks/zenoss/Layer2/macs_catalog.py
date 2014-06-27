@@ -30,6 +30,8 @@ class MACsCatalog(GlobalCatalog):
         dc = DeviceConnections(device)
         self.catalog_object(dc)
 
+    def remove_device(self, device):
+        self.uncatalog_object(device.getPhysicalPath())
 
 class IMACsCatalogFactory(IGlobalCatalogFactory):
     pass
@@ -90,6 +92,8 @@ def initializeMACsCatalog(catalog):
     catalog.addColumn('macaddresses')
     catalog.addColumn('clientmacs')
 
+def unique(l):
+    return list(set(l))
 
 class CatalogAPI(object):
     catalog = None
@@ -113,16 +117,25 @@ class CatalogAPI(object):
         ''' Reindex objects in dmd'''
         self.zport.dmd.Devices.reIndex()
 
-    def add_device_to_catalog(self, device):
+    def add_device(self, device):
         self.get_catalog().add_device(device)
-        log.info('%s added to %s' % (self, MACsCatalogId))
+        log.info('%s added to %s' % (device, MACsCatalogId))
 
+    def remove_device(self, device):
+        self.get_catalog().remove_device(device)
+        log.info('%s removed from %s' % (device, MACsCatalogId))
+
+    def search(self, query={}):
+        return self.get_catalog().search(query)
+
+    def show_all(self):
+        for b in self.search():
+            o = b.getObject()
+            print o, type(o)
 
     def get_device_macadresses(self, device_id):
         ''' Return list of macadresses for device with given id '''
-        res = self.get_catalog().search({
-            'id': device_id
-        })
+        res = self.search({'id': device_id})
         if res:
             return res[0].macaddresses
         else:
@@ -144,13 +157,7 @@ class CatalogAPI(object):
         found in client macs
         '''
         mac_addresses = self.get_device_macadresses(device_id)
-        # eliminate duplicate MACs, as several IFs of device can have same MAC
-        macs = list(set(mac_addresses))
-
-        res = []
-        for brain in self.get_catalog().search({'clientmacs': macs}):
-            res.append(brain)
-        return res
+        return self.get_if_upstream_devices(mac_addresses)
 
     def get_client_devices(self, device_id):
         '''
@@ -169,20 +176,10 @@ class CatalogAPI(object):
         '''
         Returns list of devices, connected to IpInterface by given MACs
         '''
-        macs = list(set(mac_addresses))
-
-        res = []
-        for brain in self.get_catalog().search({'clientmacs': macs}):
-            res.append(brain)
-        return res
+        return list(self.search({'clientmacs': unique(mac_addresses)}))
 
     def get_if_client_devices(self, mac_addresses):
         '''
         Returns list of client devices, connected to IpInterface by given MACs
         '''
-        macs = list(set(mac_addresses))
-
-        res = []
-        for brain in self.get_catalog().search({'macaddresses': macs}):
-            res.append(brain)
-        return res
+        return list(self.search({'macaddresses': unique(mac_addresses)}))

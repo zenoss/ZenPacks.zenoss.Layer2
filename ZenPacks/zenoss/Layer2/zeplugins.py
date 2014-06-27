@@ -35,6 +35,9 @@ class L2SuppressEventsPlugin(object):
         if not "DOWN" in evtproxy.summary: return
 
         dev = dmd.Devices.findDevice(evtproxy.device)
+        if not dev:
+            log.error("Device %s no found" % evtproxy.device)
+
         log.debug("Our Device is %s" % dev)
 
         # Look up for upstream device(s)
