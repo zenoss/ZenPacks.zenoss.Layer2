@@ -10,6 +10,7 @@
 import logging
 log = logging.getLogger('zen.Layer2')
 
+import zExceptions
 from zope.interface import implements
 from zope.component import adapts, getUtility
 
@@ -31,7 +32,7 @@ class MACsCatalog(GlobalCatalog):
         self.catalog_object(dc)
 
     def remove_device(self, device):
-        self.uncatalog_object(device.getPhysicalPath())
+        self.uncatalog_object('/'.join(device.getPhysicalPath()))
 
 class IMACsCatalogFactory(IGlobalCatalogFactory):
     pass
@@ -124,6 +125,10 @@ class CatalogAPI(object):
     def remove_device(self, device):
         self.get_catalog().remove_device(device)
         log.info('%s removed from %s' % (device, MACsCatalogId))
+
+    def clear(self):
+        for b in self.search():
+            self.get_catalog().uncatalog_object(b.getPath())
 
     def search(self, query={}):
         return self.get_catalog().search(query)
