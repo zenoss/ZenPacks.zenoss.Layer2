@@ -10,7 +10,6 @@
 import logging
 log = logging.getLogger('zen.Layer2')
 
-import zExceptions
 from zope.interface import implements
 from zope.component import adapts, getUtility
 
@@ -18,9 +17,8 @@ from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
 from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
 from Products.Zuul.catalog.global_catalog import GlobalCatalog
 from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
-from Products.Zuul.catalog.global_catalog import IndexableWrapper
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
-from Products.Zuul.catalog.interfaces import IGloballyIndexed, IPathReporter, IIndexableWrapper
+from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
 MACsCatalogId = 'macs_catalog'
 
@@ -107,16 +105,13 @@ class CatalogAPI(object):
             return self.catalog
 
         if not hasattr(self.zport, MACsCatalogId):
-            factory = getUtility(IMACsCatalogFactory)
+            # factory = getUtility(IMACsCatalogFactory)
+            factory = MACsCatalogFactory()
             factory.create(self.zport)
             log.info('Created %s' % MACsCatalogId)
 
         self.catalog = getattr(self.zport, MACsCatalogId)
         return self.catalog
-
-    def reindex(self):
-        ''' Reindex objects in dmd'''
-        self.zport.dmd.Devices.reIndex()
 
     def add_device(self, device):
         self.get_catalog().add_device(device)

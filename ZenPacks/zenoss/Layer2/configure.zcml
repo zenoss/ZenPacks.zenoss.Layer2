@@ -38,9 +38,4 @@
         provides="Products.ZenEvents.interfaces.IPostEventPlugin"
         name="IL2SuppressEventsPlugin"
         />
-
-    <utility factory=".macs_catalog.MACsCatalogFactory"
-        provides=".macs_catalog.IMACsCatalogFactory"
-        />
-
 </configure>

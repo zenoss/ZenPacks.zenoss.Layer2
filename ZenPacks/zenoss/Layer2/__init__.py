@@ -21,15 +21,12 @@ from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
 from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
-from Products.ZenModel.IpNetwork import IpNetwork
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq
 
-from .macs_catalog import CatalogAPI
-from .patches import get_ifinfo_for_layer2, get_clients_links
-from .patches import getXMLEdges
+import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
 
@@ -44,11 +41,6 @@ IpInterface._properties = IpInterface._properties + (
     {'id':'baseport', 'type':'int', 'mode':'w'},
 )
 
-Device.get_ifinfo_for_layer2 = get_ifinfo_for_layer2
-Device.getXMLEdges = getXMLEdges
-IpNetwork.getXMLEdges = getXMLEdges
-
-
 IIpInterfaceInfo.clientmacs = schema.TextLine(
     title=u"Clients MAC Addresses", group="Details", order=13)
 IIpInterfaceInfo.baseport = schema.TextLine(
@@ -58,5 +50,3 @@ IIpInterfaceInfo.baseport = schema.TextLine(
 
 IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
-
-IpInterfaceInfo.get_clients_links = get_clients_links

@@ -59,9 +59,10 @@ class TestDataSourcePlugin(BaseTestCase):
         self.assertEqual(res, ['207', '208', '1'])
 
     def test_get_maps(self):
+        clientmacs = [sentinel.clientmac1]
         self.plugin.iftable = {
             'if1': {
-                'clientmacs': sentinel.clientmacs,
+                'clientmacs': clientmacs,
                 'baseport': sentinel.baseport,
             }
         }
@@ -69,9 +70,9 @@ class TestDataSourcePlugin(BaseTestCase):
         maps = list(self.plugin.get_maps())
 
         self.assertEqual(len(maps), 2)
-        self.assertEqual(maps[1].set_reindex_maps, True)
+        self.assertEqual(maps[1].set_reindex_maps, set(clientmacs))
         self.assertEqual(maps[0].compname, 'os/interfaces/if1')
-        self.assertEqual(maps[0].clientmacs, sentinel.clientmacs)
+        self.assertEqual(maps[0].clientmacs, clientmacs)
         self.assertEqual(maps[0].baseport, sentinel.baseport)
 
     def test_get_snmp_data(self):
