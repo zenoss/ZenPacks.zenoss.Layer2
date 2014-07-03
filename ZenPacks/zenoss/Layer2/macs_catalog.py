@@ -76,9 +76,9 @@ class DeviceConnections(object):
     def clientmacs(self):
         return [x
             for i in self.device.os.interfaces()
-            if getattr(i, 'clientmacs')
-            for x in i.clientmacs
-            if x
+                if getattr(i, 'clientmacs')
+                    for x in i.clientmacs
+                        if x
         ]
 
 
@@ -127,11 +127,6 @@ class CatalogAPI(object):
 
     def search(self, query={}):
         return self.get_catalog().search(query)
-
-    def show_all(self):
-        for b in self.search():
-            o = b.getObject()
-            print o, type(o)
 
     def get_device_macadresses(self, device_id):
         ''' Return list of macadresses for device with given id '''
