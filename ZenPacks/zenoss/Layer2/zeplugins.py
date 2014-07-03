@@ -34,9 +34,9 @@ class L2SuppressEventsPlugin(object):
         if not evtproxy.agent == "zenping": return
         if not "DOWN" in evtproxy.summary: return
 
-        dev = dmd.Devices.findDevice(evtproxy.device)
+        dev = dmd.Devices.findDeviceByIdExact(evtproxy.device)
         if not dev:
-            log.error("Device %s no found" % evtproxy.device)
+            log.debug("Device %s no found" % evtproxy.device)
 
         log.debug("Our Device is %s" % dev)
 
