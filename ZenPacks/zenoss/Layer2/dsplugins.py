@@ -257,15 +257,19 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         @type datasource: instance of PythonDataSourceConfig
         @yield: ObjectMap|RelationshipMap
         """
+        clientmacs = set()
         for ifid, data in self.iftable.items():
+            clientmacs.update(data['clientmacs'])
             yield ObjectMap({
-                "compname": "os/interfaces/%s" % ifid,
-                "modname": "Layer2: clients MACs added",
-                "clientmacs": data["clientmacs"],
-                "baseport": data["baseport"]
+                "compname": 'os',
+                'relname': 'interfaces',
+                'id': ifid,
+                'modname': 'Products.ZenModel.IpInterface',
+                'clientmacs': data['clientmacs'], 
+                'baseport': data['baseport']
             })
         yield ObjectMap({
-            "set_reindex_maps": True,
+            "set_reindex_maps": clientmacs,
         })
 
     def onSuccess(self, result, config):

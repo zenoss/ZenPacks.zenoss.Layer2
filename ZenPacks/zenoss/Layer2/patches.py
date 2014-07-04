@@ -16,12 +16,13 @@ from Products.ZenUtils.Utils import unused
 from Products.ZenUtils.Utils import edgesToXML
 from Products.ZenUtils.Utils import monkeypatch
 
-from .macs_catalog import CatalogAPI
+from .macs_catalog import CatalogAPI, DeviceConnections
 from .network_tree2 import get_edges
 
 unused(Globals)
 
 
+@monkeypatch('Products.ZenModel.Device.Device')
 def get_ifinfo_for_layer2(self):
     '''
     Returns list with subset of IpInterface properties
@@ -37,6 +38,7 @@ def get_ifinfo_for_layer2(self):
     return res
 
 
+@monkeypatch('Products.Zuul.infos.component.ipinterface.IpInterfaceInfo')
 def get_clients_links(self):
     '''
     Returns list of links to client devices
@@ -85,10 +87,13 @@ def get_reindex_maps(self):
     ''' Should return something distinct from value passed to
         set_reindex_maps for set_reindex_maps to run
     '''
-    return False
+    return set(DeviceConnections(self).clientmacs)
 
 
 def getXMLEdges(self, depth=3, filter="/", start=()):
     if not start: start=self.id
     edges = get_edges(self, depth, withIcons=True, filter=filter)
     return edgesToXML(edges, start)
+
+monkeypatch('Products.ZenModel.IpNetwork.IpNetwork')(getXMLEdges)
+monkeypatch('Products.ZenModel.Device.Device')(getXMLEdges)
