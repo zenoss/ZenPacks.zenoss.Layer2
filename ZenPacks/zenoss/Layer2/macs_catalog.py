@@ -105,7 +105,6 @@ class CatalogAPI(object):
             return self.catalog
 
         if not hasattr(self.zport, MACsCatalogId):
-            # factory = getUtility(IMACsCatalogFactory)
             factory = MACsCatalogFactory()
             factory.create(self.zport)
             log.info('Created %s' % MACsCatalogId)
