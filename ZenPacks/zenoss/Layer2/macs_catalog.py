@@ -143,7 +143,8 @@ class CatalogAPI(object):
         if res:
             return res[0].clientmacs
         else:
-            raise IndexError('Device with id %r was not found' % device_id)
+            log.warning('Device with id %r was not found' % device_id)
+            return None
 
     def get_upstream_devices(self, device_id):
         '''

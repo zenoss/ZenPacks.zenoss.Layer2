@@ -15,6 +15,12 @@ import Globals
 from Products.ZenUtils.Utils import unused
 from Products.ZenUtils.Utils import edgesToXML
 from Products.ZenUtils.Utils import monkeypatch
+from Products.Zuul.form import schema
+from Products.Zuul.infos import ProxyProperty
+from Products.ZenModel.IpInterface import IpInterface
+from Products.Zuul.interfaces.component import IIpInterfaceInfo
+from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
+
 
 from .macs_catalog import CatalogAPI, DeviceConnections
 from .network_tree2 import get_edges
@@ -38,7 +44,6 @@ def get_ifinfo_for_layer2(self):
     return res
 
 
-@monkeypatch('Products.Zuul.infos.component.ipinterface.IpInterfaceInfo')
 def get_clients_links(self):
     '''
     Returns list of links to client devices
@@ -48,18 +53,25 @@ def get_clients_links(self):
         return ""
 
     cat = CatalogAPI(self._object.zport)
-    links = []
+    links = {
+        "Other": []
+    }
     for mac in macs:
         brains = cat.get_if_client_devices([mac])
         if brains:
             for brain in brains:
-                links.append('<a href="{}">{}</a>'.format(
-                    brain.getObject().getPrimaryUrlPath(), mac)
-                )
+                obj = brain.getObject()
+                link = '<a href="{}">{}</a>'.format(
+                    obj.getPrimaryUrlPath(), obj.titleOrId())
+                if link in links:
+                    links[link].append(mac)
+                else:
+                    links[link] = [mac]
         else:
-            links.append(mac)
+            links["Other"].append(mac)
 
-    return ', '.join(links)
+    return ' '.join(["<p><b>{}</b>: {}</p>".format(k, ', '.join(v)) \
+        for k, v in links.iteritems()])
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -97,3 +109,24 @@ def getXMLEdges(self, depth=3, filter="/", start=()):
 
 monkeypatch('Products.ZenModel.IpNetwork.IpNetwork')(getXMLEdges)
 monkeypatch('Products.ZenModel.Device.Device')(getXMLEdges)
+
+# -- IP Interfaces overrides --------------------------------------------------
+
+# Monkey patching IpInterface and add Layer2 properties
+IpInterface.clientmacs = []
+IpInterface.baseport = 0
+IpInterface._properties = IpInterface._properties + (
+    {'id':'clientmacs', 'type':'string', 'mode':'w'},
+    {'id':'baseport', 'type':'int', 'mode':'w'},
+)
+
+IIpInterfaceInfo.clientmacs = schema.TextLine(
+    title=u"Clients MAC Addresses", group="Details", order=13)
+IIpInterfaceInfo.baseport = schema.TextLine(
+    title=u"Physical Port", group="Details", order=14)
+
+# -- UI overrides goes here --------------------------------------------------
+
+IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
+IpInterfaceInfo.baseport = ProxyProperty('baseport')
+IpInterfaceInfo.get_clients_links = property(get_clients_links)
