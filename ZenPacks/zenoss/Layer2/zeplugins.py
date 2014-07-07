@@ -13,6 +13,8 @@ from Products.Zuul.interfaces import ICatalogTool
 from Products.AdvancedQuery import Eq, In
 from zenoss.protocols.protobufs.zep_pb2 import STATUS_SUPPRESSED
 
+from .macs_catalog import CatalogAPI
+
 import logging
 
 log = logging.getLogger("zen.eventd")
@@ -29,32 +31,21 @@ class L2SuppressEventsPlugin(object):
         """
         Apply the plugin to an event.
         """
-
         if not evtproxy.agent == "zenping": return
         if not "DOWN" in evtproxy.summary: return
 
-        dev = dmd.Devices.findDevice(evtproxy.device)
-        log.debug("Our Device is %s" % dev)
-        search = ICatalogTool(dev).search
+        dev = dmd.Devices.findDeviceByIdExact(evtproxy.device)
+        if not dev:
+            log.debug("Device %s no found" % evtproxy.device)
 
-        # Collect MACs of current device's interfaces
-        macs = []
-        for brain in search('Products.ZenModel.IpInterface.IpInterface'):
-            macs.append(brain.getObject().macaddress)
+        log.debug("Our Device is %s" % dev)
 
         # Look up for upstream device(s)
-        upstream_routers = {}
-        cat = ICatalogTool(dmd.Devices)
-        brains = cat.search(
-            types=('Products.ZenModel.IpInterface.IpInterface'),
-            #query=In('clientmacs', macs)
-        )
-        for brain in brains:
+        cat = CatalogAPI(dmd.zport)
+        for brain in cat.get_upstream_devices(dev.id):
             obj = brain.getObject()
-            if any(x in macs for x in obj.clientmacs):
-                # up_dev = obj.device()
-                # upstream_routers[up_dev.id] = up_dev
-                if obj.device().getStatus() > 0:
-                    # Upstream router is DOWN, let suppress event
-                    log.debug("Upstream router is %s" % obj.device())
-                    evtproxy.eventState = STATUS_SUPPRESSED
+            if obj.getStatus() > 0:
+                # Upstream router is DOWN, let suppress event
+                log.debug("Upstream router for %s is %s and it's DOWN. Suppressing event." % (
+                    dev.titleOrId(), obj.titleOrId()))
+                evtproxy.eventState = STATUS_SUPPRESSED
