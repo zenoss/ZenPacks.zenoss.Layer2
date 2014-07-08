@@ -5,6 +5,7 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     >
 
+    <!-- Network map page -->
     <browser:page
         template="./networkMap.pt"
         name="networkMap2"
@@ -22,6 +23,13 @@
         layer="Products.ZenUI3.navigation.interfaces.IZenossNav"
     />
 
+    <!-- API: Info Adapters -->
+    <adapter
+        provides=".NeighbourSwitch.INeighbourSwitchInfo"
+        for=".NeighbourSwitch.NeighbourSwitch"
+        factory=".NeighbourSwitch.NeighbourSwitchInfo"
+        />
+
     <!-- Impact -->
     <configure zcml:condition="installed ZenPacks.zenoss.Impact">
         <include package="ZenPacks.zenoss.Impact" file="meta.zcml"/>
@@ -33,6 +41,16 @@
             />
     </configure>
 
+    <!-- Device Links -->
+    <configure zcml:condition="have zenoss:IExpandedLinkProvider">
+        <subscriber
+            provides='Products.ZenModel.interfaces.IExpandedLinkProvider'
+            for="Products.ZenModel.Device.Device"
+            factory='.links.DeviceLinkProvider'
+            />
+
+    </configure>
+
     <!-- Browser Resources -->
     <browser:resourceDirectory
         name="ZenPacks_zenoss_Layer2"
@@ -40,9 +58,18 @@
         />
 
     <!-- JavaScript needed for all Zenoss pages. -->
-    <browser:viewlet
+    <!-- <browser:viewlet
         name="js-layer2"
         paths="/++resource++ZenPacks_zenoss_Layer2/js/layer2.js"
+        for="*"
+        weight="20"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        /> -->
+    <browser:viewlet
+        name="js-layer2views"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js"
         for="*"
         weight="20"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"

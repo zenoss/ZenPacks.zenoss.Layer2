@@ -135,6 +135,17 @@ class CatalogAPI(object):
         else:
             raise IndexError('Device with id %r was not found' % device_id)
 
+    def get_device_clientmacs(self, device_id):
+        ''' Return list of clientmacs for device with given id '''
+        res = self.get_catalog().search({
+            'id': device_id
+        })
+        if res:
+            return res[0].clientmacs
+        else:
+            log.warning('Device with id %r was not found' % device_id)
+            return None
+
     def get_upstream_devices(self, device_id):
         '''
         Returns list of devices' brains where given device mac addresses
@@ -142,6 +153,19 @@ class CatalogAPI(object):
         '''
         mac_addresses = self.get_device_macadresses(device_id)
         return self.get_if_upstream_devices(mac_addresses)
+
+    def get_client_devices(self, device_id):
+        '''
+        Returns list of client devices, connected to device
+        '''
+        clientmacs = self.get_device_clientmacs(device_id)
+        macs = list(set(clientmacs))
+
+        res = []
+        for brain in self.get_catalog().search({'macaddresses': macs}):
+            if brain.id != device_id:
+                res.append(brain)
+        return res
 
     def get_if_upstream_devices(self, mac_addresses):
         '''
