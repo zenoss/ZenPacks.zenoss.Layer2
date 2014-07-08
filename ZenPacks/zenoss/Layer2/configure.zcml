@@ -5,6 +5,23 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     >
 
+    <browser:page
+        template="./networkMap.pt"
+        name="networkMap2"
+        for="*"
+        permission="zenoss.View"
+    />
+    <browser:viewlet
+        name="Network Map 2"
+        url="/zport/dmd/networkMap2"
+        weight="8"
+        parentItem="Infrastructure"
+        manager="Products.ZenUI3.navigation.interfaces.ISecondaryNavigationMenu"
+        class="Products.ZenUI3.navigation.menuitem.SecondaryNavigationMenuItem"
+        permission="zenoss.View"
+        layer="Products.ZenUI3.navigation.interfaces.IZenossNav"
+    />
+
     <!-- Impact -->
     <configure zcml:condition="installed ZenPacks.zenoss.Impact">
         <include package="ZenPacks.zenoss.Impact" file="meta.zcml"/>

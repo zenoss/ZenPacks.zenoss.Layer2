@@ -1,0 +1,61 @@
+<!--
+##############################################################################
+# 
+# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+# 
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+# 
+##############################################################################
+-->
+
+<tal:block metal:use-macro="context/page_macros/base-new">
+    <tal:block metal:fill-slot="title">Network Map 2</tal:block>
+
+    <tal:block metal:fill-slot="head-local">
+    <script type="text/javascript" tal:define="
+            classlist python:[dict(label=x,data='/zport/dmd/Devices'+x) for x in here.dmd.Devices.deviceMoveTargets()];
+            loclist python:[dict(label=x, data='/zport/dmd/Locations'+x) for x in here.dmd.Locations.deviceMoveTargets()];
+            grouplist python:[dict(label=x, data='/zport/dmd/Groups'+x) for x in here.dmd.Groups.deviceMoveTargets()];
+            syslist python:[dict(label=x, data='/zport/dmd/Systems'+x) for x in here.dmd.Systems.deviceMoveTargets()];
+            initobj python:here.dmd.ZenUsers.getUserSettings().netMapStartObject"
+        tal:content="string:
+           _deviceClasses = ${classlist};
+           _locations = [{label:'/', data:'/'}].concat(${loclist});
+           _groups = [{label:'/', data:'/'}].concat(${grouplist});
+           _systems = [{label:'/', data:'/'}].concat(${syslist});
+           _initialObjId = '${initobj}';"
+    ></script>
+        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
+        <style type="text/css">
+          #center { height: 100%; overflow: hidden;}
+          #zennetmap {
+            height: 100%;
+            overflow: hidden;
+            position: relative; 
+          }
+        </style>
+
+    </tal:block>
+
+    <tal:block metal:fill-slot="center_panel_content">
+    <div id="zennetmap">
+<svg width="720" height="120">
+  <circle cx="40" cy="60" r="10"></circle>
+  <circle cx="80" cy="60" r="10"></circle>
+  <circle cx="120" cy="60" r="10"></circle>
+</svg>
+    </div>
+    </tal:block>
+
+    <tal:block metal:fill-slot="script_afterLayout">
+    <!-- Use this slot to perform any post-layout steps. -->
+        <script type="text/javascript">
+            Ext.onReady(function(){
+            d3.selectAll('circle')
+                .attr('r', 30)
+                .style('fill', 'steelblue');
+            });
+        </script>
+    </tal:block>
+</tal:block>
