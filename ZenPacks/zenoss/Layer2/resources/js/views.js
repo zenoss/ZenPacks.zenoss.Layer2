@@ -9,6 +9,87 @@
 
 (function(){
 
+var ZC = Ext.ns('Zenoss.component');
+ZC.registerName('NeighbourSwitch', _t('Neighbour Switch'), _t('Neighbour Switches'));
+
+
+/* NeighbourSwitch */
+ZC.NeighbourSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
+    subComponentGridPanel: false,
+
+    constructor: function(config) {
+        config = Ext.applyIf(config||{}, {
+            autoExpandColumn: 'name',
+            componentType: 'NeighbourSwitch',
+            fields: [
+                {name: 'uid'},
+                {name: 'name'},
+                {name: 'severity'},
+                {name: 'status'},
+                {name: 'monitor'},
+                {name: 'monitored'},
+                {name: 'locking'},
+                {name: 'description'},
+                {name: 'ip_address'},
+                {name: 'device_port'},
+                {name: 'native_vlan'},
+                {name: 'location'}
+            ],
+            columns: [{
+                id: 'severity',
+                dataIndex: 'severity',
+                header: _t('Events'),
+                renderer: Zenoss.render.severity,
+                width: 50
+            },{
+                id: 'name',
+                dataIndex: 'name',
+                header: _t('Name')
+            },{
+                id: 'ip_address',
+                dataIndex: 'ip_address',
+                header: _t('IP Address'),
+            // },{
+            //     id: 'description',
+            //     dataIndex: 'description',
+            //     header: _t('Description'),
+            //     width: 150
+            },{
+                id: 'device_port',
+                dataIndex: 'device_port',
+                header: _t('Device Port'),
+                width: 120
+            },{
+                id: 'native_vlan',
+                dataIndex: 'native_vlan',
+                header: _t('VLAN'),
+                width: 50
+            },{
+                id: 'location',
+                dataIndex: 'location',
+                header: _t('Physical Location'),
+                width: 150
+            },{
+
+                id: 'monitored',
+                dataIndex: 'monitored',
+                header: _t('Monitored'),
+                renderer: Zenoss.render.checkbox,
+                width: 60
+            },{
+                id: 'locking',
+                dataIndex: 'locking',
+                header: _t('Locking'),
+                renderer: Zenoss.render.locking_icons,
+                width: 60
+            }]
+        });
+        ZC.NeighbourSwitchPanel.superclass.constructor.call(this, config);
+    }
+});
+Ext.reg('NeighbourSwitchPanel', ZC.NeighbourSwitchPanel);
+
+
 get_clientmacs = function(uid, callback) {
     router = Zenoss.remote.DeviceRouter;
     router.getInfo({uid:uid}, function(response){

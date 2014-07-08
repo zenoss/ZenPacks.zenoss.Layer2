@@ -5,6 +5,13 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     >
 
+    <!-- API: Info Adapters -->
+    <adapter
+        provides=".NeighbourSwitch.INeighbourSwitchInfo"
+        for=".NeighbourSwitch.NeighbourSwitch"
+        factory=".NeighbourSwitch.NeighbourSwitchInfo"
+        />
+
     <!-- Impact -->
     <configure zcml:condition="installed ZenPacks.zenoss.Impact">
         <include package="ZenPacks.zenoss.Impact" file="meta.zcml"/>
