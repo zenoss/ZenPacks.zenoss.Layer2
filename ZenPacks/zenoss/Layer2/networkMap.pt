@@ -14,6 +14,7 @@
 
     <tal:block metal:fill-slot="head-local">
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
+        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
         <style type="text/css">
           #center { height: 100%; overflow: hidden;}
           #zennetmap {
@@ -30,98 +31,18 @@
             font: 10px sans-serif;
         }
         </style>
-
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
-    <div id="zennetmap">
-    </div>
+        <div id="zennetmap"></div>
     </tal:block>
 
     <tal:block metal:fill-slot="script_afterLayout">
     <!-- Use this slot to perform any post-layout steps. -->
         <script type="text/javascript">
             Ext.onReady(function(){
-                var netmap = d3.select('#zennetmap');
-                var width = netmap[0][0].clientWidth;
-                var height = netmap[0][0].clientHeight;
-
-var svg = netmap.append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .style('border', 'solid black 1px');
-
-var force = d3.layout.force()
-    .gravity(0.05)
-    .distance(100)
-    .charge(-200)
-    .size([width, height]);
-
-
-var draw_graph = function (graph) {
-    force
-        .nodes(graph.nodes)
-        .links(graph.links)
-        .start();
-
-    var link = svg.selectAll(".link")
-        .data(graph.links)
-        .enter().append("line")
-        .attr("class", "link");
-
-    var node = svg.selectAll(".node")
-        .data(graph.nodes)
-        .enter().append("g")
-        .attr("class", "node")
-        .call(force.drag);
-
-    node.append("circle")
-        .attr('r', 8)
-        .style('display', function(d) { if(d.image) return 'none'; else return 'block'; });
-
-    node.append("image")
-      .attr("xlink:href", function(d) { return d.image })
-      .attr("x", -16)
-      .attr("y", -18)
-      .attr("width", 32)
-      .attr("height", 32);
-
-    node.append("text")
-        .attr("dx", 12)
-        .attr("dy", ".35em")
-        .text(function (d) {
-        return d.name;
-    });
-
-    force.on("tick", function () {
-        link.attr("x1", function (d) {
-            return d.source.x;
-        })
-            .attr("y1", function (d) {
-            return d.source.y;
-        })
-            .attr("x2", function (d) {
-            return d.target.x;
-        })
-            .attr("y2", function (d) {
-            return d.target.y;
-        });
-
-        node.attr("transform", function (d) {
-            return "translate(" + d.x + "," + d.y + ")";
-        });
-    });
-};
-
-
-d3.json('/zport/dmd/getJSONEdges?root_id=10.87.100.1', function(error, json) {
-    if(error) return console.error(error);
-    draw_graph(json);
-});
-
-// draw_graph({ links: [{ "source": 0, "target": 1, "value": 1 }, { "source": 2, "target": 1, "value": 1 }, { "source": 2, "target": 0, "value": 1 }, { "source": 3, "target": 4, "value": 1 }, ], nodes: [{ "name": "a", "group": 1 }, { "name": "b", "group": 1 }, { "name": "c", "group": 1 }, { "name": "d", "group": 1 }, { "name": "e", "group": 1 }, ], });
-
-});
+                render_network_map('#zennetmap');
+            });
         </script>
     </tal:block>
 </tal:block>
