@@ -13,19 +13,6 @@
     <tal:block metal:fill-slot="title">Network Map 2</tal:block>
 
     <tal:block metal:fill-slot="head-local">
-    <script type="text/javascript" tal:define="
-            classlist python:[dict(label=x,data='/zport/dmd/Devices'+x) for x in here.dmd.Devices.deviceMoveTargets()];
-            loclist python:[dict(label=x, data='/zport/dmd/Locations'+x) for x in here.dmd.Locations.deviceMoveTargets()];
-            grouplist python:[dict(label=x, data='/zport/dmd/Groups'+x) for x in here.dmd.Groups.deviceMoveTargets()];
-            syslist python:[dict(label=x, data='/zport/dmd/Systems'+x) for x in here.dmd.Systems.deviceMoveTargets()];
-            initobj python:here.dmd.ZenUsers.getUserSettings().netMapStartObject"
-        tal:content="string:
-           _deviceClasses = ${classlist};
-           _locations = [{label:'/', data:'/'}].concat(${loclist});
-           _groups = [{label:'/', data:'/'}].concat(${grouplist});
-           _systems = [{label:'/', data:'/'}].concat(${syslist});
-           _initialObjId = '${initobj}';"
-    ></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
         <style type="text/css">
           #center { height: 100%; overflow: hidden;}
@@ -33,18 +20,21 @@
             height: 100%;
             overflow: hidden;
             position: relative; 
-          }
+            background-color: white;
+        }
+        .link {
+            stroke: #ccc;
+        }
+        .node text {
+            pointer-events: none;
+            font: 10px sans-serif;
+        }
         </style>
 
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
     <div id="zennetmap">
-<svg width="720" height="120">
-  <circle cx="40" cy="60" r="10"></circle>
-  <circle cx="80" cy="60" r="10"></circle>
-  <circle cx="120" cy="60" r="10"></circle>
-</svg>
     </div>
     </tal:block>
 
@@ -52,9 +42,105 @@
     <!-- Use this slot to perform any post-layout steps. -->
         <script type="text/javascript">
             Ext.onReady(function(){
-            d3.selectAll('circle')
-                .attr('r', 30)
-                .style('fill', 'steelblue');
+                var netmap = d3.select('#zennetmap');
+                var width = netmap[0][0].clientWidth;
+                var height = netmap[0][0].clientHeight;
+
+var svg = netmap.append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style('border', 'solid black 1px');
+
+var force = d3.layout.force()
+    .gravity(0.05)
+    .distance(100)
+    .charge(-100)
+    .size([width, height]);
+
+
+var draw_graph = function (graph) {
+    force
+        .nodes(graph.nodes)
+        .links(graph.links)
+        .start();
+
+    var link = svg.selectAll(".link")
+        .data(graph.links)
+        .enter().append("line")
+        .attr("class", "link");
+
+    var node = svg.selectAll(".node")
+        .data(graph.nodes)
+        .enter().append("g")
+        .attr("class", "node")
+        .call(force.drag);
+
+    node.append("circle").attr('r', 8);
+
+    node.append("text")
+        .attr("dx", 12)
+        .attr("dy", ".35em")
+        .text(function (d) {
+        return d.name;
+    });
+
+    force.on("tick", function () {
+        link.attr("x1", function (d) {
+            return d.source.x;
+        })
+            .attr("y1", function (d) {
+            return d.source.y;
+        })
+            .attr("x2", function (d) {
+            return d.target.x;
+        })
+            .attr("y2", function (d) {
+            return d.target.y;
+        });
+
+        node.attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    });
+};
+
+draw_graph({
+    links: [{
+        "source": 0,
+        "target": 1,
+        "value": 1
+    }, {
+        "source": 2,
+        "target": 1,
+        "value": 1
+    }, {
+        "source": 2,
+        "target": 0,
+        "value": 1
+    }, {
+        "source": 3,
+        "target": 4,
+        "value": 1
+    }, ],
+    nodes: [{
+        "name": "a",
+        "group": 1
+    }, {
+        "name": "b",
+        "group": 1
+    }, {
+        "name": "c",
+        "group": 1
+    }, {
+        "name": "d",
+        "group": 1
+    }, {
+        "name": "e",
+        "group": 1
+    },
+
+    ],
+});
             });
         </script>
     </tal:block>
