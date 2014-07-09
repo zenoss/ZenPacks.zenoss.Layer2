@@ -11,7 +11,7 @@
 
 __doc__ = """CDP and LLDP
 
-Gather neighbour switches information of Cisco Discovery Protocol and
+Gather neighbor switches information of Cisco Discovery Protocol and
 Link Layer Discovery Protocol from SNMP, and create DMD interface objects
 
 """
@@ -21,12 +21,12 @@ from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin, GetTableM
 
 class CDPLLDPDiscover(SnmpPlugin):
     """
-    Map CDP/LLDP entries to DMD 'NeighbourSwitch' objects
+    Map CDP/LLDP entries to DMD 'NeighborSwitch' objects
     """
     order = 100
     compname = ""
-    relname = "neighbour_switches"
-    modname = "ZenPacks.zenoss.Layer2.NeighbourSwitch"
+    relname = "neighbor_switches"
+    modname = "ZenPacks.zenoss.Layer2.NeighborSwitch"
 
     snmpGetTableMaps = (
         # CDP cache entries
@@ -56,7 +56,7 @@ class CDPLLDPDiscover(SnmpPlugin):
     def process(self, device, results, log):
         """
         From SNMP info gathered from the device, convert them
-        to NeighbourSwitch objects.
+        to NeighborSwitch objects.
         """
         getdata, tabledata = results
         log.info('Modeler %s processing data for device %s', self.name(), device.id)
@@ -95,5 +95,4 @@ class CDPLLDPDiscover(SnmpPlugin):
                     'device_port': port
                     })
             rm.append(om)
-
         return rm

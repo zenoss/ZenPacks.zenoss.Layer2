@@ -7,9 +7,9 @@
 
     <!-- API: Info Adapters -->
     <adapter
-        provides=".NeighbourSwitch.INeighbourSwitchInfo"
-        for=".NeighbourSwitch.NeighbourSwitch"
-        factory=".NeighbourSwitch.NeighbourSwitchInfo"
+        provides=".NeighborSwitch.INeighborSwitchInfo"
+        for=".NeighborSwitch.NeighborSwitch"
+        factory=".NeighborSwitch.NeighborSwitchInfo"
         />
 
     <!-- Impact -->
