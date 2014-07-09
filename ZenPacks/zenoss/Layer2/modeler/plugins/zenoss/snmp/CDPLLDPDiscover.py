@@ -84,8 +84,7 @@ class CDPLLDPDiscover(SnmpPlugin):
             om_id = prepId("lldp_{}".format(idx))
             port = data.get('lldpRemPortDesc', '') \
                 or data.get('lldpRemPortId', '')
-            title = data.get('lldpRemSysName', '') \
-                or 'LLDP entry {}'.format(om_id)
+            title = data.get('lldpRemSysName', '')
 
             if title:
                 om = self.objectMap({
