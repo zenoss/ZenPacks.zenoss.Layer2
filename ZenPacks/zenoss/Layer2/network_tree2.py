@@ -14,6 +14,35 @@ from Products.ZenModel.Device import Device
 
 from .macs_catalog import CatalogAPI
 
+def getJSON(edges):
+    nodes = []
+    links = []
+
+    nodenums = {}
+
+    def add_node(n):
+        n_id, n_img, n_col = n
+        if not n_id in nodenums:
+            nodenums[n_id] = len(nodes)
+            nodes.append(dict(
+                name=n_id,
+                image=n_img,
+                color=n_col
+            ))
+
+    for a, b in edges:
+        add_node(a)
+        add_node(b)
+        links.append(dict(
+            source=nodenums[a[0]],
+            target=nodenums[b[0]],
+        ))
+
+    return dict(
+        links=links,
+        nodes=nodes,
+    )
+
 def get_edges(rootnode, depth=1, withIcons=False, filter='/'):
     """ Yields some edges """
     for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter):

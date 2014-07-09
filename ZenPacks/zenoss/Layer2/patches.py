@@ -7,6 +7,7 @@
 #
 ##############################################################################
 
+import urllib
 import logging
 log = logging.getLogger('zen.Layer2')
 
@@ -118,6 +119,20 @@ Device._relations += (
         'switch')
     ),
 )
+
+@monkeypatch('Products.ZenModel.DataRoot.DataRoot')
+def getJSONEdges(self, root_id, depth=2, filter='/'):
+    ''' Get JSON representation of network nodes '''
+    obj = self.Devices.findDevice(
+       urllib.unquote(root_id)
+    )
+
+    if not obj:
+        return {}
+
+    return get_json(get_edges(
+        obj, int(depth), withIcons=True, filter=filter
+    ))
 
 # -- IP Interfaces overrides --------------------------------------------------
 
