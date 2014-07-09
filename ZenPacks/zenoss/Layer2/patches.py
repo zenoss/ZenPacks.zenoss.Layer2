@@ -105,9 +105,9 @@ def get_reindex_maps(self):
 
 
 Device._relations += (
-    ('neighbour_switches', ToManyCont(
+    ('neighbor_switches', ToManyCont(
         ToOne,
-        'ZenPacks.zenoss.Layer2.NeighbourSwitch.NeighbourSwitch',
+        'ZenPacks.zenoss.Layer2.NeighborSwitch.NeighborSwitch',
         'switch')
     ),
 )

@@ -23,8 +23,8 @@ from Products.Zuul.interfaces.component import IComponentInfo
 from Products.Zuul.utils import ZuulMessageFactory as _t
 
 
-class NeighbourSwitch(DeviceComponent, ManagedEntity):
-    meta_type = portal_type = 'NeighbourSwitch'
+class NeighborSwitch(DeviceComponent, ManagedEntity):
+    meta_type = portal_type = 'NeighborSwitch'
 
     description = ''
     ip_address = ''
@@ -44,7 +44,7 @@ class NeighbourSwitch(DeviceComponent, ManagedEntity):
         ('switch', ToOne(
             ToManyCont,
             'Products.ZenModel.Device.Device',
-            'neighbour_switches')
+            'neighbor_switches')
         ),
     )
 
@@ -62,9 +62,9 @@ class NeighbourSwitch(DeviceComponent, ManagedEntity):
         return self.switch()
 
 
-class INeighbourSwitchInfo(IComponentInfo):
+class INeighborSwitchInfo(IComponentInfo):
     '''
-    API Info interface for NeighbourSwitch.
+    API Info interface for NeighborSwitch.
     '''
 
     description = schema.TextLine(title=_t(u'Description'))
@@ -74,13 +74,12 @@ class INeighbourSwitchInfo(IComponentInfo):
     location = schema.TextLine(title=_t(u'Physical Location'))
 
 
-class NeighbourSwitchInfo(ComponentInfo):
-    ''' API Info adapter factory for NeighbourSwitch '''
+class NeighborSwitchInfo(ComponentInfo):
+    ''' API Info adapter factory for NeighborSwitch '''
 
-    implements(INeighbourSwitchInfo)
-    adapts(NeighbourSwitch)
+    implements(INeighborSwitchInfo)
+    adapts(NeighborSwitch)
 
-    #version = ProxyProperty('version')
     description = ProxyProperty('description')
     ip_address = ProxyProperty('ip_address')
     device_port = ProxyProperty('device_port')

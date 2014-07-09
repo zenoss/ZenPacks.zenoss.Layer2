@@ -10,17 +10,17 @@
 (function(){
 
 var ZC = Ext.ns('Zenoss.component');
-ZC.registerName('NeighbourSwitch', _t('Neighbour Switch'), _t('Neighbour Switches'));
+ZC.registerName('NeighborSwitch', _t('Neighbor Switch'), _t('Neighbor Switches'));
 
 
-/* NeighbourSwitch */
-ZC.NeighbourSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
+/* NeighborSwitch */
+ZC.NeighborSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
     subComponentGridPanel: false,
 
     constructor: function(config) {
         config = Ext.applyIf(config||{}, {
             autoExpandColumn: 'name',
-            componentType: 'NeighbourSwitch',
+            componentType: 'NeighborSwitch',
             fields: [
                 {name: 'uid'},
                 {name: 'name'},
@@ -84,10 +84,10 @@ ZC.NeighbourSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
                 width: 60
             }]
         });
-        ZC.NeighbourSwitchPanel.superclass.constructor.call(this, config);
+        ZC.NeighborSwitchPanel.superclass.constructor.call(this, config);
     }
 });
-Ext.reg('NeighbourSwitchPanel', ZC.NeighbourSwitchPanel);
+Ext.reg('NeighborSwitchPanel', ZC.NeighborSwitchPanel);
 
 
 get_clientmacs = function(uid, callback) {
