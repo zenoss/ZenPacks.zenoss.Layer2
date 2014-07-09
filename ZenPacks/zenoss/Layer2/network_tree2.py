@@ -7,6 +7,7 @@
 # 
 ##############################################################################
 
+import json
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
@@ -14,7 +15,7 @@ from Products.ZenModel.Device import Device
 
 from .macs_catalog import CatalogAPI
 
-def getJSON(edges):
+def get_json(edges):
     nodes = []
     links = []
 
@@ -38,10 +39,10 @@ def getJSON(edges):
             target=nodenums[b[0]],
         ))
 
-    return dict(
+    return json.dumps(dict(
         links=links,
         nodes=nodes,
-    )
+    ))
 
 def get_edges(rootnode, depth=1, withIcons=False, filter='/'):
     """ Yields some edges """
@@ -72,13 +73,11 @@ def _fromDeviceToNetworks(dev):
             if net is None or net.netmask == 32:
                 continue
             else:
-                print net
-                # yield net
+                yield net
 
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
     for d in cat.get_upstream_devices(dev.id):
-        print d
         yield d
 
 def _fromNetworkToDevices(net, organizer):

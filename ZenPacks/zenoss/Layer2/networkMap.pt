@@ -54,7 +54,7 @@ var svg = netmap.append("svg")
 var force = d3.layout.force()
     .gravity(0.05)
     .distance(100)
-    .charge(-100)
+    .charge(-200)
     .size([width, height]);
 
 
@@ -75,7 +75,16 @@ var draw_graph = function (graph) {
         .attr("class", "node")
         .call(force.drag);
 
-    node.append("circle").attr('r', 8);
+    node.append("circle")
+        .attr('r', 8)
+        .style('display', function(d) { if(d.image) return 'none'; else return 'block'; });
+
+    node.append("image")
+      .attr("xlink:href", function(d) { return d.image })
+      .attr("x", -16)
+      .attr("y", -18)
+      .attr("width", 32)
+      .attr("height", 32);
 
     node.append("text")
         .attr("dx", 12)
@@ -104,44 +113,15 @@ var draw_graph = function (graph) {
     });
 };
 
-draw_graph({
-    links: [{
-        "source": 0,
-        "target": 1,
-        "value": 1
-    }, {
-        "source": 2,
-        "target": 1,
-        "value": 1
-    }, {
-        "source": 2,
-        "target": 0,
-        "value": 1
-    }, {
-        "source": 3,
-        "target": 4,
-        "value": 1
-    }, ],
-    nodes: [{
-        "name": "a",
-        "group": 1
-    }, {
-        "name": "b",
-        "group": 1
-    }, {
-        "name": "c",
-        "group": 1
-    }, {
-        "name": "d",
-        "group": 1
-    }, {
-        "name": "e",
-        "group": 1
-    },
 
-    ],
+d3.json('/zport/dmd/getJSONEdges?root_id=10.87.100.1', function(error, json) {
+    if(error) return console.error(error);
+    draw_graph(json);
 });
-            });
+
+// draw_graph({ links: [{ "source": 0, "target": 1, "value": 1 }, { "source": 2, "target": 1, "value": 1 }, { "source": 2, "target": 0, "value": 1 }, { "source": 3, "target": 4, "value": 1 }, ], nodes: [{ "name": "a", "group": 1 }, { "name": "b", "group": 1 }, { "name": "c", "group": 1 }, { "name": "d", "group": 1 }, { "name": "e", "group": 1 }, ], });
+
+});
         </script>
     </tal:block>
 </tal:block>
