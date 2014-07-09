@@ -12,6 +12,7 @@ log = logging.getLogger('zen.Layer2')
 
 import Globals
 
+from Products.ZenModel.Device import Device
 from Products.ZenUtils.Utils import unused
 from Products.ZenUtils.Utils import edgesToXML
 from Products.ZenUtils.Utils import monkeypatch
@@ -20,7 +21,7 @@ from Products.Zuul.infos import ProxyProperty
 from Products.ZenModel.IpInterface import IpInterface
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
-
+from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
 from .macs_catalog import CatalogAPI, DeviceConnections
 from .network_tree2 import get_edges
@@ -109,6 +110,14 @@ def getXMLEdges(self, depth=3, filter="/", start=()):
 
 monkeypatch('Products.ZenModel.IpNetwork.IpNetwork')(getXMLEdges)
 monkeypatch('Products.ZenModel.Device.Device')(getXMLEdges)
+
+Device._relations += (
+    ('neighbor_switches', ToManyCont(
+        ToOne,
+        'ZenPacks.zenoss.Layer2.NeighborSwitch.NeighborSwitch',
+        'switch')
+    ),
+)
 
 # -- IP Interfaces overrides --------------------------------------------------
 
