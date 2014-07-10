@@ -13,7 +13,7 @@
         permission="zenoss.View"
     />
     <browser:viewlet
-        name="Network Map 2"
+        name="Layer 2 network map"
         url="/zport/dmd/networkMap2"
         weight="8"
         parentItem="Infrastructure"

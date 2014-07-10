@@ -10,7 +10,7 @@
 -->
 
 <tal:block metal:use-macro="context/page_macros/base-new">
-    <tal:block metal:fill-slot="title">Network Map 2</tal:block>
+    <tal:block metal:fill-slot="title">Layer 2 network map</tal:block>
 
     <tal:block metal:fill-slot="head-local">
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
