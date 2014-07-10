@@ -79,7 +79,7 @@ var render_network_map = function(panel_selector) {
     };
 
 
-    d3.json('/zport/dmd/getJSONEdges?root_id=10.87.100.1', function(error, json) {
+    d3.json('/zport/dmd/getJSONEdges' + window.location.search, function(error, json) {
         if(error) return console.error(error);
         draw_graph(json);
     });
