@@ -16,9 +16,14 @@
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
         <style type="text/css">
-          #center { height: 100%; overflow: hidden;}
+          #center {
+              height: 100%;
+              overflow: hidden;
+              position: relative;
+          }
           #zennetmap {
             height: 100%;
+            width: 100%;
             overflow: hidden;
             position: relative; 
             background-color: white;
@@ -30,10 +35,24 @@
             pointer-events: none;
             font: 10px sans-serif;
         }
+        input {
+            margin-right: 2em;
+        }
+        form#nmdevice {
+           padding-left: 10em; 
+           width: 100%;
+           float: left;
+        }
         </style>
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
+        <form id="nmdevice" method="get">
+            Device ID: <input type="text" name="root_id" /> 
+            Depth: <input type="text" name="depth" />
+            Filter: <input type="text" name="filter" />
+            <input type="submit" value="Refresh" />
+        </form>
         <div id="zennetmap"></div>
     </tal:block>
 
