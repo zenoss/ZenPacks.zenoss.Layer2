@@ -5,24 +5,6 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     >
 
-    <!-- Network map page -->
-    <browser:page
-        template="./networkMap.pt"
-        name="networkMap2"
-        for="*"
-        permission="zenoss.View"
-    />
-    <browser:viewlet
-        name="Layer 2 network map"
-        url="/zport/dmd/networkMap2"
-        weight="8"
-        parentItem="Infrastructure"
-        manager="Products.ZenUI3.navigation.interfaces.ISecondaryNavigationMenu"
-        class="Products.ZenUI3.navigation.menuitem.SecondaryNavigationMenuItem"
-        permission="zenoss.View"
-        layer="Products.ZenUI3.navigation.interfaces.IZenossNav"
-    />
-
     <!-- API: Info Adapters -->
     <adapter
         provides=".NeighborSwitch.INeighborSwitchInfo"
