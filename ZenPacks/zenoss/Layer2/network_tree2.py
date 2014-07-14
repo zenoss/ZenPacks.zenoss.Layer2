@@ -77,7 +77,7 @@ def _fromDeviceToNetworks(dev):
 
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
-    for d in cat.get_upstream_devices(dev.id):
+    for d in cat.get_client_devices(dev.id):
         yield d
 
 def _fromNetworkToDevices(net, organizer):
