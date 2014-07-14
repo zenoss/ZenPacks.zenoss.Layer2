@@ -77,8 +77,8 @@ def _fromDeviceToNetworks(dev):
 
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
-    for d in cat.get_client_devices(dev.id):
-        yield d
+    for b in cat.get_client_devices(dev.id):
+        yield b.getObject()
 
 def _fromNetworkToDevices(net, organizer):
     from Products.Zuul.catalog.global_catalog import IIndexableWrapper
@@ -100,12 +100,6 @@ def _get_related(node, filter='/'):
     else:
         raise NotImplementedError
 
-def _device_last(x,y):
-    if (isinstance(x, Device) and not isinstance(y, Device)):
-        return y, x
-    else:
-        return x, y
-
 def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
     """ Depth-first search of the network tree emanating from
         rootnode, returning (network, device) edges.
@@ -113,12 +107,10 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
     if depth == 0: return
     if not pairs: pairs = []
     for node in _get_related(rootnode, filter):
-        sorted = _device_last(rootnode, node)
-        pair = [x.id for x in sorted]
+        pair = sorted(x.id for x in (rootnode, node))
         if pair not in pairs:
             pairs.append(pair)
-            yield sorted
-            for childnode in _get_related(node, filter):
-                for n in _get_connections(
-                    childnode, depth-1, pairs, filter):
-                    yield n
+            yield (rootnode, node)
+
+            for n in _get_connections(node, depth-1, pairs, filter):
+                yield n
