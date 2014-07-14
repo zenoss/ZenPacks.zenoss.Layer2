@@ -12,8 +12,31 @@ diamond = '''
     c d
 '''
 
+Y_to_existing = '''
+    10.87.100.1 fake1
+    fake1 fake2
+    fake1 fake3
+'''
+
+def binary_tree_topology(deepness=5, root='bin', edges=[]):
+    if deepness <= 0:
+        return
+
+    l = root + '0'
+    edges.append((root, l))
+    binary_tree_topology(deepness - 1, l, edges)
+
+    r = root + '1'
+    edges.append((root, r))
+    binary_tree_topology(deepness - 1, r, edges)
+
+    return edges
+    
+
 def main():
-    create_topology(diamond)
+    # create_topology(diamond)
+    # create_topology(Y_to_existing)
+    create_topology(binary_tree_topology())
 
 def create_topology(connections):
     ''' Connections - iterable of pairs of device id's '''

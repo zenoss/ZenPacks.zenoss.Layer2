@@ -120,7 +120,7 @@ def getJSONEdges(self, root_id='', depth=None, filter='/'):
     if not obj:
         raise Exception('Device %r not found' % root_id)
     return get_json(get_edges(
-        obj, int(depth or 2), withIcons=True, filter=filter
+        obj, int(depth or 2), filter=filter
     ))
 
 # -- IP Interfaces overrides --------------------------------------------------

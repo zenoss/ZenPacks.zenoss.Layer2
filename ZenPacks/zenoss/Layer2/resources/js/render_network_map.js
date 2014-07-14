@@ -32,7 +32,10 @@ var render_network_map = function(panel_selector) {
         var link = svg.selectAll(".link")
             .data(graph.links)
             .enter().append("line")
-            .attr("class", "link");
+            .attr("class", "link")
+            .style('stroke', function(d) {
+                return d.color || '#ccc'
+            });
 
         var node = svg.selectAll(".node")
             .data(graph.nodes)
@@ -42,14 +45,18 @@ var render_network_map = function(panel_selector) {
 
         node.append("circle")
             .attr('r', 8)
-            .style('display', function(d) { if(d.image) return 'none'; else return 'block'; });
+            .style('display', function(d) {
+                if(d.image) return 'none'; else return 'block';
+            });
 
         node.append("image")
-          .attr("xlink:href", function(d) { return d.image })
-          .attr("x", -16)
-          .attr("y", -18)
-          .attr("width", 32)
-          .attr("height", 32);
+            .attr("xlink:href", function(d) {
+              return d.image;
+            })
+            .attr("x", -16)
+            .attr("y", -18)
+            .attr("width", 32)
+            .attr("height", 32);
 
         node.append("text")
             .attr("dx", 12)

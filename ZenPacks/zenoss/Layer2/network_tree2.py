@@ -31,12 +31,13 @@ def get_json(edges):
                 color=n_col
             ))
 
-    for a, b in edges:
+    for a, b, l2 in edges:
         add_node(a)
         add_node(b)
         links.append(dict(
             source=nodenums[a[0]],
             target=nodenums[b[0]],
+            color='steelblue' if l2 else 'gray',
         ))
 
     return json.dumps(dict(
@@ -44,14 +45,13 @@ def get_json(edges):
         nodes=nodes,
     ))
 
-def get_edges(rootnode, depth=1, withIcons=False, filter='/'):
-    """ Yields some edges """
+def get_edges(rootnode, depth=1, filter='/'):
     for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter):
-        if withIcons:
-            yield ((nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
-                   (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)))
-        else:
-            yield (nodea.titleOrId(), nodeb.titleOrId())
+        yield (
+            (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
+            (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
+            getattr(nodeb, 'is_l2_connected', False)
+        )
 
 def getColor(node):
     if isinstance(node, IpNetwork):
@@ -78,7 +78,9 @@ def _fromDeviceToNetworks(dev):
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
     for b in cat.get_client_devices(dev.id):
-        yield b.getObject()
+        d = b.getObject()
+        d.is_l2_connected = True
+        yield d
 
 def _fromNetworkToDevices(net, organizer):
     from Products.Zuul.catalog.global_catalog import IIndexableWrapper
