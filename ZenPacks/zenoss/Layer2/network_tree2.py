@@ -12,8 +12,12 @@ import json
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
+from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
 from .macs_catalog import CatalogAPI
+
+COMMON_LINK_COLOR = '#ccc'
+L2_LINK_COLOR = 'steelblue'
 
 def get_json(edges):
     nodes = []
@@ -37,7 +41,7 @@ def get_json(edges):
         links.append(dict(
             source=nodenums[a[0]],
             target=nodenums[b[0]],
-            color='steelblue' if l2 else 'gray',
+            color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 
     return json.dumps(dict(
@@ -66,7 +70,7 @@ def getColor(node):
     return color
 
 
-def _fromDeviceToNetworks(dev):
+def _fromDeviceToNetworks(dev, filter='/'):
     for iface in dev.os.interfaces():
         for ip in iface.ipaddresses():
             net = ip.network()
@@ -79,26 +83,30 @@ def _fromDeviceToNetworks(dev):
     cat = CatalogAPI(dev.zport)
     for b in cat.get_client_devices(dev.id):
         d = b.getObject()
-        d.is_l2_connected = True
-        yield d
+        if _passes_filter(d, filter):
+            d.is_l2_connected = True
+            yield d
 
-def _fromNetworkToDevices(net, organizer):
-    from Products.Zuul.catalog.global_catalog import IIndexableWrapper
+def _passes_filter(dev, filter):
+    if dev is None:
+        return False
+    paths = map('/'.join, IIndexableWrapper(dev).path())
+    for path in paths:
+        if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
+            return True
+    return False
+
+def _fromNetworkToDevices(net, filter):
     for ip in net.ipaddresses():
         dev = ip.device()
-        if dev is None:
-            continue
-        paths = map('/'.join, IIndexableWrapper(dev).path())
-        for path in paths:
-            if path.startswith(organizer) or path.startswith('/zport/dmd/Devices/Network/Router'):
-                yield dev
-                break
+        if _passes_filter(dev, filter):
+            yield dev
 
 def _get_related(node, filter='/'):
     if isinstance(node, IpNetwork):
         return _fromNetworkToDevices(node, filter)
     elif isinstance(node, Device):
-        return _fromDeviceToNetworks(node)
+        return _fromDeviceToNetworks(node, filter)
     else:
         raise NotImplementedError
 

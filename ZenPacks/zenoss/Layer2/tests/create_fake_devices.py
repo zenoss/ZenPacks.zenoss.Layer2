@@ -1,3 +1,11 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
 import random
 import string
@@ -37,6 +45,7 @@ def main():
     # create_topology(diamond)
     # create_topology(Y_to_existing)
     create_topology(binary_tree_topology())
+    commit()
 
 def create_topology(connections):
     ''' Connections - iterable of pairs of device id's '''
@@ -47,19 +56,19 @@ def create_topology(connections):
         connect(get_device(d1), get_device(d2))
 
     dmd.Devices.reIndex()
-    commit()
 
 def parse_topology(text):
     return (x.strip().split() for x in text.splitlines() if x.strip())
 
 def get_device(id):
     ''' Find device if exists, or return new '''
-    d = find(id)
+    d = dmd.Devices.findDevice(id)
     if d:
         return d
     return create_router(id)
 
-create_router = dmd.Devices.Network.Router.Cisco.createInstance
+def create_router(id):
+    return dmd.Devices.Network.Router.Cisco.createInstance(id)
 
 def connect(d1, d2):
     ''' Connect two devices by l2 link '''
