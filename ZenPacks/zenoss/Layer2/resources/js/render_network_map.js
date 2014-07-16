@@ -7,7 +7,60 @@
  *
  ****************************************************************************/
 
+"use strict";
+
 var render_network_map = function(panel_selector, control_form_selector) {
+    var form = d3.select(control_form_selector);
+
+    var parse_get_query = function () {
+        var query = window.location.hash.substring(1);
+        var res = {};
+        query.split("&").forEach(function(val) {
+            var pair = val.split('=');
+            res[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+        });
+        return res;
+    };
+    var serialize_get_query = function (data) {
+        return Object.keys(data).map(function(key) {
+            return [key, data[key]].map(encodeURIComponent).join("=");
+        }).join("&");
+    };
+
+    var update_view = function() {
+        d3.json('/zport/dmd/getJSONEdges?' + window.location.hash.slice(1), function(error, json) {
+            if(error) return console.error(error);
+            draw_graph(json);
+        });
+        var params = parse_get_query();
+        for(var pname in params) {
+            // set form values
+            if (pname in form[0][0].elements) {
+                form[0][0].elements[pname].value = params[pname];
+            }
+        };
+    };
+
+    var get_form_data = function () {
+        var elements = form[0][0].elements
+        return serialize_get_query({
+            'root_id': elements['root_id'].value,
+            'depth': elements['depth'].value,
+            'filter': elements['filter'].value
+        });
+    };
+    window.addEventListener("hashchange", update_view);
+    update_view();
+
+    var refresh_map = function() {
+        window.location.hash = '#' + get_form_data();
+    };
+
+    var refresh_button = form
+        .append('button').text('Refresh map')
+        .attr('type', 'button')
+        .on('click', refresh_map);
+
     var panel = d3.select(panel_selector);
     var width = panel[0][0].clientWidth;
     var height = panel[0][0].clientHeight;
@@ -28,11 +81,14 @@ var render_network_map = function(panel_selector, control_form_selector) {
 
     var drawing_space = svg.append('g');
 
-    var center_button = d3.select(control_form_selector)
+    var center_button = form
         .append('button').text('Center map')
+        .attr('type', 'button')
         .on('click', function() {
+            console.log('centering');
             zoom.translate([0,0]);
-            zoom.event(display.transition().duration(500));
+            zoom.scale(1);
+            zoom.event(drawing_space.transition().duration(500));
         });
 
     var force = d3.layout.force()
@@ -107,10 +163,4 @@ var render_network_map = function(panel_selector, control_form_selector) {
             });
         });
     };
-
-
-    d3.json('/zport/dmd/getJSONEdges' + window.location.search, function(error, json) {
-        if(error) return console.error(error);
-        draw_graph(json);
-    });
 };

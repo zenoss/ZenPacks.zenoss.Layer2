@@ -47,11 +47,10 @@
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
-        <form id="nmdevice" method="get">
+        <form id="nmdevice">
             Device ID: <input type="text" name="root_id" /> 
             Depth: <input type="text" name="depth" />
             Filter: <input type="text" name="filter" />
-            <input type="submit" value="Refresh" />
         </form>
         <div id="zennetmap"></div>
     </tal:block>
