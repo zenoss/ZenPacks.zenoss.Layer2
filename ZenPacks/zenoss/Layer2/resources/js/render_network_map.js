@@ -28,6 +28,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
     };
 
     var update_view = function() {
+        console.log('updating view');
         d3.json('/zport/dmd/getJSONEdges?' + window.location.hash.slice(1), function(error, json) {
             if(error) return console.error(error);
             draw_graph(json);
@@ -53,6 +54,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
     update_view();
 
     var refresh_map = function() {
+        console.log('updating hash');
         window.location.hash = '#' + get_form_data();
     };
 
@@ -109,26 +111,30 @@ var render_network_map = function(panel_selector, control_form_selector) {
             .start();
 
         var link = drawing_space.selectAll(".link")
-            .data(graph.links)
-            .enter().append("line")
+            .data(graph.links);
+
+        link.enter().append("line")
             .attr("class", "link")
             .style('stroke', function(d) {
                 return d.color || '#ccc'
             });
 
+        link.exit().remove();
+
         var node = drawing_space.selectAll(".node")
-            .data(graph.nodes)
-            .enter().append("g")
+            .data(graph.nodes);
+
+        var node_enter = node.enter().append("g")
             .attr("class", "node")
             .call(force.drag);
 
-        node.append("circle")
+        node_enter.append("circle")
             .attr('r', 8)
             .style('display', function(d) {
                 if(d.image) return 'none'; else return 'block';
             });
 
-        node.append("image")
+        node_enter.append("image")
             .attr("xlink:href", function(d) {
               return d.image;
             })
@@ -137,12 +143,13 @@ var render_network_map = function(panel_selector, control_form_selector) {
             .attr("width", 32)
             .attr("height", 32);
 
-        node.append("text")
+        node_enter.append("text")
             .attr("dx", 12)
             .attr("dy", ".35em")
             .text(function (d) {
-            return d.name;
-        });
+                return d.name;
+            });
+        node.exit().remove();
 
         force.on("tick", function () {
             link.attr("x1", function (d) {
