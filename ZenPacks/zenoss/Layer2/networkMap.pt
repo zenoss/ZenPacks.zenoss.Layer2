@@ -60,7 +60,7 @@
     <!-- Use this slot to perform any post-layout steps. -->
         <script type="text/javascript">
             Ext.onReady(function(){
-                render_network_map('#zennetmap');
+                render_network_map('#zennetmap', '#nmdevice');
             });
         </script>
     </tal:block>

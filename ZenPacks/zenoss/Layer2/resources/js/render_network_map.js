@@ -7,14 +7,33 @@
  *
  ****************************************************************************/
 
-var render_network_map = function(panel_selector) {
+var render_network_map = function(panel_selector, control_form_selector) {
     var panel = d3.select(panel_selector);
     var width = panel[0][0].clientWidth;
     var height = panel[0][0].clientHeight;
+
+    var zoom = d3.behavior.zoom()
+        .scaleExtent([0.2, 2])
+        .on('zoom', function () {
+            var tr = d3.event.translate,
+                sc = d3.event.scale,
+                transform = 'translate(' + tr + ')scale(' + sc + ')';
+            drawing_space.attr("transform", transform);
+        });
+
     var svg = panel.append("svg")
         .attr("width", width)
         .attr("height", height)
-        .style('border', 'solid black 1px');
+        .call(zoom);
+
+    var drawing_space = svg.append('g');
+
+    var center_button = d3.select(control_form_selector)
+        .append('button').text('Center map')
+        .on('click', function() {
+            zoom.translate([0,0]);
+            zoom.event(display.transition().duration(500));
+        });
 
     var force = d3.layout.force()
         .gravity(0.05)
@@ -22,6 +41,10 @@ var render_network_map = function(panel_selector) {
         .charge(-200)
         .size([width, height]);
 
+    force.drag().on("dragstart", function() {
+          // to disallow panning during drag
+          d3.event.sourceEvent.stopPropagation();
+    });
 
     var draw_graph = function (graph) {
         force
@@ -29,7 +52,7 @@ var render_network_map = function(panel_selector) {
             .links(graph.links)
             .start();
 
-        var link = svg.selectAll(".link")
+        var link = drawing_space.selectAll(".link")
             .data(graph.links)
             .enter().append("line")
             .attr("class", "link")
@@ -37,7 +60,7 @@ var render_network_map = function(panel_selector) {
                 return d.color || '#ccc'
             });
 
-        var node = svg.selectAll(".node")
+        var node = drawing_space.selectAll(".node")
             .data(graph.nodes)
             .enter().append("g")
             .attr("class", "node")
