@@ -54,11 +54,15 @@ var render_network_map = function(panel_selector, control_form_selector) {
     update_view();
 
     var refresh_map = function() {
-        console.log('updating hash');
         window.location.hash = '#' + get_form_data();
     };
     var refresh_button = form.select('#refresh_button')
         .on('click', refresh_map);
+    form.selectAll('input[type=text]')
+        .on('keydown', function() {
+            if(d3.event.keyCode == 13) refresh_map();
+        });
+
     var scale_display = form.select('#scale_display');
 
     var panel = d3.select(panel_selector);
