@@ -51,6 +51,9 @@
             Device ID: <input type="text" name="root_id" /> 
             Depth: <input type="text" name="depth" />
             Filter: <input type="text" name="filter" />
+            <button type="button" id="refresh_button">Refresh map</button>
+            <button type="button" id="center_button">Center map</button>
+            <span id="scale_display" title="Use mousewheel to scale">Scale: 100%</span>
         </form>
         <div id="zennetmap"></div>
     </tal:block>

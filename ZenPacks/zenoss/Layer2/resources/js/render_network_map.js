@@ -57,11 +57,9 @@ var render_network_map = function(panel_selector, control_form_selector) {
         console.log('updating hash');
         window.location.hash = '#' + get_form_data();
     };
-
-    var refresh_button = form
-        .append('button').text('Refresh map')
-        .attr('type', 'button')
+    var refresh_button = form.select('#refresh_button')
         .on('click', refresh_map);
+    var scale_display = form.select('#scale_display');
 
     var panel = d3.select(panel_selector);
     var width = panel[0][0].clientWidth;
@@ -73,6 +71,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
             var tr = d3.event.translate,
                 sc = d3.event.scale,
                 transform = 'translate(' + tr + ')scale(' + sc + ')';
+            scale_display.text('Scale: ' + Math.round(sc * 100) + '%');
             drawing_space.attr("transform", transform);
         });
 
@@ -85,10 +84,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
         bottom_layer = drawing_space.append('g'),
         top_layer = drawing_space.append('g');
 
-
-    var center_button = form
-        .append('button').text('Center map')
-        .attr('type', 'button')
+    var center_button = form.select('#center_button')
         .on('click', function() {
             console.log('centering');
             zoom.translate([0,0]);
