@@ -113,31 +113,30 @@ var render_network_map = function(panel_selector, control_form_selector) {
         var link = drawing_space.selectAll(".link")
             .data(graph.links);
 
+        // append
         link.enter().append("line")
-            .attr("class", "link")
-            .style('stroke', function(d) {
+            .attr("class", "link");
+
+        // update
+        link.style('stroke', function(d) {
                 return d.color || '#ccc'
             });
 
+        // remove
         link.exit().remove();
+
 
         var node = drawing_space.selectAll(".node")
             .data(graph.nodes);
 
+        // append
         var node_enter = node.enter().append("g")
             .attr("class", "node")
             .call(force.drag);
 
-        node_enter.append("circle")
-            .attr('r', 8)
-            .style('display', function(d) {
-                if(d.image) return 'none'; else return 'block';
-            });
+        node_enter.append("circle").attr('r', 8);
 
         node_enter.append("image")
-            .attr("xlink:href", function(d) {
-              return d.image;
-            })
             .attr("x", -16)
             .attr("y", -18)
             .attr("width", 32)
@@ -145,10 +144,23 @@ var render_network_map = function(panel_selector, control_form_selector) {
 
         node_enter.append("text")
             .attr("dx", 12)
-            .attr("dy", ".35em")
+            .attr("dy", ".35em");
+
+        // update
+        node.select('circle')
+            .style('display', function(d) {
+                if(d.image) return 'none'; else return 'block';
+            });
+        node.select('image')
+            .attr("xlink:href", function(d) {
+              return d.image;
+            });
+        node.select('text')
             .text(function (d) {
                 return d.name;
             });
+
+        // remove
         node.exit().remove();
 
         force.on("tick", function () {
