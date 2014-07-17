@@ -8,6 +8,7 @@
 ##############################################################################
 
 import json
+import re
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
@@ -92,7 +93,8 @@ def _passes_filter(dev, filter):
         return False
     paths = map('/'.join, IIndexableWrapper(dev).path())
     for path in paths:
-        if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
+        # if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
+        if re.match(filter, path, re.I):
             return True
     return False
 

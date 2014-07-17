@@ -49,8 +49,8 @@
     <tal:block metal:fill-slot="center_panel_content">
         <form id="nmdevice">
             Device ID: <input type="text" name="root_id" /> 
-            Depth: <input type="text" name="depth" />
-            Filter: <input type="text" name="filter" />
+            Depth: <input type="text" name="depth" size="2"/>
+            Filter: <input type="text" name="filter" value="^/zport/dmd/Devices/Network/Router/" size="40" />
             <button type="button" id="refresh_button">Refresh map</button>
             <button type="button" id="center_button">Center map</button>
             <span id="scale_display" title="Use mousewheel to scale">Scale: 100%</span>
