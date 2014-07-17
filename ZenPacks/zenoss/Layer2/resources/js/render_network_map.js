@@ -81,7 +81,10 @@ var render_network_map = function(panel_selector, control_form_selector) {
         .attr("height", height)
         .call(zoom);
 
-    var drawing_space = svg.append('g');
+    var drawing_space = svg.append('g'),
+        bottom_layer = drawing_space.append('g'),
+        top_layer = drawing_space.append('g');
+
 
     var center_button = form
         .append('button').text('Center map')
@@ -110,7 +113,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
             .links(graph.links)
             .start();
 
-        var link = drawing_space.selectAll(".link")
+        var link = bottom_layer.selectAll(".link")
             .data(graph.links);
 
         // append
@@ -126,7 +129,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
         link.exit().remove();
 
 
-        var node = drawing_space.selectAll(".node")
+        var node = top_layer.selectAll(".node")
             .data(graph.nodes);
 
         // append
