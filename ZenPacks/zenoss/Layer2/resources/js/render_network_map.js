@@ -152,7 +152,14 @@ var render_network_map = function(panel_selector, control_form_selector) {
         // update
         node.select('circle')
             .style('display', function(d) {
+                if(d.highlight) return 'block';
                 if(d.image) return 'none'; else return 'block';
+            })
+            .attr('fill', function(d) {
+                if(d.highlight) return 'Aquamarine';
+            })
+            .attr('r', function(d) {
+                if(d.highlight) return 20; else return 8;
             });
         node.select('image')
             .attr("xlink:href", function(d) {

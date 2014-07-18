@@ -20,7 +20,12 @@ from .macs_catalog import CatalogAPI
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = 'steelblue'
 
-def get_json(edges):
+def get_json(edges, main_node=None):
+    '''
+        Return JSON dump of network graph passed as edges.
+        edges is iterable of pairs of tuples with node data
+        main_node is id of root node to highlight
+    '''
     nodes = []
     links = []
 
@@ -33,7 +38,8 @@ def get_json(edges):
             nodes.append(dict(
                 name=n_id,
                 image=n_img,
-                color=n_col
+                color=n_col,
+                highlight=n_id == main_node,
             ))
 
     for a, b, l2 in edges:
@@ -69,7 +75,6 @@ def getColor(node):
             color = colors[i]
             break
     return color
-
 
 def _fromDeviceToNetworks(dev, filter='/'):
     for iface in dev.os.interfaces():

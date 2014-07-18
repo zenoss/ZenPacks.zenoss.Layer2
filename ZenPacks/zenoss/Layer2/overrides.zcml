@@ -11,5 +11,5 @@
         name="networkMap"
         for="*"
         permission="zenoss.View"
-    />
+        />
 </configure>
