@@ -8,7 +8,6 @@
 ##############################################################################
 
 import json
-import re
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
@@ -23,9 +22,13 @@ L2_LINK_COLOR = 'steelblue'
 def get_json(edges, main_node=None):
     '''
         Return JSON dump of network graph passed as edges.
-        edges is iterable of pairs of tuples with node data
+        edges is iterable of pairs of tuples with node data or exception
         main_node is id of root node to highlight
     '''
+    if isinstance(edges, Exception):
+        return json.dumps(dict(
+            error=edges.message,
+        ))
     nodes = []
     links = []
 
@@ -98,8 +101,7 @@ def _passes_filter(dev, filter):
         return False
     paths = map('/'.join, IIndexableWrapper(dev).path())
     for path in paths:
-        # if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
-        if re.match(filter, path, re.I):
+        if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
             return True
     return False
 

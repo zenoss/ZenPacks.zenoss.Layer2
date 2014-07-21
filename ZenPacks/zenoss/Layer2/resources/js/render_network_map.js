@@ -19,6 +19,10 @@ var render_network_map = function(panel_selector, control_form_selector) {
             var pair = val.split('=');
             res[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
         });
+        if(!res['filter_type_selec']) res['filter_type_select'] = 'Device Class';
+        if(!res['depth']) res['depth'] = 2;
+        if(!res['root_id']) res['root_id'] = '';
+        load_filters('Device Class');
         return res;
     };
     var serialize_get_query = function (data) {
@@ -27,19 +31,39 @@ var render_network_map = function(panel_selector, control_form_selector) {
         }).join("&");
     };
 
+    var filter_label = form.select('#filter_label');
+    var filter_select = form.select('#filter_select');
+
+    var load_filters = function(filter_type) {
+        filter_label.text(filter_type + ' filter: ');
+        var options = window.filter_type_options[filter_type];
+        var element_options = filter_select[0][0].options;
+        element_options.length = 0;
+        for(var i = 0; i < options.length; i++) {
+            element_options[element_options.length] = new Option(options[i].label, options[i].data);
+        };
+    };
+
+    var filter_type_select = form.select('#filter_type_select')
+        .on('change', function() {
+            load_filters(this.value);
+        });
+
+    var show_error = Zenoss.flares.Manager.error;
     var update_view = function() {
         console.log('updating view');
         d3.json('/zport/dmd/getJSONEdges?' + window.location.hash.slice(1), function(error, json) {
-            if(error) return console.error(error);
+            if(error) return show_error(error);
+            if(json.error) return show_error(json.error);
             draw_graph(json);
         });
         var params = parse_get_query();
-        for(var pname in params) {
-            // set form values
-            if (pname in form[0][0].elements) {
-                form[0][0].elements[pname].value = params[pname];
-            }
-        };
+        var elements = form[0][0].elements
+        elements['root_id'].value = params['root_id'];
+        elements['depth'].value = params['depth'];
+        elements['filter_select'].value = params['filter'];
+        elements['filter_type_select'].value = params['filter_type_select'];
+        elements['repulsion'].value = params['repulsion'];
     };
 
     var get_form_data = function () {
@@ -47,7 +71,9 @@ var render_network_map = function(panel_selector, control_form_selector) {
         return serialize_get_query({
             'root_id': elements['root_id'].value,
             'depth': elements['depth'].value,
-            'filter': elements['filter'].value
+            'filter': elements['filter_select'].value,
+            'filter_type_select': elements['filter_type_select'].value,
+            'repulsion': elements['repulsion'].value
         });
     };
     window.addEventListener("hashchange", update_view);
@@ -61,6 +87,17 @@ var render_network_map = function(panel_selector, control_form_selector) {
     form.selectAll('input[type=text]')
         .on('keydown', function() {
             if(d3.event.keyCode == 13) refresh_map();
+        });
+
+    var set_repulsion = function (force, value) {
+        return force
+            .linkDistance(+value)
+            .chargeDistance(4 * value)
+            .charge(-5 * value);
+    };
+    var repulsion = form.select('#repulsion')
+        .on('input', function () {
+            set_repulsion(force, this.value).start();
         });
 
     var scale_display = form.select('#scale_display');
@@ -96,10 +133,8 @@ var render_network_map = function(panel_selector, control_form_selector) {
             zoom.event(drawing_space.transition().duration(500));
         });
 
-    var force = d3.layout.force()
+    var force = set_repulsion(d3.layout.force(), repulsion[0][0].value)
         .gravity(0.05)
-        .distance(100)
-        .charge(-200)
         .size([width, height]);
 
     force.drag().on("dragstart", function() {

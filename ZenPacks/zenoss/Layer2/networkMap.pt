@@ -7,12 +7,29 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
+
+Uses code from Products/ZenUI3/browser/templates/networkMap.pt
 -->
 
 <tal:block metal:use-macro="context/page_macros/base-new">
-    <tal:block metal:fill-slot="title">Layer 2 network map</tal:block>
+    <tal:block metal:fill-slot="title">Network map</tal:block>
 
     <tal:block metal:fill-slot="head-local">
+    <script type="text/javascript"
+        tal:define="
+            classlist python:[dict(label=x,data='/zport/dmd/Devices'+x) for x in here.dmd.Devices.deviceMoveTargets()];
+            loclist python:[dict(label=x, data='/zport/dmd/Locations'+x) for x in here.dmd.Locations.deviceMoveTargets()];
+            grouplist python:[dict(label=x, data='/zport/dmd/Groups'+x) for x in here.dmd.Groups.deviceMoveTargets()];
+            syslist python:[dict(label=x, data='/zport/dmd/Systems'+x) for x in here.dmd.Systems.deviceMoveTargets()]"
+        tal:content="string:
+            window.filter_type_options = {
+                'Device Class': ${classlist},
+                'Location': [{label:'/', data:'/'}].concat(${loclist}),
+                'Group': [{label:'/', data:'/'}].concat(${grouplist}),
+                'System': [{label:'/', data:'/'}].concat(${syslist})
+            };
+    "></script>
+
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
         <style type="text/css">
@@ -27,6 +44,7 @@
             overflow: hidden;
             position: relative; 
             background-color: white;
+            border: 1px solid gray;
         }
         .link {
             stroke: #ccc;
@@ -39,18 +57,26 @@
             margin-right: 2em;
         }
         form#nmdevice {
-           padding-left: 10em; 
+           padding: 1em; 
            width: 100%;
            float: left;
+           background-color: white;
         }
         </style>
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
         <form id="nmdevice">
-            Device ID: <input type="text" name="root_id" /> 
-            Depth: <input type="text" name="depth" size="2"/>
-            Filter: <input type="text" name="filter" value="^/zport/dmd/Devices/Network/Router/" size="40" />
+            Device ID: <input type="text" name="root_id" value=""/> 
+            Depth: <input type="number" name="depth" min="1" max="10" size="2" value="2"/>
+            Filter by: <select id="filter_type_select">
+                <option>Device Class</option>
+                <option>Location</option>
+                <option>Group</option>
+                <option>System</option>
+            </select>
+            <span id="filter_label">Filter: </span> <select id="filter_select" name="filter_select"></select>
+            Repulsion: <input type="range" min="15" max="250" id="repulsion" name="repulsion">
             <button type="button" id="refresh_button">Refresh map</button>
             <button type="button" id="center_button">Center map</button>
             <span id="scale_display" title="Use mousewheel to scale">Scale: 100%</span>

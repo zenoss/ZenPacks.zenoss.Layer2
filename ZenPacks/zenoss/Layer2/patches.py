@@ -115,10 +115,12 @@ Device._relations += (
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getJSONEdges(self, root_id='', depth=None, filter='/'):
     ''' Get JSON representation of network nodes '''
+    if not root_id:
+        return get_json(Exception("You should set a device name"))
     root_id = urllib.unquote(root_id)
     obj = self.Devices.findDevice(root_id)
     if not obj:
-        raise Exception('Device %r not found' % root_id)
+        return get_json(Exception('Device %r not found' % root_id))
     return get_json(get_edges(
         obj, int(depth or 2), filter=filter
     ), obj.id)
