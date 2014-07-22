@@ -1,29 +1,33 @@
 <?xml version="1.0"?>
 <objects>
-  <object class="RRDTemplate" id="/zport/dmd/Devices/rrdTemplates/Layer2Info" module="Products.ZenModel.RRDTemplate">
-    <property id="targetPythonClass" mode="w" type="string">
-      ZenPacks.zenoss.Layer2.Layer2Info
-    </property>
-    <tomanycont id="datasources">
-      <object class="PythonDataSource" id="Layer2Info" module="ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource">
-        <property id="sourcetype" mode="w" select_variable="sourcetypes" type="selection">
-          Python
+  <object id="/zport/dmd/Devices/Network/Router" module="Products.ZenModel.DeviceClass" class="DeviceClass">
+    <tomanycont id="rrdTemplates">
+      <object class="RRDTemplate" id="Layer2Info" module="Products.ZenModel.RRDTemplate">
+        <property id="targetPythonClass" mode="w" type="string">
+          Products.ZenModel.Device
         </property>
-        <property id="enabled" mode="w" type="boolean">
-          True
-        </property>
-        <property id="component" mode="w" type="string">
-          ${here/id}
-        </property>
-        <property id="severity" mode="w" type="int">
-          3
-        </property>
-        <property id="cycletime" mode="w" type="string">
-          1800
-        </property>
-        <property id="plugin_classname" mode="w" type="string">
-          ZenPacks.zenoss.Layer2.dsplugins.Layer2InfoPlugin
-        </property>
+        <tomanycont id="datasources">
+          <object class="PythonDataSource" id="Layer2Info" module="ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource">
+            <property id="sourcetype" mode="w" select_variable="sourcetypes" type="selection">
+              Python
+            </property>
+            <property id="enabled" mode="w" type="boolean">
+              True
+            </property>
+            <property id="component" mode="w" type="string">
+              ${here/id}
+            </property>
+            <property id="severity" mode="w" type="int">
+              3
+            </property>
+            <property id="cycletime" mode="w" type="string">
+              1800
+            </property>
+            <property id="plugin_classname" mode="w" type="string">
+              ZenPacks.zenoss.Layer2.dsplugins.Layer2InfoPlugin
+            </property>
+          </object>
+        </tomanycont>
       </object>
     </tomanycont>
   </object>
