@@ -2,7 +2,7 @@
 <objects>
   <object class="RRDTemplate" id="/zport/dmd/Devices/rrdTemplates/Layer2Info" module="Products.ZenModel.RRDTemplate">
     <property id="targetPythonClass" mode="w" type="string">
-      ZenPacks.zenoss.Layer2.Layer2Info
+      Products.ZenModel.Device
     </property>
     <tomanycont id="datasources">
       <object class="PythonDataSource" id="Layer2Info" module="ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource">

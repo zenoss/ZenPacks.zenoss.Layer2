@@ -265,7 +265,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                 'relname': 'interfaces',
                 'id': ifid,
                 'modname': 'Products.ZenModel.IpInterface',
-                'clientmacs': data['clientmacs'], 
+                'clientmacs': list(set(data['clientmacs'])),
                 'baseport': data['baseport']
             })
         yield ObjectMap({
