@@ -48,7 +48,7 @@ ZC.NeighborSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
             },{
                 id: 'ip_address',
                 dataIndex: 'ip_address',
-                header: _t('IP Address'),
+                header: _t('IP Address')
             // },{
             //     id: 'description',
             //     dataIndex: 'description',

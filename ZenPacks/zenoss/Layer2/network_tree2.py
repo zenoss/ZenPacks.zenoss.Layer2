@@ -17,7 +17,7 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 from .macs_catalog import CatalogAPI
 
 COMMON_LINK_COLOR = '#ccc'
-L2_LINK_COLOR = 'steelblue'
+L2_LINK_COLOR = '#4682B4'
 
 def get_json(edges, main_node=None):
     '''
