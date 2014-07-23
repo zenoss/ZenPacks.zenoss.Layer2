@@ -17,7 +17,22 @@ log = logging.getLogger('zen.Layer2')
 import Globals
 
 from Products.ZenUtils.Utils import unused
+from Products.ZenModel.ZenPack import ZenPackBase
 
 import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
+
+
+class ZenPack(ZenPackBase):
+    """Layer2 loader."""
+
+    def install(self, app):
+        super(ZenPack, self).install(app)
+
+        self.post_install(app)
+
+    def post_install(self, app):
+        """Perform work that can be done after normal ZenPack install."""
+        dc = app.zport.dmd.Devices.Network.Router
+        dc.bindTemplates(dc.zDeviceTemplates + ['Layer2Info'])
