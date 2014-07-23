@@ -62,36 +62,53 @@ class CDPLLDPDiscover(SnmpPlugin):
         log.info('Modeler %s processing data for device %s', self.name(), device.id)
         
         log.debug("%s tabledata = %s", device.id, tabledata)
-        rm = self.relMap()
+        self.rm = self.relMap()
+        self.hashes = set()
 
         # CDP data
         for idx, data in tabledata.get("cdpCacheEntry").items():
-            title = data.get('cdpCachePlatform', '')
-            if title:
-                om = self.objectMap({
-                    'id': prepId("cdp_{}".format(idx)),
-                    'title': title,
-                    'description': data.get('cdpCacheSysName', ''),
-                    'ip_address': self.asip(data.get('cdpCacheAddress', '')),
-                    'device_port': data.get('cdpCacheDevicePort', ''),
-                    'native_vlan': data.get('cdpCacheNativeVLAN', ''),
-                    'location': data.get('cdpCachePhysLocation', '')
-                    })
-            rm.append(om)
+            self._add_item(
+                idx=prepId("cdp_{}".format(idx)),
+                title=data.get('cdpCachePlatform', ''),
+                description=data.get('cdpCacheSysName', ''),
+                device_port=data.get('cdpCacheDevicePort', ''),
+                ip_address=self.asip(data.get('cdpCacheAddress', '')),
+                native_vlan=data.get('cdpCacheNativeVLAN', ''),
+                location=data.get('cdpCachePhysLocation', '')
+            )
 
         # LLDP data
         for idx, data in tabledata.get("lldpRemEntry").items():
-            om_id = prepId("lldp_{}".format(idx))
-            port = data.get('lldpRemPortDesc', '') \
-                or data.get('lldpRemPortId', '')
-            title = data.get('lldpRemSysName', '')
+            self._add_item(
+                idx=prepId("lldp_{}".format(idx)),
+                title=data.get('lldpRemSysName', ''),
+                description=data.get('lldpRemSysDesc', ''),
+                device_port=data.get('lldpRemPortDesc', '') \
+                            or data.get('lldpRemPortId', '')
+            )
 
-            if title:
-                om = self.objectMap({
-                    'id': om_id,
-                    'title': title,
-                    'description': data.get('lldpRemSysDesc', ''),
-                    'device_port': port
-                    })
-            rm.append(om)
-        return rm
+        return self.rm
+
+    def _add_item(self, idx, title, description, device_port, ip_address="", \
+        native_vlan="", location=""):
+        """
+        Adds neighbor switch OM, ensuring it's unique
+        """
+        if not title:
+            return
+
+        om_dict = {
+            'title': title,
+            'description': description,
+            'ip_address': ip_address,
+            'device_port': device_port,
+            'native_vlan': native_vlan,
+            'location': location
+            }
+        om_hash = hash(frozenset(om_dict.items()))
+
+        # CDP/LLDP table can contain duplicate entries, eliminating them
+        if not om_hash in self.hashes:
+            self.hashes.add(om_hash)
+            om_dict['id'] = idx
+            self.rm.append(self.objectMap(om_dict))
