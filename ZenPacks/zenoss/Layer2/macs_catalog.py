@@ -159,7 +159,7 @@ class CatalogAPI(object):
         Returns list of client devices, connected to device
         '''
         clientmacs = self.get_device_clientmacs(device_id)
-        macs = list(set(clientmacs))
+        macs = unique(clientmacs)
 
         res = []
         for brain in self.get_catalog().search({'macaddresses': macs}):
