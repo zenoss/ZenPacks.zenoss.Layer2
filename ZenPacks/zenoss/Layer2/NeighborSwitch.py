@@ -68,7 +68,7 @@ class INeighborSwitchInfo(IComponentInfo):
     '''
 
     description = schema.TextLine(title=_t(u'Description'))
-    ip_address = schema.TextLine(title=_t(u'IP Address'))
+    ip_address_device = schema.TextLine(title=_t(u'IP Address'))
     device_port = schema.TextLine(title=_t(u'Device Port'))
     native_vlan = schema.TextLine(title=_t(u'Native VLAN'))
     location = schema.TextLine(title=_t(u'Physical Location'))
@@ -85,3 +85,16 @@ class NeighborSwitchInfo(ComponentInfo):
     device_port = ProxyProperty('device_port')
     native_vlan = ProxyProperty('native_vlan')
     location = ProxyProperty('location')
+
+    @property
+    @info
+    def ip_address_device(self):
+        ip = self._object.ip_address
+        if not ip:
+            return ""
+        obj = self._object.findDevice(ip)
+        if not obj:
+            return ip
+        return '<a href="{}">{}</a>'.format(
+            obj.getPrimaryUrlPath(), obj.titleOrId()
+        )
