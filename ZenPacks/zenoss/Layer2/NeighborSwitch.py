@@ -87,7 +87,6 @@ class NeighborSwitchInfo(ComponentInfo):
     location = ProxyProperty('location')
 
     @property
-    @info
     def ip_address_device(self):
         ip = self._object.ip_address
         if not ip:
