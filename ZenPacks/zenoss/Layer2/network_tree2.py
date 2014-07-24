@@ -7,21 +7,65 @@
 # 
 ##############################################################################
 
+import json
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
+from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
 from .macs_catalog import CatalogAPI
 
-def get_edges(rootnode, depth=1, withIcons=False, filter='/'):
-    """ Yields some edges """
+COMMON_LINK_COLOR = '#ccc'
+L2_LINK_COLOR = '#4682B4'
+
+def get_json(edges, main_node=None):
+    '''
+        Return JSON dump of network graph passed as edges.
+        edges is iterable of pairs of tuples with node data or exception
+        main_node is id of root node to highlight
+    '''
+    if isinstance(edges, Exception):
+        return json.dumps(dict(
+            error=edges.message,
+        ))
+    nodes = []
+    links = []
+
+    nodenums = {}
+
+    def add_node(n):
+        n_id, n_img, n_col = n
+        if not n_id in nodenums:
+            nodenums[n_id] = len(nodes)
+            nodes.append(dict(
+                name=n_id,
+                image=n_img,
+                color=n_col,
+                highlight=n_id == main_node,
+            ))
+
+    for a, b, l2 in edges:
+        add_node(a)
+        add_node(b)
+        links.append(dict(
+            source=nodenums[a[0]],
+            target=nodenums[b[0]],
+            color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
+        ))
+
+    return json.dumps(dict(
+        links=links,
+        nodes=nodes,
+    ))
+
+def get_edges(rootnode, depth=1, filter='/'):
     for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter):
-        if withIcons:
-            yield ((nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
-                   (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)))
-        else:
-            yield (nodea.titleOrId(), nodeb.titleOrId())
+        yield (
+            (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
+            (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
+            getattr(nodeb, 'is_l2_connected', False)
+        )
 
 def getColor(node):
     if isinstance(node, IpNetwork):
@@ -35,48 +79,45 @@ def getColor(node):
             break
     return color
 
-
-def _fromDeviceToNetworks(dev):
+def _fromDeviceToNetworks(dev, filter='/'):
     for iface in dev.os.interfaces():
         for ip in iface.ipaddresses():
             net = ip.network()
             if net is None or net.netmask == 32:
                 continue
             else:
-                print net
-                # yield net
+                yield net
 
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
-    for d in cat.get_upstream_devices(dev.id):
-        print d
-        yield d
+    for b in cat.get_client_devices(dev.id):
+        d = b.getObject()
+        if _passes_filter(d, filter):
+            d.is_l2_connected = True
+            yield d
 
-def _fromNetworkToDevices(net, organizer):
-    from Products.Zuul.catalog.global_catalog import IIndexableWrapper
+def _passes_filter(dev, filter):
+    if dev is None:
+        return False
+    paths = map('/'.join, IIndexableWrapper(dev).path())
+    for path in paths:
+        if path.startswith(filter) or path.startswith('/zport/dmd/Devices/Network/Router'):
+            return True
+    return False
+
+def _fromNetworkToDevices(net, filter):
     for ip in net.ipaddresses():
         dev = ip.device()
-        if dev is None:
-            continue
-        paths = map('/'.join, IIndexableWrapper(dev).path())
-        for path in paths:
-            if path.startswith(organizer) or path.startswith('/zport/dmd/Devices/Network/Router'):
-                yield dev
-                break
+        if _passes_filter(dev, filter):
+            yield dev
 
 def _get_related(node, filter='/'):
     if isinstance(node, IpNetwork):
         return _fromNetworkToDevices(node, filter)
     elif isinstance(node, Device):
-        return _fromDeviceToNetworks(node)
+        return _fromDeviceToNetworks(node, filter)
     else:
         raise NotImplementedError
-
-def _device_last(x,y):
-    if (isinstance(x, Device) and not isinstance(y, Device)):
-        return y, x
-    else:
-        return x, y
 
 def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
     """ Depth-first search of the network tree emanating from
@@ -85,12 +126,10 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
     if depth == 0: return
     if not pairs: pairs = []
     for node in _get_related(rootnode, filter):
-        sorted = _device_last(rootnode, node)
-        pair = [x.id for x in sorted]
+        pair = sorted(x.id for x in (rootnode, node))
         if pair not in pairs:
             pairs.append(pair)
-            yield sorted
-            for childnode in _get_related(node, filter):
-                for n in _get_connections(
-                    childnode, depth-1, pairs, filter):
-                    yield n
+            yield (rootnode, node)
+
+            for n in _get_connections(node, depth-1, pairs, filter):
+                yield n

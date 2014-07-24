@@ -7,6 +7,7 @@
 #
 ##############################################################################
 
+import urllib
 import logging
 log = logging.getLogger('zen.Layer2')
 
@@ -24,7 +25,7 @@ from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
 from .macs_catalog import CatalogAPI, DeviceConnections
-from .network_tree2 import get_edges
+from .network_tree2 import get_edges, get_json
 
 unused(Globals)
 
@@ -103,14 +104,6 @@ def get_reindex_maps(self):
     return set(DeviceConnections(self).clientmacs)
 
 
-def getXMLEdges(self, depth=3, filter="/", start=()):
-    if not start: start=self.id
-    edges = get_edges(self, depth, withIcons=True, filter=filter)
-    return edgesToXML(edges, start)
-
-monkeypatch('Products.ZenModel.IpNetwork.IpNetwork')(getXMLEdges)
-monkeypatch('Products.ZenModel.Device.Device')(getXMLEdges)
-
 Device._relations += (
     ('neighbor_switches', ToManyCont(
         ToOne,
@@ -118,6 +111,19 @@ Device._relations += (
         'switch')
     ),
 )
+
+@monkeypatch('Products.ZenModel.DataRoot.DataRoot')
+def getJSONEdges(self, root_id='', depth=None, filter='/'):
+    ''' Get JSON representation of network nodes '''
+    if not root_id:
+        return get_json(Exception("You should set a device name"))
+    root_id = urllib.unquote(root_id)
+    obj = self.Devices.findDevice(root_id)
+    if not obj:
+        return get_json(Exception('Device %r not found' % root_id))
+    return get_json(get_edges(
+        obj, int(depth or 2), filter=filter
+    ), obj.id)
 
 # -- IP Interfaces overrides --------------------------------------------------
 
