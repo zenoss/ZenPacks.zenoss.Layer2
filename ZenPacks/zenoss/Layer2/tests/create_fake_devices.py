@@ -44,7 +44,7 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
 def main():
     # create_topology(diamond)
     # create_topology(Y_to_existing)
-    create_topology(binary_tree_topology(deepness=4, root='1test'))
+    create_topology(binary_tree_topology(deepness=5, root='1test'))
     commit()
 
 def create_topology(connections):
