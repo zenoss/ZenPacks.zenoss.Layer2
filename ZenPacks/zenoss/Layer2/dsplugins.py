@@ -38,27 +38,23 @@ class Layer2Options(object):
 
 
 # ftp://ftp.cisco.com/pub/mibs/v1/BRIDGE-MIB.my
-# dot1dTpFdbTable = '1.3.6.1.2.1.17.4.3'
-# 
+dot1dTpFdbTable = '1.3.6.1.2.1.17.4.3'
 #     "A table that contains information about unicast
 #     entries for which the bridge has forwarding and/or
 #     filtering information. This information is used
 #     by the transparent bridging function in
 #     determining how to propagate a received frame."
-# 
-# dot1dTpFdbEntry = dot1dTpFdbTable + '.1'
-# 
+
+dot1dTpFdbEntry = dot1dTpFdbTable + '.1'
 #     "Information about a specific unicast MAC address
 #     for which the bridge has some forwarding and/or
 #     filtering information."
-# 
-# dot1dTpFdbAddress = dot1dTpFdbEntry + '.1'
-# 
+
+dot1dTpFdbAddress = dot1dTpFdbEntry + '.1'
 #     "A unicast MAC address for which the bridge has
 #     forwarding and/or filtering information."
-# 
-# dot1dTpFdbPort = dot1dTpFdbEntry '.2'
 
+dot1dTpFdbPort = dot1dTpFdbEntry + '.2'
 #     "Either the value '0', or the port number of the
 #     port on which a frame having a source address
 #     equal to the value of the corresponding instance
@@ -71,9 +67,10 @@ class Layer2Options(object):
 #     value to this object whenever it is learned even
 #     for addresses for which the corresponding value of
 #     dot1dTpFdbStatus is not learned(3)."
-# 
-# dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
+
+dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
 # 	The status of this entry. The meanings of the values are:
+#   one of the attributes of ForwardingEntryStatus class
 
 class ForwardingEntryStatus(object):
     other   = 1 # none of the following. This would
@@ -110,18 +107,19 @@ class ForwardingEntryStatus(object):
                 # instance of dot1dStaticAddress.
 
 
-# dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
+dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
 #     "A list of information for each port of the
 #     bridge."
-# 
-# dot1dBasePort = dot1dBasePortEntry + '.1'
+
+dot1dBasePort = dot1dBasePortEntry + '.1'
 #  	"The port number of the port for which this entry
 #     contains bridge management information."
-# 
-# dot1dBasePortIfIndex = dot1dBasePortEntry + '.2'
+
+dot1dBasePortIfIndex = dot1dBasePortEntry + '.2'
 #     "The value of the instance of the ifIndex object,
 #     defined in MIB-II, for the interface corresponding
 #     to this port."
+
 
 class Layer2SnmpPlugin(SnmpPlugin):
     """
@@ -130,7 +128,7 @@ class Layer2SnmpPlugin(SnmpPlugin):
 
     snmpGetTableMaps = (
         # Layer2: physical ports to MACs of clients
-        GetTableMap('dot1dTpFdbTable', '.1.3.6.1.2.1.17.4.3.1',
+        GetTableMap('dot1dTpFdbTable', dot1dTpFdbEntry,
             {
                 '.1': 'dot1dTpFdbAddress',
                 '.2': 'dot1dTpFdbPort',
@@ -138,9 +136,11 @@ class Layer2SnmpPlugin(SnmpPlugin):
             }
         ),
         # Ports to Interfaces
-        GetTableMap('dot1dBasePortEntry', '1.3.6.1.2.1.17.1.4.1',
-                {'.1': 'dot1dBasePort',
-                 '.2': 'dot1dBasePortIfIndex'}
+        GetTableMap('dot1dBasePortEntry', dot1dBasePortEntry,
+            {
+                '.1': 'dot1dBasePort',
+                 '.2': 'dot1dBasePortIfIndex'
+            }
         )
     )
 
@@ -202,7 +202,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             self._prep_iftable(self.get_snmp_data(sc))
                 
-        results['maps'] = list(self.get_maps())
+        results['maps'] = self.get_maps()
 
         defer.returnValue(results)
 
@@ -258,19 +258,22 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         @yield: ObjectMap|RelationshipMap
         """
         clientmacs = set()
+        res = []
+
         for ifid, data in self.iftable.items():
             clientmacs.update(data['clientmacs'])
-            yield ObjectMap({
+            res.append(ObjectMap({
                 "compname": 'os',
                 'relname': 'interfaces',
                 'id': ifid,
                 'modname': 'Products.ZenModel.IpInterface',
                 'clientmacs': list(set(data['clientmacs'])),
                 'baseport': data['baseport']
-            })
-        yield ObjectMap({
+            }))
+        res.insert(0, ObjectMap({
             "set_reindex_maps": clientmacs,
-        })
+        }))
+        return res
 
     def onSuccess(self, result, config):
         """
