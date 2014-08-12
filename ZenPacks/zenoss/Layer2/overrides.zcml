@@ -6,10 +6,12 @@
     >
 
     <!-- Network map page -->
+    <!-- uncomment this to enable new network map 
     <browser:page
         template="./networkMap.pt"
         name="networkMap"
         for="*"
         permission="zenoss.View"
         />
+    -->
 </configure>
