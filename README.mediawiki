@@ -1,0 +1,56 @@
+This ZenPack provides support to monitor OSI Layer 2 infrastructure. Monitoring is performed using SNMP.
+
+== Features ==
+
+The features added by this ZenPack can be summarized as follows. They are each detailed further below.
+
+* Discovery and periodic remodeling of Neighbor Switches using CDP/LLDP.
+* Monitoring of MAC Address table or Forwarding Table for each network interface of device.
+* Event suppression based on MAC Address table.
+
+=== Discovery ===
+
+CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discovery of switches, located nearby selected device.
+
+=== Monitoring ===
+
+ZenPack binds ''Layer2Info'' monitoring templates to ''/Network'' device class in Zenoss. This results in monitoring Layer 2 MAC forwarding tables for such devices. On a detail view of ''Interfaces'' component added ''Clients MAC addresses'' subpanel with a list of MAC addresses. Those are grouped by client device they belongs to.
+
+=== Event suppression ===
+
+Situation when upstream switch goes down results in flooding with ''Device is DOWN!'' events for every device in this subnet. ZenPack adds zenevent plugin which suppresses such subsequent events for leaf devices. So system administator receives only primary, core error event.
+
+== Requirements ==
+
+This ZenPack has the following requirements.
+
+;[[ZenPack:PythonCollector|PythonCollector ZenPack]]
+: This ZenPack depends on [[ZenPack:PythonCollector|PythonCollector]] being installed, and having the associated ''zenpython'' collector process running.
+
+== Service Impact ==
+
+When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.
+
+;Service Impact Relationships
+* Device impacted by upstream switch device.
+
+== Troubleshooting ==
+
+Please refer the the Zenoss Service Dynamics documentation if you run into any of the following problems:
+
+* ZenPack will not install
+* Adding a device fails
+* Don't understand how to add a device
+* Don't understand how to model a device
+
+If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics) users should contact [https://support.zenoss.com Zenoss Customer Support]. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
+
+== Installed Items ==
+
+Installing this ZenPack will add the following items to your Zenoss system.
+
+;Modeler Plugins
+* zenoss.snmp.CDPLLDPDiscover
+
+;Monitoring Templates
+* Layer2Info (in /Network)
