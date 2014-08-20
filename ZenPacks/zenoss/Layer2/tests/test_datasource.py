@@ -70,12 +70,12 @@ class TestDataSourcePlugin(BaseTestCase):
         maps = list(self.plugin.get_maps())
 
         self.assertEqual(len(maps), 2)
-        self.assertEqual(maps[1].set_reindex_maps, set(clientmacs))
-        self.assertEqual(maps[0].compname, 'os')
-        self.assertEqual(maps[0].relname, 'interfaces')
-        self.assertEqual(maps[0].id, 'if1')
-        self.assertEqual(maps[0].clientmacs, clientmacs)
-        self.assertEqual(maps[0].baseport, sentinel.baseport)
+        self.assertEqual(maps[0].set_reindex_maps, set(clientmacs))
+        self.assertEqual(maps[1].compname, 'os')
+        self.assertEqual(maps[1].relname, 'interfaces')
+        self.assertEqual(maps[1].id, 'if1')
+        self.assertEqual(maps[1].clientmacs, clientmacs)
+        self.assertEqual(maps[1].baseport, sentinel.baseport)
 
     def test_get_snmp_data(self):
         sc = Mock()
