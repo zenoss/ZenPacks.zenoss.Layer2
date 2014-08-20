@@ -32,7 +32,7 @@ This ZenPack has the following requirements.
 When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.
 
 ;Service Impact Relationships
-* Device impacted by upstream router device.
+* Device impacted by upstream switch device.
 
 == Troubleshooting ==
 
