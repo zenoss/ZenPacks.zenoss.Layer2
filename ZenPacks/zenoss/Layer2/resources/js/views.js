@@ -30,7 +30,7 @@ ZC.NeighborSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
                 {name: 'monitored'},
                 {name: 'locking'},
                 {name: 'description'},
-                {name: 'ip_address'},
+                {name: 'ip_address_device'},
                 {name: 'device_port'},
                 {name: 'native_vlan'},
                 {name: 'location'}
@@ -46,8 +46,8 @@ ZC.NeighborSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
                 dataIndex: 'name',
                 header: _t('Name')
             },{
-                id: 'ip_address',
-                dataIndex: 'ip_address',
+                id: 'ip_address_device',
+                dataIndex: 'ip_address_device',
                 header: _t('IP Address')
             // },{
             //     id: 'description',

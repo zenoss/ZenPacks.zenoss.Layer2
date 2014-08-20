@@ -34,5 +34,5 @@ class ZenPack(ZenPackBase):
 
     def post_install(self, app):
         """Perform work that can be done after normal ZenPack install."""
-        dc = app.zport.dmd.Devices.Network.Router
+        dc = app.zport.dmd.Devices.Network
         dc.bindTemplates(dc.zDeviceTemplates + ['Layer2Info'])
