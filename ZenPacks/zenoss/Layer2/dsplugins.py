@@ -201,6 +201,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             sc = self.get_snmp_client(vlan, config, ds0)
             yield drive(sc.doRun)
             self._prep_iftable(self.get_snmp_data(sc))
+            sc.stop()
                 
         results['maps'] = self.get_maps()
 
