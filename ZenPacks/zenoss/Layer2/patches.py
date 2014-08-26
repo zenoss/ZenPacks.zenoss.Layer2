@@ -84,6 +84,12 @@ def index_object(self, idxs=None, noips=False):
     catapi = CatalogAPI(self.zport)
     catapi.add_device(self)
 
+@monkeypatch('Products.ZenModel.IpInterface.IpInterface')
+def index_object(self, idxs=None):
+    original(self, idxs)
+    catapi = CatalogAPI(self.zport)
+    catapi.add_device(self.device())
+
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def unindex_object(self):
