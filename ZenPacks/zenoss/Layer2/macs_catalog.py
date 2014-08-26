@@ -112,7 +112,7 @@ class CatalogAPI(object):
     def add_device(self, device):
         self.get_catalog().add_device(device)
         log.info('%s added to %s' % (device, MACsCatalogId))
-        log.debug('Device MAC addresses: ' + ', '.join(DeviceConnections(device).macadresses))
+        log.debug('Device MAC addresses: ' + ', '.join(DeviceConnections(device).macaddresses))
 
     def remove_device(self, device):
         self.get_catalog().remove_device(device)
