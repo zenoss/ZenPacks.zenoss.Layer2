@@ -91,9 +91,6 @@ def initializeMACsCatalog(catalog):
     catalog.addColumn('macaddresses')
     catalog.addColumn('clientmacs')
 
-def unique(l):
-    return list(set(l))
-
 class CatalogAPI(object):
     catalog = None
     def __init__(self, zport):
@@ -115,6 +112,7 @@ class CatalogAPI(object):
     def add_device(self, device):
         self.get_catalog().add_device(device)
         log.info('%s added to %s' % (device, MACsCatalogId))
+        log.debug('Device MAC addresses: ' + ', '.join(DeviceConnections(device).macaddresses))
 
     def remove_device(self, device):
         self.get_catalog().remove_device(device)
@@ -137,9 +135,7 @@ class CatalogAPI(object):
 
     def get_device_clientmacs(self, device_id):
         ''' Return list of clientmacs for device with given id '''
-        res = self.get_catalog().search({
-            'id': device_id
-        })
+        res = self.search({'id': device_id})
         if res:
             return res[0].clientmacs
         else:
@@ -159,13 +155,10 @@ class CatalogAPI(object):
         Returns list of client devices, connected to device
         '''
         clientmacs = self.get_device_clientmacs(device_id)
-        macs = unique(clientmacs)
-
-        res = []
-        for brain in self.get_catalog().search({'macaddresses': macs}):
-            if brain.id != device_id:
-                res.append(brain)
-        return res
+        return [brain
+            for brain in self.get_if_client_devices(clientmacs) 
+            if brain.id != device_id
+        ]
 
     def get_if_upstream_devices(self, mac_addresses):
         '''
@@ -178,3 +171,19 @@ class CatalogAPI(object):
         Returns list of client devices, connected to IpInterface by given MACs
         '''
         return list(self.search({'macaddresses': unique(mac_addresses)}))
+
+    def show_content(self):
+        for b in self.search():
+            show_brain(b)
+
+
+def unique(l):
+    return list(set(l))
+
+def show_brain(b):
+    print b.id
+    print
+    for mac, clientmac in map(None, b.macaddresses, b.clientmacs):
+        print '%s\t%s' % (mac or '                 ', clientmac or '                 ')
+    print '-' * 50
+    print

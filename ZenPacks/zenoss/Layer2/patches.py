@@ -84,6 +84,7 @@ def index_object(self, idxs=None, noips=False):
     catapi = CatalogAPI(self.zport)
     catapi.add_device(self)
 
+
 @monkeypatch('Products.ZenModel.Device.Device')
 def unindex_object(self):
     original(self)
@@ -92,9 +93,11 @@ def unindex_object(self):
     catapi = CatalogAPI(self.zport)
     catapi.remove_device(self)
 
+
 @monkeypatch('Products.ZenModel.Device.Device')
 def set_reindex_maps(self, value):
     self.index_object()
+
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def get_reindex_maps(self):
