@@ -164,7 +164,8 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         'zSnmpPrivType',
         'zSnmpPrivPassword',
         'zSnmpEngineId',
-        'get_ifinfo_for_layer2'
+        'get_ifinfo_for_layer2',
+        'macs_indexed',
     )
 
     component = None
@@ -193,6 +194,9 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         ds0.id = config.id
 
         self.iftable = ds0.get_ifinfo_for_layer2
+
+        self.macs_indexed = ds0.macs_indexed
+
         self.jobs = []
 
         self.community = ds0.zSnmpCommunity
@@ -271,6 +275,10 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
                 'clientmacs': list(set(data['clientmacs'])),
                 'baseport': data['baseport']
             }))
+
+        if not self.macs_indexed and self.iftable:
+            log.info('There are interfaces and they were not indexed yet')
+            clientmacs = 'reindex please'
         res.insert(0, ObjectMap({
             "set_reindex_maps": clientmacs,
         }))
