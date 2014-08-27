@@ -86,7 +86,7 @@ class CDPLLDPDiscover(SnmpPlugin):
                 device_port=data.get('lldpRemPortDesc', '') \
                             or data.get('lldpRemPortId', '')
             )
-
+        log.debug(self.rm)
         return self.rm
 
     def _add_item(self, idx, title, description, device_port, ip_address="", \
