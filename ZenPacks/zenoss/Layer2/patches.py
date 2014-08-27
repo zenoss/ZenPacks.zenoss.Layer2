@@ -97,6 +97,8 @@ def unindex_object(self):
 @monkeypatch('Products.ZenModel.Device.Device')
 def set_reindex_maps(self, value):
     self.index_object()
+    if value == 'reindex please':
+        self.macs_indexed = True
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
