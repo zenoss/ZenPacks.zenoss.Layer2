@@ -7,6 +7,8 @@
 #
 ##############################################################################
 
+from itertools import chain
+
 import logging
 log = logging.getLogger('zen.Layer2')
 
@@ -27,21 +29,17 @@ class DeviceLinkProvider(object):
         self.device = device
 
     def getExpandedLinks(self):
-        links = []
+        links = set()
 
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
-        for brain in cat.get_upstream_devices(self.device.id):
+        for brain in chain(
+            cat.get_upstream_devices(self.device.id),
+            cat.get_client_devices(self.device.id),
+        ):
             obj = brain.getObject()
-            links.append('Upstream switch: <a href="{}">{}</a>'.format(
-                obj.getPrimaryUrlPath(), obj.titleOrId())
-            )
-
-        # Client devices
-        for brain in cat.get_client_devices(self.device.id):
-            obj = brain.getObject()
-            links.append('Client device: <a href="{}">{}</a>'.format(
-                obj.getPrimaryUrlPath(), obj.titleOrId())
-            )
-
-        return links
+            if obj.getDeviceClassName().startswith('/Network'):
+                links.add('Switch: <a href="{}">{}</a>'.format(
+                    obj.getPrimaryUrlPath(), obj.titleOrId()
+                ))
+        return list(links)

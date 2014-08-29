@@ -45,6 +45,9 @@ Please refer the the Zenoss Service Dynamics documentation if you run into any o
 
 If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics) users should contact [https://support.zenoss.com Zenoss Customer Support]. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
 
+== Layer2 Terminology ==
+The essential mechanism that separates network switches from network hubs is the MAC forwarding table. Instead of broadcasting incoming frames of link layer to all it's interfaces, as hub do, switch looks into forwarding table to find out to which particular interface is connected destination device. Switch learns which devices are connected to which interfaces by looking at the source MAC address of incoming frames. Those MAC addresses are called "client MAC addresses".
+
 == Installed Items ==
 
 Installing this ZenPack will add the following items to your Zenoss system.

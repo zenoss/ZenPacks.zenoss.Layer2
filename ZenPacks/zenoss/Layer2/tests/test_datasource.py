@@ -66,6 +66,7 @@ class TestDataSourcePlugin(BaseTestCase):
                 'baseport': sentinel.baseport,
             }
         }
+        self.plugin.macs_indexed = True
 
         maps = list(self.plugin.get_maps())
 
