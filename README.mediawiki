@@ -57,3 +57,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 ;Monitoring Templates
 * Layer2Info (in /Network)
+
+== Changes ==
+;1.0.0
+* Initial release
