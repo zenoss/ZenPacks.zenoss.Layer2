@@ -1,4 +1,4 @@
-This ZenPack provides support to monitor OSI Layer 2 infrastructure. Monitoring is performed using SNMP.
+This ZenPack provides the ability to monitor OSI Layer 2 infrastructure. Monitoring is performed via SNMP.
 
 == Features ==
 
@@ -10,15 +10,15 @@ The features added by this ZenPack can be summarized as follows. They are each d
 
 === Discovery ===
 
-CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discovery of switches, located nearby selected device.
+CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discovery of switches located nearby a selected device.
 
 === Monitoring ===
 
-ZenPack binds ''Layer2Info'' monitoring templates to ''/Network'' device class in Zenoss. This results in monitoring Layer 2 MAC forwarding tables for such devices. On a detail view of ''Interfaces'' component added ''Clients MAC addresses'' subpanel with a list of MAC addresses. Those are grouped by client device they belongs to.
+The ZenPack binds ''Layer2Info'' monitoring templates to the ''/Network'' device class in Zenoss. This activates monitoring of Layer 2 MAC forwarding tables for devices under that class. On the detail view of ''Interfaces'' components,  the ''Clients MAC addresses'' subpanel is added with a list of MAC addresses. Those addresses are grouped by the client device they belong to.
 
 === Event suppression ===
 
-Situation when upstream switch goes down results in flooding with ''Device is DOWN!'' events for every device in this subnet. ZenPack adds zenevent plugin which suppresses such subsequent events for leaf devices. So system administator receives only primary, core error event.
+When an upstream switch goes down, a flood of ''Device is DOWN!'' events for every device in an affected subnet can be generated. This ZenPack adds a zenevent plugin which suppresses such subsequent events for leaf devices. As a result, a system administator receives only a primary, core error event.
 
 == Requirements ==
 
@@ -46,7 +46,7 @@ Please refer the the Zenoss Service Dynamics documentation if you run into any o
 If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics) users should contact [https://support.zenoss.com Zenoss Customer Support]. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
 
 == Layer2 Terminology ==
-The essential mechanism that separates network switches from network hubs is the MAC forwarding table. Instead of broadcasting incoming frames of link layer to all it's interfaces, as hub do, switch looks into forwarding table to find out to which particular interface is connected destination device. Switch learns which devices are connected to which interfaces by looking at the source MAC address of incoming frames. Those MAC addresses are called "client MAC addresses".
+The essential mechanism that separates network switches from network hubs is the MAC forwarding table. Instead of broadcasting incoming link layer frames to all it's interfaces, as hubs do, switches look into the forwarding table to find out which particular interface is connected to the destination device. The switch learns which devices are connected to which interface by looking at the source MAC address of incoming frames. Those MAC addresses are called "client MAC addresses".
 
 == Installed Items ==
 
