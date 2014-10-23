@@ -30,13 +30,18 @@ class DeviceLinkProvider(object):
 
     def getExpandedLinks(self):
         links = set()
-
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
-        for brain in chain(
-            cat.get_upstream_devices(self.device.id),
-            cat.get_client_devices(self.device.id),
-        ):
+        try:
+            upstream = cat.get_upstream_devices(self.device.id)
+        except IndexError: # device id was not found
+            upstream = []
+        try:
+            client = cat.get_client_devices(self.device.id),
+        except IndexError: # device id was not found
+            client = []
+
+        for brain in chain(upstream, client):
             obj = brain.getObject()
             if obj.getDeviceClassName().startswith('/Network'):
                 links.add('Switch: <a href="{}">{}</a>'.format(

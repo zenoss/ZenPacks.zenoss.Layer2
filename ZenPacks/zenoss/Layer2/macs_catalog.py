@@ -138,8 +138,7 @@ class CatalogAPI(object):
         if res:
             return res[0].clientmacs
         else:
-            log.warning('Device with id %r was not found' % device_id)
-            return None
+            raise IndexError('Device with id %r was not found' % device_id)
 
     def get_upstream_devices(self, device_id):
         '''
@@ -155,7 +154,7 @@ class CatalogAPI(object):
         '''
         clientmacs = self.get_device_clientmacs(device_id)
         return [brain
-            for brain in self.get_if_client_devices(clientmacs) 
+            for brain in self.get_if_client_devices(clientmacs)
             if brain.id != device_id
         ]
 
