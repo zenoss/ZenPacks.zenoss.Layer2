@@ -59,5 +59,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Layer2Info (in /Network)
 
 == Changes ==
+
+;Next
+* Remove add/remove from catalog logging.
+
 ;1.0.0
 * Initial release
