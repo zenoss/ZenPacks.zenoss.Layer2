@@ -38,8 +38,8 @@ class TestCatalogAPI(BaseTestCase):
         brains = self.cat.search()
 
         self.assertEqual(len(brains), 1)
-        self.assertEqual(brains[0].macaddresses, ['mac1'])
-        self.assertEqual(brains[0].clientmacs, ['mac2'])
+        self.assertEqual(brains[0].macaddresses, ['MAC1'])
+        self.assertEqual(brains[0].clientmacs, ['MAC2'])
         self.assertEqual(brains[0].id, 'id')
 
     def test_device_is_deleted_from_catalog(self):
@@ -55,7 +55,7 @@ class TestCatalogAPI(BaseTestCase):
 
         self.cat.add_device(d)
 
-        self.assertEqual(self.cat.get_device_macadresses('id'), ['mac1'])
+        self.assertEqual(self.cat.get_device_macadresses('id'), ['MAC1'])
 
 
 def test_suite():

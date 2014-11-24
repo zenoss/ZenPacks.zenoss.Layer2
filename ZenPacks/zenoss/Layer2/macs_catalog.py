@@ -67,18 +67,20 @@ class DeviceConnections(object):
 
     @property
     def macaddresses(self):
-        return [i.macaddress
+        return [
+            i.macaddress.upper()
             for i in self.device.os.interfaces()
             if getattr(i, 'macaddress')
         ]
 
     @property
     def clientmacs(self):
-        return [x
+        return [
+            x.upper()
             for i in self.device.os.interfaces()
-                if getattr(i, 'clientmacs')
-                    for x in i.clientmacs
-                        if x
+            if getattr(i, 'clientmacs')
+            for x in i.clientmacs
+            if x
         ]
 
 
@@ -104,7 +106,7 @@ class CatalogAPI(object):
         if not hasattr(self.zport, MACsCatalogId):
             factory = MACsCatalogFactory()
             factory.create(self.zport)
-            log.info('Created %s' % MACsCatalogId)
+            log.debug('Created catalog %s' % MACsCatalogId)
 
         self.catalog = getattr(self.zport, MACsCatalogId)
         return self.catalog
@@ -142,8 +144,8 @@ class CatalogAPI(object):
 
     def get_upstream_devices(self, device_id):
         '''
-        Returns list of devices' brains where given device mac addresses
-        found in client macs
+        Returns list of devices brains where given device MAC addresses
+        found in client MACs
         '''
         mac_addresses = self.get_device_macadresses(device_id)
         return self.get_if_upstream_devices(mac_addresses)
