@@ -37,7 +37,7 @@ class DeviceLinkProvider(object):
         except IndexError: # device id was not found
             upstream = []
         try:
-            client = cat.get_client_devices(self.device.id),
+            client = cat.get_client_devices(self.device.id)
         except IndexError: # device id was not found
             client = []
 
