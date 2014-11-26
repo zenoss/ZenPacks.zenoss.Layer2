@@ -109,6 +109,12 @@ Zenoss.nav.appendTo('Component', [{
     filterNav: function(navpanel) {
          switch (navpanel.refOwner.componentType) {
             case 'IpInterface': return true;
+
+            case 'CiscoEthernetInterface': return true;
+            case 'CiscoInterface': return true;
+            case 'CiscoPortChannel': return true;
+            case 'CiscoVLAN': return true;
+
             default: return false;
          }
     },
