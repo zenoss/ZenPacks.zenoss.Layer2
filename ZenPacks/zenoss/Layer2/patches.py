@@ -24,7 +24,7 @@ from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
-from .macs_catalog import CatalogAPI, DeviceConnections
+from .macs_catalog import CatalogAPI
 from .network_tree2 import get_edges, get_json
 
 unused(Globals)
@@ -79,7 +79,6 @@ def get_clients_links(self):
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-
     catapi = CatalogAPI(self.zport)
     catapi.add_device(self)
 
@@ -104,8 +103,13 @@ def get_reindex_maps(self):
     ''' Should return something distinct from value passed to
         set_reindex_maps for set_reindex_maps to run
     '''
-    return set(DeviceConnections(self).clientmacs)
-
+    return set(
+        x.upper()
+        for i in self.os.interfaces()
+        if getattr(i, 'clientmacs')
+        for x in i.clientmacs
+        if x
+    )
 
 Device._relations += (
     ('neighbor_switches', ToManyCont(
@@ -114,6 +118,7 @@ Device._relations += (
         'switch')
     ),
 )
+
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getJSONEdges(self, root_id='', depth=None, filter='/'):

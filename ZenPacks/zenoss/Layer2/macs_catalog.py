@@ -21,80 +21,87 @@ from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
 MACsCatalogId = 'macs_catalog'
+InterfacesCatalogId = 'interface_catalog'
 
-class MACsCatalog(GlobalCatalog):
-    id = MACsCatalogId
 
-    def add_device(self, device):
-        dc = DeviceConnections(device)
-        self.catalog_object(dc)
+class InterfacesCatalog(GlobalCatalog):
+    id = InterfacesCatalogId
 
-    def remove_device(self, device):
-        self.uncatalog_object('/'.join(device.getPhysicalPath()))
+    def add_interfaces(self, device):
+        for interface in device.os.interfaces():
+            ic = InterfaceConnections(interface)
+            self.catalog_object(ic)
 
-class IMACsCatalogFactory(IGlobalCatalogFactory):
+    def remove_interfaces(self, device):
+        for interface in device.os.interfaces():
+            self.uncatalog_object('/'.join(interface.getPhysicalPath()))
+
+
+class IInterfacesCatalogFactory(IGlobalCatalogFactory):
     pass
 
 
-class MACsCatalogFactory(GlobalCatalogFactory):
-    implements(IMACsCatalogFactory)
+class InterfacesCatalogFactory(GlobalCatalogFactory):
+    implements(IInterfacesCatalogFactory)
 
     def create(self, portal):
-        catalog = MACsCatalog()
+        catalog = InterfacesCatalog()
         self.setupCatalog(portal, catalog)
 
     def setupCatalog(self, portal, catalog):
-        initializeMACsCatalog(catalog)
-        portal._setObject(MACsCatalogId, catalog)
+        initializeInterfacesCatalog(catalog)
+        portal._setObject(InterfacesCatalogId, catalog)
 
     def remove(self, portal):
-        portal._delObject(MACsCatalogId)
+        portal._delObject(InterfacesCatalogId)
 
 
-class DeviceConnections(object):
+class InterfaceConnections(object):
     implements(IIndexableWrapper)
     adapts(IGloballyIndexed)
 
-    def __init__(self, device):
-        self.device = device
+    def __init__(self, interface):
+        self.interface = interface
 
     def getPhysicalPath(self):
-        return self.device.getPhysicalPath()
+        return self.interface.getPhysicalPath()
 
     @property
     def id(self):
-        return self.device.id
+        return self.interface.id
 
     @property
-    def macaddresses(self):
-        return [
-            i.macaddress.upper()
-            for i in self.device.os.interfaces()
-            if getattr(i, 'macaddress')
-        ]
+    def device(self):
+        return self.interface.device().id
+
+    @property
+    def macaddress(self):
+        return getattr(self.interface, 'macaddress', '').upper()
 
     @property
     def clientmacs(self):
         return [
             x.upper()
-            for i in self.device.os.interfaces()
-            if getattr(i, 'clientmacs')
-            for x in i.clientmacs
+            for x in getattr(self.interface, 'clientmacs', [])
             if x
         ]
 
 
-def initializeMACsCatalog(catalog):
+def initializeInterfacesCatalog(catalog):
     catalog.addIndex('id', makeCaseSensitiveFieldIndex('id'))
-    catalog.addIndex('macaddresses', makeCaseSensitiveKeywordIndex('macaddresses'))
+    catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
+    catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
     catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
 
     catalog.addColumn('id')
-    catalog.addColumn('macaddresses')
+    catalog.addColumn('device')
+    catalog.addColumn('macaddress')
     catalog.addColumn('clientmacs')
+
 
 class CatalogAPI(object):
     catalog = None
+
     def __init__(self, zport):
         self.zport = zport
 
@@ -103,21 +110,25 @@ class CatalogAPI(object):
         if self.catalog:
             return self.catalog
 
-        if not hasattr(self.zport, MACsCatalogId):
-            factory = MACsCatalogFactory()
+        if not hasattr(self.zport, InterfacesCatalogId):
+            factory = InterfacesCatalogFactory()
             factory.create(self.zport)
-            log.debug('Created catalog %s' % MACsCatalogId)
+            log.debug('Created catalog %s' % InterfacesCatalogId)
 
-        self.catalog = getattr(self.zport, MACsCatalogId)
+        self.catalog = getattr(self.zport, InterfacesCatalogId)
         return self.catalog
 
+    def remove_catalog(self):
+        factory = InterfacesCatalogFactory()
+        factory.remove(self.zport)
+
     def add_device(self, device):
-        self.get_catalog().add_device(device)
-        log.debug('%s added to %s' % (device, MACsCatalogId))
+        self.get_catalog().add_interfaces(device)
+        log.debug('%s added to %s' % (device, InterfacesCatalogId))
 
     def remove_device(self, device):
-        self.get_catalog().remove_device(device)
-        log.info('%s removed from %s' % (device, MACsCatalogId))
+        self.get_catalog().remove_interfaces(device)
+        log.debug('%s removed from %s' % (device, InterfacesCatalogId))
 
     def clear(self):
         for b in self.search():
@@ -126,21 +137,28 @@ class CatalogAPI(object):
     def search(self, query={}):
         return self.get_catalog().search(query)
 
+    def get_device_interfaces(self, device_id):
+        res = self.search({'device': device_id})
+        if res:
+            return res
+        else:
+            raise IndexError(
+                'Interfaces with device id %r was not found' % device_id
+            )
+
     def get_device_macadresses(self, device_id):
         ''' Return list of macadresses for device with given id '''
-        res = self.search({'id': device_id})
-        if res:
-            return res[0].macaddresses
-        else:
-            raise IndexError('Device with id %r was not found' % device_id)
+        return [
+            getattr(item, 'macaddress', '')
+            for item in self.get_device_interfaces(device_id)
+        ]
 
     def get_device_clientmacs(self, device_id):
         ''' Return list of clientmacs for device with given id '''
-        res = self.search({'id': device_id})
-        if res:
-            return res[0].clientmacs
-        else:
-            raise IndexError('Device with id %r was not found' % device_id)
+        return [
+            clmac for interface in self.get_device_interfaces(device_id)
+            for clmac in interface.clientmacs
+        ]
 
     def get_upstream_devices(self, device_id):
         '''
@@ -180,10 +198,6 @@ class CatalogAPI(object):
 def unique(l):
     return list(set(l))
 
+
 def show_brain(b):
-    print b.id
-    print
-    for mac, clientmac in map(None, b.macaddresses, b.clientmacs):
-        print '%s\t%s' % (mac or '                 ', clientmac or '                 ')
-    print '-' * 50
-    print
+    print b.id, b.device, b.macaddress, b.clientmacs
