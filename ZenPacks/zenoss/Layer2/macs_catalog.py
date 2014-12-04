@@ -173,26 +173,36 @@ class CatalogAPI(object):
         Returns list of client devices, connected to device
         '''
         clientmacs = self.get_device_clientmacs(device_id)
-        return [brain
-            for brain in self.get_if_client_devices(clientmacs)
-            if brain.id != device_id
+        return [
+            device for device in self.get_if_client_devices(clientmacs)
+            if device.id != device_id
         ]
 
     def get_if_upstream_devices(self, mac_addresses):
         '''
         Returns list of devices, connected to IpInterface by given MACs
         '''
-        return list(self.search({'clientmacs': unique(mac_addresses)}))
+        return [
+            self.get_device_obj(brain.device)
+            for brain in self.search({'clientmacs': unique(mac_addresses)})
+        ]
 
     def get_if_client_devices(self, mac_addresses):
         '''
         Returns list of client devices, connected to IpInterface by given MACs
         '''
-        return list(self.search({'macaddresses': unique(mac_addresses)}))
+        return [
+            self.get_device_obj(i.device)
+            for i in self.search({'macaddresses': unique(mac_addresses)})
+        ]
 
-    def show_content(self):
-        for b in self.search():
-            show_brain(b)
+    if __debug__:
+        def show_content(self):
+            for b in self.search():
+                show_brain(b)
+
+    def get_device_obj(self, device_id):
+        return self.zport.dmd.Devices.findDeviceByIdExact(device_id)
 
 
 def unique(l):
