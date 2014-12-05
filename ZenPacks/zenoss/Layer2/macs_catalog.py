@@ -20,8 +20,7 @@ from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
-MACsCatalogId = 'macs_catalog'
-InterfacesCatalogId = 'interface_catalog'
+InterfacesCatalogId = 'interfaces_catalog'
 
 
 class InterfacesCatalog(GlobalCatalog):
@@ -55,6 +54,17 @@ class InterfacesCatalogFactory(GlobalCatalogFactory):
     def remove(self, portal):
         portal._delObject(InterfacesCatalogId)
 
+def initializeInterfacesCatalog(catalog):
+    catalog.addIndex('id', makeCaseSensitiveFieldIndex('id'))
+    catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
+    catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
+    catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
+
+    catalog.addColumn('id')
+    catalog.addColumn('device')
+    catalog.addColumn('macaddress')
+    catalog.addColumn('clientmacs')
+
 
 class InterfaceConnections(object):
     implements(IIndexableWrapper)
@@ -87,55 +97,52 @@ class InterfaceConnections(object):
         ]
 
 
-def initializeInterfacesCatalog(catalog):
-    catalog.addIndex('id', makeCaseSensitiveFieldIndex('id'))
-    catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
-    catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
-    catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
-
-    catalog.addColumn('id')
-    catalog.addColumn('device')
-    catalog.addColumn('macaddress')
-    catalog.addColumn('clientmacs')
-
-
 class CatalogAPI(object):
-    catalog = None
+    '''
+        Usage from zendmd:
+
+from ZenPacks.zenoss.Layer2 import macs_catalog
+cat = macs_catalog.CatalogAPI(zport)
+cat.show_content()
+    '''
+    _catalog = None
 
     def __init__(self, zport):
         self.zport = zport
 
-    def get_catalog(self):
+    @property
+    def catalog(self):
         ''' Find catalog in zport if exists, or create it from scratch'''
-        if self.catalog:
-            return self.catalog
+        if self._catalog:
+            return self._catalog
 
         if not hasattr(self.zport, InterfacesCatalogId):
             factory = InterfacesCatalogFactory()
             factory.create(self.zport)
             log.debug('Created catalog %s' % InterfacesCatalogId)
 
-        self.catalog = getattr(self.zport, InterfacesCatalogId)
-        return self.catalog
+        self._catalog = getattr(self.zport, InterfacesCatalogId)
+        return self._catalog
 
     def remove_catalog(self):
         factory = InterfacesCatalogFactory()
         factory.remove(self.zport)
 
     def add_device(self, device):
-        self.get_catalog().add_interfaces(device)
+        self.catalog.add_interfaces(device)
         log.debug('%s added to %s' % (device, InterfacesCatalogId))
 
     def remove_device(self, device):
-        self.get_catalog().remove_interfaces(device)
+        self.catalog.remove_interfaces(device)
         log.debug('%s removed from %s' % (device, InterfacesCatalogId))
 
     def clear(self):
         for b in self.search():
-            self.get_catalog().uncatalog_object(b.getPath())
+            p = b.getPath()
+            self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
-        return self.get_catalog().search(query)
+        return self.catalog.search(query)
 
     def get_device_interfaces(self, device_id):
         res = self.search({'device': device_id})
@@ -191,10 +198,11 @@ class CatalogAPI(object):
         '''
         Returns list of client devices, connected to IpInterface by given MACs
         '''
-        return [
-            self.get_device_obj(i.device)
-            for i in self.search({'macaddresses': unique(mac_addresses)})
-        ]
+        res = []
+        for i in self.search({'macaddresses': unique(mac_addresses)}):
+            print i.device
+            res.append(self.get_device_obj(i.device))
+        return res
 
     if __debug__:
         def show_content(self):
@@ -210,4 +218,4 @@ def unique(l):
 
 
 def show_brain(b):
-    print b.id, b.device, b.macaddress, b.clientmacs
+    print '%20s %20s %s   %s' % (b.id, b.device, b.macaddress, b.clientmacs)

@@ -9,6 +9,8 @@
 
 import json
 
+from functools import partial
+
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
@@ -19,16 +21,20 @@ from .macs_catalog import CatalogAPI
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
 
-def get_json(edges, main_node=None):
+def get_json(edges, main_node=None, pretty=False):
     '''
         Return JSON dump of network graph passed as edges.
         edges is iterable of pairs of tuples with node data or exception
         main_node is id of root node to highlight
     '''
+    serialize = partial(json.dumps, indent=2 if pretty else None)
+
+    # In case of exception - return json with error message
     if isinstance(edges, Exception):
-        return json.dumps(dict(
+        return serialize(dict(
             error=edges.message,
         ))
+
     nodes = []
     links = []
 
@@ -54,7 +60,7 @@ def get_json(edges, main_node=None):
             color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 
-    return json.dumps(dict(
+    return serialize(dict(
         links=links,
         nodes=nodes,
     ))
@@ -90,8 +96,7 @@ def _fromDeviceToNetworks(dev, filter='/'):
 
     # and for L2 devices:
     cat = CatalogAPI(dev.zport)
-    for b in cat.get_client_devices(dev.id):
-        d = b.getObject()
+    for d in cat.get_client_devices(dev.id):
         if _passes_filter(d, filter):
             d.is_l2_connected = True
             yield d

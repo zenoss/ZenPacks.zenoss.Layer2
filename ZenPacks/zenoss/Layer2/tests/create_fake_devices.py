@@ -13,6 +13,11 @@ import string
 from Products.ZenModel.IpInterface import IpInterface
 from ZenPacks.zenoss.Layer2.utils import asmac
 
+Y = '''
+    a1 b1
+    a1 c1
+'''
+
 diamond = '''
     a b
     a c
@@ -44,7 +49,8 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
 def main():
     # create_topology(diamond)
     # create_topology(Y_to_existing)
-    create_topology(binary_tree_topology(deepness=5, root='test'))
+    # create_topology(binary_tree_topology(deepness=5, root='test'))
+    create_topology(Y)
     commit()
 
 def create_topology(connections):
