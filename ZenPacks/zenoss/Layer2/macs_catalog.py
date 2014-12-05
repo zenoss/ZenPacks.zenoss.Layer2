@@ -142,6 +142,7 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
+        print 'search:', query
         return self.catalog.search(query)
 
     def get_device_interfaces(self, device_id):
@@ -199,8 +200,7 @@ cat.show_content()
         Returns list of client devices, connected to IpInterface by given MACs
         '''
         res = []
-        for i in self.search({'macaddresses': unique(mac_addresses)}):
-            print i.device
+        for i in self.search({'macaddress': unique(mac_addresses)}):
             res.append(self.get_device_obj(i.device))
         return res
 
