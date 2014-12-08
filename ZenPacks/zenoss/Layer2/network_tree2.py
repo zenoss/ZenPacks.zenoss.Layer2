@@ -17,7 +17,7 @@ from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
 from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
-from .macs_catalog import CatalogAPI
+from .macs_catalog import CatalogAPI, NetworkSegment
 
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
@@ -71,7 +71,7 @@ def get_edges(rootnode, depth=1, filter='/'):
         yield (
             (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
             (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
-            getattr(nodeb, 'is_l2_connected', False)
+            isinstance(nodea, NetworkSegment) or isinstance(nodeb, NetworkSegment)
         )
 
 def getColor(node):
@@ -96,13 +96,20 @@ def _fromDeviceToNetworks(dev, filter='/'):
                 yield net
 
 def _fromDeviceToNetworkSegments(dev, filter, cat):
-    # and for L2 devices:
+    def segment_connnects_something(seg):
+        if len(seg) < 2:
+            return False  # only segments with two or more MACs connnect something
+        for d in cat.get_if_client_devices(seg):
+            if _passes_filter(dev, filter) and dev.id != d.id:
+                return True
+
     segments = set()
     for i in cat.get_device_interfaces(dev.id):
         seg = cat.get_network_segment(i.macaddress)
         if seg.id not in segments:
-            yield seg
             segments.add(seg.id)
+            if segment_connnects_something(seg):
+                yield seg
 
 def _fromNetworkSegmentToDevices(seg, filter, cat):
     for dev in cat.get_if_client_devices(seg):

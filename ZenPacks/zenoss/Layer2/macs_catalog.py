@@ -252,7 +252,7 @@ cat.show_content()
 class NetworkSegment(set):
     @property
     def id(self):
-        return ','.join(sorted(self))
+        return ', '.join(sorted(self)[:3]) + (' ...' if len(self) > 3 else '')
 
     def titleOrId(self):
         return self.id
