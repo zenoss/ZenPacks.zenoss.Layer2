@@ -239,7 +239,8 @@ cat.show_content()
             return 'Please, use "pip install tabulate" to install tabulate'
 
         print tabulate(
-            ((b.id, b.device, b.macaddress, b.clientmacs)
+            ((b.id, b.device, b.macaddress,
+            ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''))
             for b in self.search()),
             headers=('ID', 'Device', 'MAC', 'Client MACs')
         )
@@ -251,7 +252,7 @@ cat.show_content()
 class NetworkSegment(set):
     @property
     def id(self):
-        return ','.join(self)
+        return ','.join(sorted(self))
 
     def titleOrId(self):
         return self.id
@@ -267,8 +268,6 @@ class NetworkSegment(set):
             ['zenevents_2_noack noack', 0, 0],
             ['zenevents_1_noack noack', 0, 0]
         ]
-
-
 
 def unique(l):
     return list(set(l))
