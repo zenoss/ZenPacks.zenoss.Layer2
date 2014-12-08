@@ -10,6 +10,7 @@
 import json
 
 from functools import partial
+from itertools import chain
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
@@ -94,12 +95,19 @@ def _fromDeviceToNetworks(dev, filter='/'):
             else:
                 yield net
 
+def _fromDeviceToNetworkSegments(dev, filter, cat):
     # and for L2 devices:
-    cat = CatalogAPI(dev.zport)
-    for d in cat.get_client_devices(dev.id):
-        if _passes_filter(d, filter):
-            d.is_l2_connected = True
-            yield d
+    segments = set()
+    for i in cat.get_device_interfaces(dev.id):
+        seg = cat.get_network_segment(i.macaddress)
+        if seg.id not in segments:
+            yield seg
+            segments.add(seg.id)
+
+def _fromNetworkSegmentToDevices(seg, filter, cat):
+    for dev in cat.get_if_client_devices(seg):
+        if _passes_filter(dev, filter):
+            yield dev
 
 def _passes_filter(dev, filter):
     if dev is None:
@@ -116,11 +124,16 @@ def _fromNetworkToDevices(net, filter):
         if _passes_filter(dev, filter):
             yield dev
 
-def _get_related(node, filter='/'):
+def _get_related(node, filter, cat):
     if isinstance(node, IpNetwork):
         return _fromNetworkToDevices(node, filter)
     elif isinstance(node, Device):
-        return _fromDeviceToNetworks(node, filter)
+        return chain(
+            _fromDeviceToNetworks(node, filter),
+            _fromDeviceToNetworkSegments(node, filter, cat)
+        )
+    elif isinstance(node, set):
+        return _fromNetworkSegmentToDevices(node, filter, cat)
     else:
         raise NotImplementedError
 
@@ -129,11 +142,13 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
         rootnode, returning (network, device) edges.
     """
     if depth == 0: return
-    if not pairs: pairs = []
-    for node in _get_related(rootnode, filter):
-        pair = sorted(x.id for x in (rootnode, node))
+    # print '  ' * (5 - depth), rootnode, type(rootnode)
+    if not pairs: pairs = set()
+    cat = CatalogAPI(rootnode.zport)
+    for node in _get_related(rootnode, filter, cat):
+        pair = tuple(sorted(x.id for x in (rootnode, node)))
         if pair not in pairs:
-            pairs.append(pair)
+            pairs.add(pair)
             yield (rootnode, node)
 
             for n in _get_connections(node, depth-1, pairs, filter):

@@ -20,6 +20,8 @@ from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
+from Products.ZCatalog.interfaces import ICatalogBrain
+
 InterfacesCatalogId = 'interfaces_catalog'
 
 
@@ -142,7 +144,7 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
-        print 'search:', query
+        # print 'search:', query
         return self.catalog.search(query)
 
     def get_device_interfaces(self, device_id):
@@ -204,18 +206,69 @@ cat.show_content()
             res.append(self.get_device_obj(i.device))
         return res
 
-    if __debug__:
-        def show_content(self):
-            for b in self.search():
-                show_brain(b)
+    def get_connected_to(self, macaddress):
+        ''' Return set of MAC addresses which are directly connected to given '''
+        res = set()
+        for i in self.search({'macaddress': macaddress}):
+            for a in i.clientmacs:
+                res.add(a)
+        for i in self.search({'clientmacs': macaddress}):
+            res.add(i.macaddress)
+        return res
+
+    def get_network_segment(self, mac_address):
+        ''' Return set of MAC addresses which belong to the same network segment '''
+
+        visited = NetworkSegment()
+        visited.zport = self.zport # needed for network tree
+        def visit(adr):
+            if adr in visited:
+                return
+            visited.add(adr)
+            for a in self.get_connected_to(adr):
+                visit(a)
+
+        visit(mac_address)
+
+        return visited
+
+    def show_content(self):
+        try:
+            from tabulate import tabulate 
+        except ImportError:
+            return 'Please, use "pip install tabulate" to install tabulate'
+
+        print tabulate(
+            ((b.id, b.device, b.macaddress, b.clientmacs)
+            for b in self.search()),
+            headers=('ID', 'Device', 'MAC', 'Client MACs')
+        )
 
     def get_device_obj(self, device_id):
         return self.zport.dmd.Devices.findDeviceByIdExact(device_id)
 
 
+class NetworkSegment(set):
+    @property
+    def id(self):
+        return ','.join(self)
+
+    def titleOrId(self):
+        return self.id
+
+    def getIconPath(self):
+        return "/zport/dmd/img/icons/network.png"
+
+    def getEventSummary(self):
+        return [
+            ['zenevents_5_noack noack', 0, 0],
+            ['zenevents_4_noack noack', 0, 0],
+            ['zenevents_3_noack noack', 0, 0],
+            ['zenevents_2_noack noack', 0, 0],
+            ['zenevents_1_noack noack', 0, 0]
+        ]
+
+
+
 def unique(l):
     return list(set(l))
-
-
-def show_brain(b):
-    print '%20s %20s %s   %s' % (b.id, b.device, b.macaddress, b.clientmacs)

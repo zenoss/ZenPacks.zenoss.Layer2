@@ -78,10 +78,11 @@ def create_router(id):
 
 def connect(d1, d2):
     ''' Connect two devices by l2 link '''
-    mac = random_mac()
+    mac1 = random_mac()
+    mac2 = random_mac()
 
-    add_interface(d1, clientmacs=[mac])
-    add_interface(d2, macaddress=mac)
+    add_interface(d1, macaddress=mac1, clientmacs=[mac2])
+    add_interface(d2, macaddress=mac2, clientmacs=[mac1])
 
 def add_interface(dev, macaddress='', clientmacs=[]):
     ''' Add new interface to device '''
