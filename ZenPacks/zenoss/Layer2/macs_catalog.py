@@ -206,29 +206,26 @@ cat.show_content()
             res.append(self.get_device_obj(i.device))
         return res
 
-    def get_connected_to(self, macaddress):
-        ''' Return set of MAC addresses which are directly connected to given '''
-        res = set()
-        for i in self.search({'macaddress': macaddress}):
-            for a in i.clientmacs:
-                res.add(a)
-        for i in self.search({'clientmacs': macaddress}):
-            res.add(i.macaddress)
+    def get_connected_to(self, iface):
+        ''' Return dictionary of interfaces which are directly connected to given '''
+        res = {iface.id: iface}
+        for a in iface.clientmacs:
+            for i in self.search({'clientmacs': a}):
+                res[i.id] = i
         return res
 
-    def get_network_segment(self, mac_address):
-        ''' Return set of MAC addresses which belong to the same network segment '''
+    def get_network_segment(self, iface):
+        ''' Return NetworkSegment of interface '''
 
         visited = NetworkSegment()
         visited.zport = self.zport # needed for network tree
-        def visit(adr):
-            if adr in visited:
+        def visit(iface):
+            if iface.id in visited:
                 return
-            visited.add(adr)
-            for a in self.get_connected_to(adr):
-                visit(a)
+            visited[iface.id] = iface
+            map(visit, self.get_connected_to(iface).values())
 
-        visit(mac_address)
+        visit(iface)
 
         return visited
 
@@ -249,10 +246,10 @@ cat.show_content()
         return self.zport.dmd.Devices.findDeviceByIdExact(device_id)
 
 
-class NetworkSegment(set):
+class NetworkSegment(dict):
     @property
     def id(self):
-        return ', '.join(sorted(self)[:3]) + (' ...' if len(self) > 3 else '')
+        return ', '.join(sorted(self.keys()))
 
     def titleOrId(self):
         return self.id
@@ -268,6 +265,10 @@ class NetworkSegment(set):
             ['zenevents_2_noack noack', 0, 0],
             ['zenevents_1_noack noack', 0, 0]
         ]
+
+    @property
+    def macs(self):
+        return set(i.macaddress for i in self.values())
 
 def unique(l):
     return list(set(l))

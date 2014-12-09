@@ -99,20 +99,20 @@ def _fromDeviceToNetworkSegments(dev, filter, cat):
     def segment_connnects_something(seg):
         if len(seg) < 2:
             return False  # only segments with two or more MACs connnect something
-        for d in cat.get_if_client_devices(seg):
+        for d in cat.get_if_client_devices(seg.macs):
             if _passes_filter(dev, filter) and dev.id != d.id:
                 return True
 
     segments = set()
     for i in cat.get_device_interfaces(dev.id):
-        seg = cat.get_network_segment(i.macaddress)
+        seg = cat.get_network_segment(i)
         if seg.id not in segments:
             segments.add(seg.id)
             if segment_connnects_something(seg):
                 yield seg
 
 def _fromNetworkSegmentToDevices(seg, filter, cat):
-    for dev in cat.get_if_client_devices(seg):
+    for dev in cat.get_if_client_devices(seg.macs):
         if _passes_filter(dev, filter):
             yield dev
 
@@ -139,7 +139,7 @@ def _get_related(node, filter, cat):
             _fromDeviceToNetworks(node, filter),
             _fromDeviceToNetworkSegments(node, filter, cat)
         )
-    elif isinstance(node, set):
+    elif isinstance(node, NetworkSegment):
         return _fromNetworkSegmentToDevices(node, filter, cat)
     else:
         raise NotImplementedError
