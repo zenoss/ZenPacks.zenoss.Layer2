@@ -42,13 +42,13 @@ def get_json(edges, main_node=None, pretty=False):
     nodenums = {}
 
     def add_node(n):
-        n_id, n_img, n_col = n
+        n_id = n.titleOrId()
         if not n_id in nodenums:
             nodenums[n_id] = len(nodes)
             nodes.append(dict(
                 name=n_id,
-                image=n_img,
-                color=n_col,
+                image=n.getIconPath(),
+                color=getColor(n),
                 highlight=n_id == main_node,
             ))
 
@@ -56,8 +56,8 @@ def get_json(edges, main_node=None, pretty=False):
         add_node(a)
         add_node(b)
         links.append(dict(
-            source=nodenums[a[0]],
-            target=nodenums[b[0]],
+            source=nodenums[a.titleOrId()],
+            target=nodenums[b.titleOrId()],
             color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 
@@ -69,8 +69,7 @@ def get_json(edges, main_node=None, pretty=False):
 def get_edges(rootnode, depth=1, filter='/'):
     for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter):
         yield (
-            (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
-            (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
+            nodea, nodeb,
             isinstance(nodea, NetworkSegment) or isinstance(nodeb, NetworkSegment)
         )
 

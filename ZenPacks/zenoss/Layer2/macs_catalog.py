@@ -61,11 +61,13 @@ def initializeInterfacesCatalog(catalog):
     catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
     catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
     catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
+    catalog.addIndex('layers', makeCaseSensitiveKeywordIndex('layers'))
 
     catalog.addColumn('id')
     catalog.addColumn('device')
     catalog.addColumn('macaddress')
     catalog.addColumn('clientmacs')
+    catalog.addColumn('layers')
 
 
 class InterfaceConnections(object):
@@ -97,6 +99,13 @@ class InterfaceConnections(object):
             for x in getattr(self.interface, 'clientmacs', [])
             if x
         ]
+    
+    @property
+    def layers(self):
+        res = ['layer2']
+        if hasattr(self.interface, 'vlans'):
+            res.extend(vlan.id for vlan in self.interface.vlans())
+        return res
 
 
 class CatalogAPI(object):
@@ -136,6 +145,7 @@ cat.show_content()
 
     def remove_device(self, device):
         self.catalog.remove_interfaces(device)
+        del self._catalog
         log.debug('%s removed from %s' % (device, InterfacesCatalogId))
 
     def clear(self):
@@ -236,10 +246,14 @@ cat.show_content()
             return 'Please, use "pip install tabulate" to install tabulate'
 
         print tabulate(
-            ((b.id, b.device, b.macaddress,
-            ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''))
-            for b in self.search()),
-            headers=('ID', 'Device', 'MAC', 'Client MACs')
+            ((
+                b.id,
+                b.device,
+                b.macaddress,
+                ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''),
+                ', '.join(b.layers),
+            ) for b in self.search()),
+            headers=('ID', 'Device', 'MAC', 'Client MACs', 'Layers')
         )
 
     def get_device_obj(self, device_id):
