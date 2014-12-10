@@ -115,8 +115,8 @@ Device._relations += (
     ('neighbor_switches', ToManyCont(
         ToOne,
         'ZenPacks.zenoss.Layer2.NeighborSwitch.NeighborSwitch',
-        'switch')
-    ),
+        'switch'
+    )),
 )
 
 

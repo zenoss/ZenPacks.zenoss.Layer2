@@ -210,7 +210,7 @@ cat.show_content()
         ''' Return dictionary of interfaces which are directly connected to given '''
         res = {iface.id: iface}
         for a in iface.clientmacs:
-            for i in self.search({'clientmacs': a}):
+            for i in self.search({'macaddress': a}):
                 res[i.id] = i
         return res
 

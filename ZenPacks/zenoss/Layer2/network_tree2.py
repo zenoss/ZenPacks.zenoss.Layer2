@@ -149,7 +149,6 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
         rootnode, returning (network, device) edges.
     """
     if depth == 0: return
-    # print '  ' * (5 - depth), rootnode, type(rootnode)
     if not pairs: pairs = set()
     cat = CatalogAPI(rootnode.zport)
     for node in _get_related(rootnode, filter, cat):
