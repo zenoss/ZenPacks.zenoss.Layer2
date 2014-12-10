@@ -118,17 +118,16 @@ var render_network_map = function(panel_selector, control_form_selector) {
     var updating = false;
     var update_view = function() {
         // Sets form fields and redraws graph according to hash state
-        
         if(updating) return;
         updating = true;
 
         // get new data and redraw map
         var hash = get_hash();
         d3.json('/zport/dmd/getJSONEdges?' + hash, function(error, json) {
-            if(error) return show_error(error);
-            if(json.error) return show_error(json.error);
-            draw_graph(json);
             updating = false;
+            if(error) return show_error(error);
+            if(json.error) return show_error(json.error); 
+            draw_graph(json);
         });
 
         // update form
