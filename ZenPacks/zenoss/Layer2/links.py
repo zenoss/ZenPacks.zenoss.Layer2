@@ -34,15 +34,14 @@ class DeviceLinkProvider(object):
         cat = CatalogAPI(self.device.zport)
         try:
             upstream = cat.get_upstream_devices(self.device.id)
-        except IndexError: # device id was not found
+        except IndexError:  # device id was not found
             upstream = []
         try:
             client = cat.get_client_devices(self.device.id)
-        except IndexError: # device id was not found
+        except IndexError:  # device id was not found
             client = []
 
-        for brain in chain(upstream, client):
-            obj = brain.getObject()
+        for obj in chain(upstream, client):
             if obj.getDeviceClassName().startswith('/Network'):
                 links.add('Switch: <a href="{}">{}</a>'.format(
                     obj.getPrimaryUrlPath(), obj.titleOrId()

@@ -9,26 +9,33 @@
 
 import json
 
+from functools import partial
+from itertools import chain
+
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
 from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
-from .macs_catalog import CatalogAPI
+from .macs_catalog import CatalogAPI, NetworkSegment
 
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
 
-def get_json(edges, main_node=None):
+def get_json(edges, main_node=None, pretty=False):
     '''
         Return JSON dump of network graph passed as edges.
         edges is iterable of pairs of tuples with node data or exception
         main_node is id of root node to highlight
     '''
+    serialize = partial(json.dumps, indent=2 if pretty else None)
+
+    # In case of exception - return json with error message
     if isinstance(edges, Exception):
-        return json.dumps(dict(
+        return serialize(dict(
             error=edges.message,
         ))
+
     nodes = []
     links = []
 
@@ -54,7 +61,7 @@ def get_json(edges, main_node=None):
             color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 
-    return json.dumps(dict(
+    return serialize(dict(
         links=links,
         nodes=nodes,
     ))
@@ -64,7 +71,7 @@ def get_edges(rootnode, depth=1, filter='/'):
         yield (
             (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
             (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
-            getattr(nodeb, 'is_l2_connected', False)
+            isinstance(nodea, NetworkSegment) or isinstance(nodeb, NetworkSegment)
         )
 
 def getColor(node):
@@ -88,13 +95,26 @@ def _fromDeviceToNetworks(dev, filter='/'):
             else:
                 yield net
 
-    # and for L2 devices:
-    cat = CatalogAPI(dev.zport)
-    for b in cat.get_client_devices(dev.id):
-        d = b.getObject()
-        if _passes_filter(d, filter):
-            d.is_l2_connected = True
-            yield d
+def _fromDeviceToNetworkSegments(dev, filter, cat):
+    def segment_connnects_something(seg):
+        if len(seg) < 2:
+            return False  # only segments with two or more MACs connnect something
+        for d in cat.get_if_client_devices(seg.macs):
+            if _passes_filter(dev, filter) and dev.id != d.id:
+                return True
+
+    segments = set()
+    for i in cat.get_device_interfaces(dev.id):
+        seg = cat.get_network_segment(i)
+        if seg.id not in segments:
+            segments.add(seg.id)
+            if segment_connnects_something(seg):
+                yield seg
+
+def _fromNetworkSegmentToDevices(seg, filter, cat):
+    for dev in cat.get_if_client_devices(seg.macs):
+        if _passes_filter(dev, filter):
+            yield dev
 
 def _passes_filter(dev, filter):
     if dev is None:
@@ -111,11 +131,16 @@ def _fromNetworkToDevices(net, filter):
         if _passes_filter(dev, filter):
             yield dev
 
-def _get_related(node, filter='/'):
+def _get_related(node, filter, cat):
     if isinstance(node, IpNetwork):
         return _fromNetworkToDevices(node, filter)
     elif isinstance(node, Device):
-        return _fromDeviceToNetworks(node, filter)
+        return chain(
+            _fromDeviceToNetworks(node, filter),
+            _fromDeviceToNetworkSegments(node, filter, cat)
+        )
+    elif isinstance(node, NetworkSegment):
+        return _fromNetworkSegmentToDevices(node, filter, cat)
     else:
         raise NotImplementedError
 
@@ -124,11 +149,12 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
         rootnode, returning (network, device) edges.
     """
     if depth == 0: return
-    if not pairs: pairs = []
-    for node in _get_related(rootnode, filter):
-        pair = sorted(x.id for x in (rootnode, node))
+    if not pairs: pairs = set()
+    cat = CatalogAPI(rootnode.zport)
+    for node in _get_related(rootnode, filter, cat):
+        pair = tuple(sorted(x.id for x in (rootnode, node)))
         if pair not in pairs:
-            pairs.append(pair)
+            pairs.add(pair)
             yield (rootnode, node)
 
             for n in _get_connections(node, depth-1, pairs, filter):
