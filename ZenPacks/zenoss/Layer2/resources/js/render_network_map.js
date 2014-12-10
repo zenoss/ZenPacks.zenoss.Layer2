@@ -256,7 +256,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
         node.select('text')
-            .text(function (d) { return d.name; });
+            .text(function (d) { return d.name.slice(0, 20) + ((d.name.length > 20) ? ' ...' : ''); });
 
         // remove
         node.exit().remove();
