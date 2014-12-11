@@ -178,7 +178,6 @@ var render_network_map = function(panel_selector, control_form_selector) {
         elements = form[0][0].elements;
         for(var i=0; i < params['layers'].length; i++) {
             var l = params['layers'][i];
-            console.log('checking', l);
             elements[l].checked = true;
         };
     };

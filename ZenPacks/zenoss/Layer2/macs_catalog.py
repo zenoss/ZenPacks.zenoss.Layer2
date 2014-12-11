@@ -102,9 +102,16 @@ class InterfaceConnections(object):
     
     @property
     def layers(self):
+        def get_vlans(iface):
+            if not hasattr(iface, 'vlans'):
+                return []
+            if callable(iface.vlans):
+                return (vlan.id for vlan in iface.vlans())
+            else:
+                return iface.vlans
+
         res = ['layer2']
-        if hasattr(self.interface, 'vlans'):
-            res.extend(vlan.id for vlan in self.interface.vlans())
+        res.extend(get_vlans(self.interface))
         return res
 
 
@@ -154,10 +161,14 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
+        print query
         return self.catalog.search(query)
 
-    def get_device_interfaces(self, device_id):
-        res = self.search({'device': device_id})
+    def get_device_interfaces(self, device_id, layers=None):
+        query = dict(device=device_id)
+        if layers:
+            query['layers'] = layers
+        res = self.search(query)
         if res:
             return res
         else:
@@ -223,7 +234,7 @@ cat.show_content()
                 res[i.id] = i
         return res
 
-    def get_network_segment(self, iface):
+    def get_network_segment(self, iface, layers=None):
         ''' Return NetworkSegment of interface '''
 
         visited = NetworkSegment()
@@ -238,7 +249,8 @@ cat.show_content()
 
         return visited
 
-    def show_content(self):
+    def show_content(self, **query):
+        ''' Used to watch content of catalog in zendmd '''
         try:
             from tabulate import tabulate 
         except ImportError:
@@ -251,7 +263,7 @@ cat.show_content()
                 b.macaddress,
                 ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''),
                 ', '.join(b.layers),
-            ) for b in self.search()),
+            ) for b in self.search(query)),
             headers=('ID', 'Device', 'MAC', 'Client MACs', 'Layers')
         )
 
