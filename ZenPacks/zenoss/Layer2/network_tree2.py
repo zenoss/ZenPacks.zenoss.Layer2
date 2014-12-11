@@ -22,13 +22,14 @@ from .macs_catalog import CatalogAPI, NetworkSegment
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
 
-def get_json(edges, main_node=None, pretty=False):
+serialize = partial(json.dumps, indent=2)
+
+def get_json(edges, main_node=None):
     '''
         Return JSON dump of network graph passed as edges.
         edges is iterable of pairs of tuples with node data or exception
         main_node is id of root node to highlight
     '''
-    serialize = partial(json.dumps, indent=2 if pretty else None)
 
     # In case of exception - return json with error message
     if isinstance(edges, Exception):
@@ -76,6 +77,7 @@ def get_edges(rootnode, depth=1, filter='/'):
 def getColor(node):
     if isinstance(node, IpNetwork):
         return '0xffffff'
+
     summary = node.getEventSummary()
     colors = '0xff0000 0xff8c00 0xffd700 0x00ff00 0x00ff00'.split()
     color = '0x00ff00'

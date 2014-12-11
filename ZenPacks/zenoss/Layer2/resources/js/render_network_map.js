@@ -32,6 +32,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
         if(!res['filter_type_selec']) res['filter_type_select'] = 'Device Class';
         if(!res['depth']) res['depth'] = 2;
         if(!res['root_id']) res['root_id'] = '';
+        if(!res['repulsion']) res['repulsion'] = 100;
         return res;
     };
 
@@ -76,6 +77,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
     var center_button = form.select('#center_button');
     var scale_display = form.select('#scale_display');
     var repulsion = form.select('#repulsion');
+    var layers_selection = form.select('#layers_selection');
 
     var get_svg = function() {
         var panel = d3.select(panel_selector);
@@ -112,6 +114,18 @@ var render_network_map = function(panel_selector, control_form_selector) {
         element_options.length = 0;
         for(var i = 0; i < options.length; i++) {
             element_options[element_options.length] = new Option(options[i].label, options[i].data);
+        };
+        options = get_filter_options_by_type('Layers');
+        for(var i = 0; i < options.length; i++) {
+            var label = layers_selection.append('label')
+                .attr('name', options[i].data)
+                .text(options[i].label);
+
+            var input = label.append('input')
+                .attr('type', 'checkbox')
+                .attr('id', options[i].data)
+                .attr('name', options[i].data)
+                .attr('value', options[i].data);
         };
     };
 

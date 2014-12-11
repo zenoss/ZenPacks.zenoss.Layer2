@@ -154,7 +154,6 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
-        # print 'search:', query
         return self.catalog.search(query)
 
     def get_device_interfaces(self, device_id):
@@ -255,6 +254,9 @@ cat.show_content()
             ) for b in self.search()),
             headers=('ID', 'Device', 'MAC', 'Client MACs', 'Layers')
         )
+
+    def get_existing_layers(self):
+        return set(layer for i in self.search() for layer in i.layers)
 
     def get_device_obj(self, device_id):
         return self.zport.dmd.Devices.findDeviceByIdExact(device_id)
