@@ -86,7 +86,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
             <button type="button" id="center_button">Center map</button>
             <span id="scale_display" title="Use mousewheel to scale">Scale: 100%</span>
             <br /><br />
-            <div id="layers_selection">Display layers:</div>
+            <div id="layers_selection"></div>
         </form>
         <div id="zennetmap"></div>
     </tal:block>
