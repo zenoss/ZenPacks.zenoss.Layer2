@@ -271,7 +271,7 @@ class NetworkSegment(dict):
         return self.id
 
     def getIconPath(self):
-        return "/zport/dmd/img/icons/network.png"
+        return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
     def getEventSummary(self):
         return [
