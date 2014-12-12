@@ -13,6 +13,11 @@ import string
 from Products.ZenModel.IpInterface import IpInterface
 from ZenPacks.zenoss.Layer2.utils import asmac
 
+Y = '''
+    a1 b1
+    a1 c1
+'''
+
 diamond = '''
     a b
     a c
@@ -44,7 +49,8 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
 def main():
     # create_topology(diamond)
     # create_topology(Y_to_existing)
-    create_topology(binary_tree_topology(deepness=5, root='test'))
+    create_topology(binary_tree_topology(deepness=3, root='test'))
+    # create_topology(Y)
     commit()
 
 def create_topology(connections):
@@ -72,10 +78,11 @@ def create_router(id):
 
 def connect(d1, d2):
     ''' Connect two devices by l2 link '''
-    mac = random_mac()
+    mac1 = random_mac()
+    mac2 = random_mac()
 
-    add_interface(d1, clientmacs=[mac])
-    add_interface(d2, macaddress=mac)
+    add_interface(d1, macaddress=mac1, clientmacs=[mac2])
+    add_interface(d2, macaddress=mac2, clientmacs=[mac1])
 
 def add_interface(dev, macaddress='', clientmacs=[]):
     ''' Add new interface to device '''

@@ -42,8 +42,7 @@ class L2SuppressEventsPlugin(object):
 
         # Look up for upstream device(s)
         cat = CatalogAPI(dmd.zport)
-        for brain in cat.get_upstream_devices(dev.id):
-            obj = brain.getObject()
+        for obj in cat.get_upstream_devices(dev.id):
             if obj.getStatus() > 0:
                 # Upstream router is DOWN, let suppress event
                 log.debug("Upstream router for %s is %s and it's DOWN. Suppressing event." % (

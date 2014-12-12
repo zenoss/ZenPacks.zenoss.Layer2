@@ -51,12 +51,12 @@ class BaseRelationsProvider(object):
 
         return self._guid
 
+
 class DeviceRelationsProvider(BaseRelationsProvider):
     '''
     Adds upstream router(s) as dependency to device on impact graph
     '''
     def getEdges(self):
         cat = CatalogAPI(self._object.zport)
-        for brain in cat.get_upstream_devices(self._object.id):
-            router = brain.getObject()
+        for router in cat.get_upstream_devices(self._object.id):
             yield edge(guid(router), self.guid())

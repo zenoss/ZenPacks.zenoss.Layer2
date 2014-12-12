@@ -115,14 +115,22 @@ var render_network_map = function(panel_selector, control_form_selector) {
         };
     };
 
+    var updating = false;
     var update_view = function() {
         // Sets form fields and redraws graph according to hash state
+        if(updating) return;
+        updating = true;
+
+        // get new data and redraw map
         var hash = get_hash();
         d3.json('/zport/dmd/getJSONEdges?' + hash, function(error, json) {
+            updating = false;
             if(error) return show_error(error);
-            if(json.error) return show_error(json.error);
+            if(json.error) return show_error(json.error); 
             draw_graph(json);
         });
+
+        // update form
         var params = parse_get_query(hash);
         var elements = form[0][0].elements;
         elements['root_id'].value = params['root_id'];
@@ -145,6 +153,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
 
     var refresh_map = function() {
         set_hash(get_form_data(form[0][0]));
+        update_view();
     };
     refresh_button.on('click', refresh_map);
     form.selectAll('input[type=text]').onReturn(refresh_map);
@@ -246,7 +255,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
         node.select('text')
-            .text(function (d) { return d.name; });
+            .text(function (d) { return d.name.slice(0, 20) + ((d.name.length > 20) ? ' ...' : ''); });
 
         // remove
         node.exit().remove();

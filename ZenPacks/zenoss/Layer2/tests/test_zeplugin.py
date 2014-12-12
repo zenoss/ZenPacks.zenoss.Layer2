@@ -33,11 +33,7 @@ class TestSuppressEventsPlugin(BaseTestCase):
         self.apply_plugin(self.evtproxy, self.dmd)
 
     def mock_catalog(self, *objects):
-        brains = [
-            Mock(getObject=Mock(return_value=obj))
-            for obj in objects
-        ]
-        self.CatalogAPI.return_value.get_upstream_devices.return_value = brains
+        self.CatalogAPI.return_value.get_upstream_devices.return_value = objects
 
     def is_suppressed(self):
         return self.evtproxy.eventState == STATUS_SUPPRESSED

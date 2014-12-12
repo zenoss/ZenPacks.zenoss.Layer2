@@ -19,6 +19,9 @@ def fake_device():
     d.os.interfaces.return_value = [Mock(
         macaddress='mac1',
         clientmacs=['mac2'],
+        id='i1',
+        device=Mock(return_value=Mock(id='device_mock')),
+        getPhysicalPath=Mock(return_value=('device_mock', 'i1'))
     )]
     return d
 
@@ -38,9 +41,9 @@ class TestCatalogAPI(BaseTestCase):
         brains = self.cat.search()
 
         self.assertEqual(len(brains), 1)
-        self.assertEqual(brains[0].macaddresses, ['MAC1'])
+        self.assertEqual(brains[0].macaddress, 'MAC1')
         self.assertEqual(brains[0].clientmacs, ['MAC2'])
-        self.assertEqual(brains[0].id, 'id')
+        self.assertEqual(brains[0].id, 'i1')
 
     def test_device_is_deleted_from_catalog(self):
         d = fake_device()
@@ -55,7 +58,7 @@ class TestCatalogAPI(BaseTestCase):
 
         self.cat.add_device(d)
 
-        self.assertEqual(self.cat.get_device_macadresses('id'), ['MAC1'])
+        self.assertEqual(self.cat.get_device_macadresses('device_mock'), ['MAC1'])
 
 
 def test_suite():

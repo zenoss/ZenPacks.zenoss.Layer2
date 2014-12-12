@@ -24,7 +24,7 @@ from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
-from .macs_catalog import CatalogAPI, DeviceConnections
+from .macs_catalog import CatalogAPI
 from .network_tree2 import get_edges, get_json
 
 unused(Globals)
@@ -79,7 +79,6 @@ def get_clients_links(self):
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-
     catapi = CatalogAPI(self.zport)
     catapi.add_device(self)
 
@@ -104,29 +103,35 @@ def get_reindex_maps(self):
     ''' Should return something distinct from value passed to
         set_reindex_maps for set_reindex_maps to run
     '''
-    return set(DeviceConnections(self).clientmacs)
-
+    return set(
+        x.upper()
+        for i in self.os.interfaces()
+        if getattr(i, 'clientmacs')
+        for x in i.clientmacs
+        if x
+    )
 
 Device._relations += (
     ('neighbor_switches', ToManyCont(
         ToOne,
         'ZenPacks.zenoss.Layer2.NeighborSwitch.NeighborSwitch',
-        'switch')
-    ),
+        'switch'
+    )),
 )
 
+
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth=None, filter='/'):
+def getJSONEdges(self, root_id='', depth='2', filter='/', pretty=False):
     ''' Get JSON representation of network nodes '''
     if not root_id:
         return get_json(Exception("You should set a device name"))
     root_id = urllib.unquote(root_id)
     obj = self.Devices.findDevice(root_id)
     if not obj:
-        return get_json(Exception('Device %r not found' % root_id))
+        return get_json(Exception('Device %r was not found' % root_id))
     return get_json(get_edges(
-        obj, int(depth or 2), filter=filter
-    ), obj.id)
+        obj, int(depth), filter=filter
+    ), obj.id, pretty)
 
 # -- IP Interfaces overrides --------------------------------------------------
 
