@@ -76,10 +76,10 @@ def get_edges(rootnode, depth=1, filter='/'):
 
 def getColor(node):
     if isinstance(node, IpNetwork):
-        return '0xffffff'
+        return '#ffffff'
     summary = node.getEventSummary()
-    colors = '0xff0000 0xff8c00 0xffd700 0x00ff00 0x00ff00'.split()
-    color = '0x00ff00'
+    colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
+    color = '#00ff00'
     for i in range(5):
         if summary[i][2]>0:
             color = colors[i]
