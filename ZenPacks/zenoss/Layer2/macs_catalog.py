@@ -61,11 +61,13 @@ def initializeInterfacesCatalog(catalog):
     catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
     catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
     catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
+    catalog.addIndex('layers', makeCaseSensitiveKeywordIndex('layers'))
 
     catalog.addColumn('id')
     catalog.addColumn('device')
     catalog.addColumn('macaddress')
     catalog.addColumn('clientmacs')
+    catalog.addColumn('layers')
 
 
 class InterfaceConnections(object):
@@ -97,6 +99,20 @@ class InterfaceConnections(object):
             for x in getattr(self.interface, 'clientmacs', [])
             if x
         ]
+    
+    @property
+    def layers(self):
+        def get_vlans(iface):
+            if not hasattr(iface, 'vlans'):
+                return []
+            if callable(iface.vlans):
+                return (vlan.id for vlan in iface.vlans())
+            else:
+                return iface.vlans
+
+        res = ['layer2']
+        res.extend(get_vlans(self.interface))
+        return res
 
 
 class CatalogAPI(object):
@@ -136,6 +152,7 @@ cat.show_content()
 
     def remove_device(self, device):
         self.catalog.remove_interfaces(device)
+        del self._catalog
         log.debug('%s removed from %s' % (device, InterfacesCatalogId))
 
     def clear(self):
@@ -144,11 +161,14 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
-        # print 'search:', query
+        print query
         return self.catalog.search(query)
 
-    def get_device_interfaces(self, device_id):
-        res = self.search({'device': device_id})
+    def get_device_interfaces(self, device_id, layers=None):
+        query = dict(device=device_id)
+        if layers:
+            query['layers'] = layers
+        res = self.search(query)
         if res:
             return res
         else:
@@ -214,7 +234,7 @@ cat.show_content()
                 res[i.id] = i
         return res
 
-    def get_network_segment(self, iface):
+    def get_network_segment(self, iface, layers=None):
         ''' Return NetworkSegment of interface '''
 
         visited = NetworkSegment()
@@ -229,18 +249,26 @@ cat.show_content()
 
         return visited
 
-    def show_content(self):
+    def show_content(self, **query):
+        ''' Used to watch content of catalog in zendmd '''
         try:
             from tabulate import tabulate 
         except ImportError:
             return 'Please, use "pip install tabulate" to install tabulate'
 
         print tabulate(
-            ((b.id, b.device, b.macaddress,
-            ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''))
-            for b in self.search()),
-            headers=('ID', 'Device', 'MAC', 'Client MACs')
+            ((
+                b.id,
+                b.device,
+                b.macaddress,
+                ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''),
+                ', '.join(b.layers),
+            ) for b in self.search(query)),
+            headers=('ID', 'Device', 'MAC', 'Client MACs', 'Layers')
         )
+
+    def get_existing_layers(self):
+        return set(layer for i in self.search() for layer in i.layers)
 
     def get_device_obj(self, device_id):
         return self.zport.dmd.Devices.findDeviceByIdExact(device_id)

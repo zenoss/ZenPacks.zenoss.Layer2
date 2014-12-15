@@ -17,6 +17,7 @@ def fake_device():
     d.getPhysicalPath.return_value = ('device_mock',)
     d.id = 'id'
     d.os.interfaces.return_value = [Mock(
+        vlans=Mock(return_value=('id', 'vlan1')),
         macaddress='mac1',
         clientmacs=['mac2'],
         id='i1',

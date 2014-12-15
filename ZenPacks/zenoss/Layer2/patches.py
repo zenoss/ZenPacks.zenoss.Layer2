@@ -25,7 +25,7 @@ from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
 from .macs_catalog import CatalogAPI
-from .network_tree2 import get_edges, get_json
+from .network_tree2 import get_edges, get_json, serialize
 
 unused(Globals)
 
@@ -121,7 +121,7 @@ Device._relations += (
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth='2', filter='/', pretty=False):
+def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
     ''' Get JSON representation of network nodes '''
     if not root_id:
         return get_json(Exception("You should set a device name"))
@@ -129,9 +129,19 @@ def getJSONEdges(self, root_id='', depth='2', filter='/', pretty=False):
     obj = self.Devices.findDevice(root_id)
     if not obj:
         return get_json(Exception('Device %r was not found' % root_id))
+
+    if layers:
+        layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
+
     return get_json(get_edges(
-        obj, int(depth), filter=filter
-    ), obj.id, pretty)
+        obj, int(depth), filter=filter, layers=layers
+    ), obj.id)
+
+@monkeypatch('Products.ZenModel.DataRoot.DataRoot')
+def getNetworkLayers(self):
+    ''' Return existing network layers on network map '''
+    cat = CatalogAPI(self.zport)
+    return cat.get_existing_layers()
 
 # -- IP Interfaces overrides --------------------------------------------------
 

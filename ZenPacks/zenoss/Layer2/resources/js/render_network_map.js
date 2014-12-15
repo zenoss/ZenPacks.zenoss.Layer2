@@ -32,6 +32,12 @@ var render_network_map = function(panel_selector, control_form_selector) {
         if(!res['filter_type_selec']) res['filter_type_select'] = 'Device Class';
         if(!res['depth']) res['depth'] = 2;
         if(!res['root_id']) res['root_id'] = '';
+        if(!res['repulsion']) res['repulsion'] = 100;
+        if(res['layers']) {
+            res['layers'] = res['layers'].split(',');
+        } else {
+            res['layers'] = get_filter_options_by_type('Layers').map(function(e) {return e.data});
+        };
         return res;
     };
 
@@ -45,12 +51,23 @@ var render_network_map = function(panel_selector, control_form_selector) {
     var get_form_data = function (form) {
         // Return get query based on form values
         var elements = form.elements;
+        var get_layers = function(elements) {
+            var res = [];
+            for(var i = 0; i < elements.length; i++) {
+                var e = elements[i];
+                if(e.name.startswith('layer_')) {
+                    if(e.checked) { res.push(e.name) };
+                }
+            };
+            return res.join(',');
+        };
         return serialize_get_query({
             'root_id': elements['root_id'].value,
             'depth': elements['depth'].value,
             'filter': elements['filter_select'].value,
             'filter_type_select': elements['filter_type_select'].value,
-            'repulsion': elements['repulsion'].value
+            'repulsion': elements['repulsion'].value,
+            'layers': get_layers(elements)
         });
     };
 
@@ -67,8 +84,8 @@ var render_network_map = function(panel_selector, control_form_selector) {
     // Binding to UI: //
     ////////////////////
 
+    // TODO: rewrite using Ext.js
     var form = d3.select(control_form_selector);
-
     var filter_label = form.select('#filter_label'); 
     var filter_select = form.select('#filter_select');
     var filter_type_select = form.select('#filter_type_select');
@@ -76,6 +93,7 @@ var render_network_map = function(panel_selector, control_form_selector) {
     var center_button = form.select('#center_button');
     var scale_display = form.select('#scale_display');
     var repulsion = form.select('#repulsion');
+    var layers_selection = form.select('#layers_selection');
 
     var get_svg = function() {
         var panel = d3.select(panel_selector);
@@ -115,6 +133,22 @@ var render_network_map = function(panel_selector, control_form_selector) {
         };
     };
 
+    var add_layers_checkboxes = function () {
+        var options = get_filter_options_by_type('Layers');
+        layers_selection.text('Display layers: ');
+        for(var i = 0; i < options.length; i++) {
+            var label = layers_selection.append('label')
+                .attr('name', options[i].data)
+                .text(options[i].label);
+
+            label.append('input')
+                .attr('type', 'checkbox')
+                .attr('id', options[i].data)
+                .attr('name', options[i].data)
+                .attr('value', options[i].data);
+        };
+    };
+
     var updating = false;
     var update_view = function() {
         // Sets form fields and redraws graph according to hash state
@@ -139,6 +173,13 @@ var render_network_map = function(panel_selector, control_form_selector) {
         elements['filter_type_select'].value = params['filter_type_select'];
         load_filters(params['filter_type_select']);
         elements['repulsion'].value = params['repulsion'];
+
+        add_layers_checkboxes();
+        elements = form[0][0].elements;
+        for(var i=0; i < params['layers'].length; i++) {
+            var l = params['layers'][i];
+            elements[l].checked = true;
+        };
     };
 
     /////////////////
