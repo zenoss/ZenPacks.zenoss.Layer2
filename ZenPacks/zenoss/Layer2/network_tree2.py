@@ -22,13 +22,14 @@ from .macs_catalog import CatalogAPI, NetworkSegment
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
 
-def get_json(edges, main_node=None, pretty=False):
+serialize = partial(json.dumps, indent=2)
+
+def get_json(edges, main_node=None):
     '''
         Return JSON dump of network graph passed as edges.
         edges is iterable of pairs of tuples with node data or exception
         main_node is id of root node to highlight
     '''
-    serialize = partial(json.dumps, indent=2 if pretty else None)
 
     # In case of exception - return json with error message
     if isinstance(edges, Exception):
@@ -42,13 +43,13 @@ def get_json(edges, main_node=None, pretty=False):
     nodenums = {}
 
     def add_node(n):
-        n_id, n_img, n_col = n
+        n_id = n.titleOrId()
         if not n_id in nodenums:
             nodenums[n_id] = len(nodes)
             nodes.append(dict(
                 name=n_id,
-                image=n_img,
-                color=n_col,
+                image=n.getIconPath(),
+                color=getColor(n),
                 highlight=n_id == main_node,
             ))
 
@@ -56,8 +57,8 @@ def get_json(edges, main_node=None, pretty=False):
         add_node(a)
         add_node(b)
         links.append(dict(
-            source=nodenums[a[0]],
-            target=nodenums[b[0]],
+            source=nodenums[a.titleOrId()],
+            target=nodenums[b.titleOrId()],
             color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 
@@ -66,17 +67,17 @@ def get_json(edges, main_node=None, pretty=False):
         nodes=nodes,
     ))
 
-def get_edges(rootnode, depth=1, filter='/'):
-    for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter):
+def get_edges(rootnode, depth=1, filter='/', layers=None):
+    for nodea, nodeb in _get_connections(rootnode, int(depth), [], filter, layers):
         yield (
-            (nodea.titleOrId(), nodea.getIconPath(), getColor(nodea)),
-            (nodeb.titleOrId(), nodeb.getIconPath(), getColor(nodeb)),
+            nodea, nodeb,
             isinstance(nodea, NetworkSegment) or isinstance(nodeb, NetworkSegment)
         )
 
 def getColor(node):
     if isinstance(node, IpNetwork):
         return '0xffffff'
+
     summary = node.getEventSummary()
     colors = '0xff0000 0xff8c00 0xffd700 0x00ff00 0x00ff00'.split()
     color = '0x00ff00'
@@ -95,7 +96,12 @@ def _fromDeviceToNetworks(dev, filter='/'):
             else:
                 yield net
 
-def _fromDeviceToNetworkSegments(dev, filter, cat):
+def _fromDeviceToNetworkSegments(dev, filter, cat, layers=None):
+    try:
+        interfaces = cat.get_device_interfaces(dev.id, layers)
+    except IndexError:
+        return
+
     def segment_connnects_something(seg):
         if len(seg) < 2:
             return False  # only segments with two or more MACs connnect something
@@ -104,8 +110,8 @@ def _fromDeviceToNetworkSegments(dev, filter, cat):
                 return True
 
     segments = set()
-    for i in cat.get_device_interfaces(dev.id):
-        seg = cat.get_network_segment(i)
+    for i in interfaces:
+        seg = cat.get_network_segment(i, layers)
         if seg.id not in segments:
             segments.add(seg.id)
             if segment_connnects_something(seg):
@@ -131,31 +137,31 @@ def _fromNetworkToDevices(net, filter):
         if _passes_filter(dev, filter):
             yield dev
 
-def _get_related(node, filter, cat):
+def _get_related(node, filter, cat, layers=None):
     if isinstance(node, IpNetwork):
         return _fromNetworkToDevices(node, filter)
     elif isinstance(node, Device):
         return chain(
             _fromDeviceToNetworks(node, filter),
-            _fromDeviceToNetworkSegments(node, filter, cat)
+            _fromDeviceToNetworkSegments(node, filter, cat, layers)
         )
     elif isinstance(node, NetworkSegment):
         return _fromNetworkSegmentToDevices(node, filter, cat)
     else:
         raise NotImplementedError
 
-def _get_connections(rootnode, depth=1, pairs=None, filter='/'):
+def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None):
     """ Depth-first search of the network tree emanating from
         rootnode, returning (network, device) edges.
     """
     if depth == 0: return
     if not pairs: pairs = set()
     cat = CatalogAPI(rootnode.zport)
-    for node in _get_related(rootnode, filter, cat):
+    for node in _get_related(rootnode, filter, cat, layers):
         pair = tuple(sorted(x.id for x in (rootnode, node)))
         if pair not in pairs:
             pairs.add(pair)
             yield (rootnode, node)
 
-            for n in _get_connections(node, depth-1, pairs, filter):
+            for n in _get_connections(node, depth-1, pairs, filter, layers):
                 yield n
