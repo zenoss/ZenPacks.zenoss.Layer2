@@ -44,22 +44,23 @@ def get_json(edges, main_node=None):
     nodenums = {}
 
     def add_node(n):
-        n_id = n.titleOrId()
-        if not n_id in nodenums:
-            nodenums[n_id] = len(nodes)
-            nodes.append(dict(
-                name=n_id,
-                image=n.getIconPath(),
-                color=getColor(n),
-                highlight=n_id == main_node,
-            ))
+        if n.id in nodenums:
+            return
+
+        nodenums[n.id] = len(nodes)
+        nodes.append(dict(
+            name=n.titleOrId(),
+            image=n.getIconPath(),
+            color=getColor(n),
+            highlight=n.id == main_node,
+        ))
 
     for a, b, l2 in edges:
         add_node(a)
         add_node(b)
         links.append(dict(
-            source=nodenums[a.titleOrId()],
-            target=nodenums[b.titleOrId()],
+            source=nodenums[a.id],
+            target=nodenums[b.id],
             color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
         ))
 

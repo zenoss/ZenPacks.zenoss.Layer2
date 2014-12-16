@@ -161,7 +161,6 @@ cat.show_content()
             self.catalog.uncatalog_object(p)
 
     def search(self, query={}):
-        print query
         return self.catalog.search(query)
 
     def get_device_interfaces(self, device_id, layers=None):
