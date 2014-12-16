@@ -273,25 +273,28 @@ var render_network_map = function(panel_selector, control_form_selector) {
 
         node_enter.append("image")
             .attr("x", -16)
-            .attr("y", -18)
+            .attr("y", -16)
             .attr("width", 32)
             .attr("height", 32);
 
         node_enter.append("text")
-            .attr("dx", 12)
+            .attr("dx", 25)
             .attr("dy", ".35em");
 
         // update
         node.select('circle')
-            .style('display', function(d) {
-                if(d.highlight) return 'block';
-                if(d.image) return 'none'; else return 'block';
-            })
             .attr('fill', function(d) {
-                if(d.highlight) return 'Aquamarine';
+                return d.color;
+            })
+            .attr('stroke', function(d) {
+                if(d.highlight) return 'SlateBlue';
+                else return 'gray';
+            })
+            .attr('stroke-width',function(d) {
+                if(d.highlight) return '3';
             })
             .attr('r', function(d) {
-                if(d.highlight) return 20; else return 8;
+                if(d.highlight) return 25; else return 21;
             });
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });

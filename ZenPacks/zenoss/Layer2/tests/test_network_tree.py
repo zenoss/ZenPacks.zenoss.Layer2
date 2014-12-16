@@ -10,7 +10,7 @@
 from __future__ import unicode_literals
 
 import json
-from mock import Mock, sentinel
+from mock import Mock, sentinel, MagicMock
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
@@ -26,8 +26,12 @@ class TestGetJSON(BaseTestCase):
         })
 
     def test_two_nodes(self):
-        a = 'a', 'a_img', 'a_col'
-        b = 'b', 'b_img', 'b_col'
+        a = MagicMock()
+        a.titleOrId.return_value = 'a'
+        a.getIconPath.return_value = 'a_img'
+        b = MagicMock()
+        b.titleOrId.return_value = 'b'
+        b.getIconPath.return_value = 'b_img'
 
         self.assertEqual(json.loads(get_json([
             (a, b, False),
@@ -36,14 +40,18 @@ class TestGetJSON(BaseTestCase):
                 {'source': 0, 'target': 1, 'color': COMMON_LINK_COLOR},
             ],
             'nodes': [
-                {'name': 'a', 'image': 'a_img', 'color': 'a_col', 'highlight': False},
-                {'name': 'b', 'image': 'b_img', 'color': 'b_col', 'highlight': False},
+                {'name': 'a', 'image': 'a_img', 'color': '#00ff00', 'highlight': False},
+                {'name': 'b', 'image': 'b_img', 'color': '#00ff00', 'highlight': False},
             ]
         })
 
     def test_l2_link(self):
-        a = 'a', 'a_img', 'a_col'
-        b = 'b', 'b_img', 'b_col'
+        a = MagicMock()
+        a.titleOrId.return_value = 'a'
+        a.getIconPath.return_value = 'a_img'
+        b = MagicMock()
+        b.titleOrId.return_value = 'b'
+        b.getIconPath.return_value = 'b_img'
 
         self.assertEqual(json.loads(get_json([
             (a, b, True),
@@ -52,8 +60,8 @@ class TestGetJSON(BaseTestCase):
                 {'source': 0, 'target': 1, 'color': L2_LINK_COLOR},
             ],
             'nodes': [
-                {'name': 'a', 'image': 'a_img', 'color': 'a_col', 'highlight': False},
-                {'name': 'b', 'image': 'b_img', 'color': 'b_col', 'highlight': False},
+                {'name': 'a', 'image': 'a_img', 'color': '#00ff00', 'highlight': False},
+                {'name': 'b', 'image': 'b_img', 'color': '#00ff00', 'highlight': False},
             ]
         })
 
