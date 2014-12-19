@@ -74,10 +74,12 @@ class BaseConnectionsProvider(object):
     def __str__(self):
         return '<ConnectionsProvider for: %s>' % self.context
 
+
 class Layer2ConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
         return self.getStatus()
 
     def get_connections(self):
         for interface in self.context.os.interfaces():
+            print dir(interface)
         

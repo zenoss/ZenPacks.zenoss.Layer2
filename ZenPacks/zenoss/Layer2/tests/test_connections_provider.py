@@ -11,4 +11,4 @@ from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.connections_provider import CatalogAPI
+# from ZenPacks.zenoss.Layer2.connections_provider import CatalogAPI
