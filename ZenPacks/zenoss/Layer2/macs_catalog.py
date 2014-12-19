@@ -25,6 +25,7 @@ from Products.ZCatalog.interfaces import ICatalogBrain
 InterfacesCatalogId = 'interfaces_catalog'
 
 
+
 class InterfacesCatalog(GlobalCatalog):
     id = InterfacesCatalogId
 
@@ -145,6 +146,7 @@ cat.show_content()
     def remove_catalog(self):
         factory = InterfacesCatalogFactory()
         factory.remove(self.zport)
+        del self._catalog
 
     def add_device(self, device):
         self.catalog.add_interfaces(device)
@@ -152,7 +154,6 @@ cat.show_content()
 
     def remove_device(self, device):
         self.catalog.remove_interfaces(device)
-        del self._catalog
         log.debug('%s removed from %s' % (device, InterfacesCatalogId))
 
     def clear(self):
