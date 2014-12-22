@@ -19,10 +19,9 @@ from Products.Zuul.catalog.global_catalog import GlobalCatalog
 from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
+from Products.ZCatalog.interfaces import ICatalogBrain
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
-
-from Products.ZCatalog.interfaces import ICatalogBrain
        
 
 class InterfaceConnections(object):
@@ -57,14 +56,6 @@ class InterfaceConnections(object):
     
     @property
     def layers(self):
-        def get_vlans(iface):
-            if not hasattr(iface, 'vlans'):
-                return []
-            if callable(iface.vlans):
-                return (vlan.id for vlan in iface.vlans())
-            else:
-                return iface.vlans
-
         res = ['layer2']
         res.extend(get_vlans(self.interface))
         return res
@@ -219,3 +210,30 @@ class NetworkSegment(dict):
 
 def unique(l):
     return list(set(l))
+
+
+class Layer2ConnectionsProvider(BaseConnectionsProvider):
+    def setup(self):
+        self.cat = CatalogAPI(self.context.dmd.zport)
+
+    def get_status(self):
+        return self.getStatus()
+
+    def get_connections(self):
+        for interface in self.context.os.interfaces():
+            yield cat.get_network_segment(interface)
+
+    def get_layers(self):
+        layers = ['layer2']
+        for interface in self.context.os.interfaces():
+            if has
+            for vlan in interface.vlans():
+                layers.append(vlan.id)
+
+def get_vlans(iface):
+    if not hasattr(iface, 'vlans'):
+        return []
+    if callable(iface.vlans):
+        return (vlan.id for vlan in iface.vlans())
+    else:
+        return iface.vlans

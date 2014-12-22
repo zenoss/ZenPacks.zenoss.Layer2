@@ -66,6 +66,10 @@ class BaseConnectionsProvider(object):
 
     def __init__(self, context):
         self.context = context
+        self.setup()
+
+    def setup(self):
+        ''' Allow to set some shortcuts on class '''
 
     def get_status(self):
         ''' Let all the nodes be up by default '''
@@ -74,7 +78,6 @@ class BaseConnectionsProvider(object):
     def __str__(self):
         return '<ConnectionsProvider for: %s>' % self.context
 
-
 class Layer2ConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
         return self.getStatus()
@@ -82,4 +85,3 @@ class Layer2ConnectionsProvider(BaseConnectionsProvider):
     def get_connections(self):
         for interface in self.context.os.interfaces():
             print dir(interface)
-        
