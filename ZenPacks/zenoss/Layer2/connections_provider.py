@@ -102,5 +102,5 @@ class Layer2ConnectionsProvider(BaseConnectionsProvider):
             yield Connection(id, (mac, ), layers)
             yield Connection(mac, (id, ), layers)
             for cl in ic.clientmacs:
-                if cl:
+                if cl.strip():
                     yield Connection(mac, (cl, ), layers)
