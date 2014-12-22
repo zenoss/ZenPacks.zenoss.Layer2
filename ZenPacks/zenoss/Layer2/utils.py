@@ -27,9 +27,9 @@ CATALOG_INDEX_TYPES = {
 
 
 class ConnectionsCatalog(GlobalCatalog):
-        def __init__(self, name):
-            super(ConnectionsCatalog, self).__init__()
-            self.id = name
+    def __init__(self, name):
+        super(ConnectionsCatalog, self).__init__()
+        self.id = name
 
 
 class BaseCatalogAPI(object):
