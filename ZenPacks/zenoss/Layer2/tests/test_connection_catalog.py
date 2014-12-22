@@ -34,10 +34,15 @@ class TestCatalogAPI(BaseTestCase):
         self.assertEqual(len(self.cat.search()), 0)
 
     def test_connection_is_added_to_catalog(self):
-        c = fake_connection()
-        self.cat.add_connection(c)
-        catalogs = self.cat.search()
-        print catalogs.entity_id, catalogs.connected_to, catalogs.layers
+        self.cat.add_connection(self.connction)
+        brains = self.cat.search()
+
+        self.assertEqual(len(brains), 1)
+        self.assertEqual(brains[0].entity_id, 'connection_id')
+        self.assertEqual(
+            brains[0].connected_to, ('connected_to1', 'connected_to2')
+        )
+        self.assertEqual(brains[0].layers, ('layer1', 'layer2'))
 
     def test_remove_connection(self):
         self.cat.add_connection(self.connction)
