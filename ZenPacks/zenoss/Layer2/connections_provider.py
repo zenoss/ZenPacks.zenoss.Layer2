@@ -5,6 +5,7 @@ from Acquisition import ImplicitAcquisitionWrapper
 from Products.ZenModel.ZenModelRM import ZenModelRM
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
+from .macs_catalog import CatalogAPI, get_vlans
 
 def check_connection(connection):
     assert isinstance(connection.entity_id, str), 'entity_id should be string'
@@ -35,8 +36,8 @@ class Connection(object):
 
     def __init__(self, entity_id, connected_to, layers):
         self.entity_id = entity_id
-        self.connected_to = connected_to
-        self.layers = layers
+        self.connected_to = tuple(connected_to)
+        self.layers = tuple(layers)
 
     @property
     def hash(self):
@@ -44,6 +45,9 @@ class Connection(object):
 
     def __str__(self):
         return '<Connection for: %s>' % self.entity_id
+
+    def tsv(self):
+        return '%s\t%s\t%s' % (self.entity_id, self.connected_to, self.layers)
 
 
 class IConnectionsProvider(Interface):
@@ -78,10 +82,25 @@ class BaseConnectionsProvider(object):
     def __str__(self):
         return '<ConnectionsProvider for: %s>' % self.context
 
+from macs_catalog import InterfaceConnections
+
 class Layer2ConnectionsProvider(BaseConnectionsProvider):
+    def setup(self):
+        self.cat = CatalogAPI(self.context.dmd.zport)
+
     def get_status(self):
-        return self.getStatus()
+        return self.context.getStatus()
 
     def get_connections(self):
         for interface in self.context.os.interfaces():
-            print dir(interface)
+            ic = InterfaceConnections(interface)
+            id = self.context.id
+            layers = ic.layers
+            mac = ic.macaddress.strip()
+            if not mac:
+                continue
+            yield Connection(id, (mac, ), layers)
+            yield Connection(mac, (id, ), layers)
+            for cl in ic.clientmacs:
+                if cl:
+                    yield Connection(mac, (cl, ), layers)

@@ -22,7 +22,6 @@ from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 from Products.ZCatalog.interfaces import ICatalogBrain
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
-from ZenPacks.zenoss.Layer2.connections_provider import BaseConnectionsProvider
        
 
 class InterfaceConnections(object):
@@ -168,6 +167,7 @@ class CatalogAPI(BaseCatalogAPI):
         visited.zport = self.zport  # needed for network tree
 
         def visit(iface):
+            visited.layers.update(get_vlans(iface))
             if iface.id in visited:
                 return
             visited[iface.id] = iface
@@ -185,6 +185,10 @@ class CatalogAPI(BaseCatalogAPI):
 
 
 class NetworkSegment(dict):
+    def __init__(self):
+        super(NetworkSegment, self).__init__()
+        self.layers = set(['layer2'])
+
     @property
     def id(self):
         return ', '.join(sorted(self.keys()))
@@ -213,26 +217,10 @@ def unique(l):
     return list(set(l))
 
 
-class Layer2ConnectionsProvider(BaseConnectionsProvider):
-    def setup(self):
-        self.cat = CatalogAPI(self.context.dmd.zport)
-
-    def get_status(self):
-        return self.getStatus()
-
-    def get_connections(self):
-        for interface in self.context.os.interfaces():
-            yield cat.get_network_segment(interface)
-
-    def get_layers(self):
-        layers = ['layer2']
-        for interface in self.context.os.interfaces():
-            layers.extend(get_vlans(interface))
-
 def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
         return []
     if callable(iface.vlans):
-        return (vlan.id for vlan in iface.vlans())
+        return (vlan.vlan_id for vlan in iface.vlans())
     else:
         return iface.vlans
