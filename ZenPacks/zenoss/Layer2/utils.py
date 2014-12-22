@@ -26,6 +26,12 @@ CATALOG_INDEX_TYPES = {
 }
 
 
+class ConnectionsCatalog(GlobalCatalog):
+        def __init__(self, name):
+            super(ConnectionsCatalog, self).__init__()
+            self.id = name
+
+
 class BaseCatalogAPI(object):
     ''' Provides a methods to store and retrieve data in catalog '''
 
@@ -43,10 +49,7 @@ class BaseCatalogAPI(object):
             return self._catalog
 
         if not hasattr(self.zport, self.name):
-            # FIXME: find a way to pickle this
-            class ConnectionsCatalog(GlobalCatalog):
-                id = self.name
-            catalog = ConnectionsCatalog()
+            catalog = ConnectionsCatalog(self.name)
             for key, value in self.fields.iteritems():
                 catalog.addIndex(key, CATALOG_INDEX_TYPES[value](key))
                 catalog.addColumn(key)
