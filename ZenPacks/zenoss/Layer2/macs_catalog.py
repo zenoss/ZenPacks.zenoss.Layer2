@@ -22,6 +22,7 @@ from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 from Products.ZCatalog.interfaces import ICatalogBrain
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
+from ZenPacks.zenoss.Layer2.connections_provider import BaseConnectionsProvider
        
 
 class InterfaceConnections(object):
@@ -226,9 +227,7 @@ class Layer2ConnectionsProvider(BaseConnectionsProvider):
     def get_layers(self):
         layers = ['layer2']
         for interface in self.context.os.interfaces():
-            if has
-            for vlan in interface.vlans():
-                layers.append(vlan.id)
+            layers.extend(get_vlans(interface))
 
 def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
