@@ -64,4 +64,11 @@
         provides="Products.ZenEvents.interfaces.IPostEventPlugin"
         name="IL2SuppressEventsPlugin"
         />
+
+    <adapter
+        factory=".connections_provider.Layer2ConnectionsProvider"
+        for="Products.ZenModel.Device.Device"
+        provides=".connections_provider.IConnectionsProvider"
+    />
+
 </configure>

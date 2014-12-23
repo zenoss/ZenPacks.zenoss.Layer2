@@ -19,56 +19,10 @@ from Products.Zuul.catalog.global_catalog import GlobalCatalog
 from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
-
 from Products.ZCatalog.interfaces import ICatalogBrain
 
-InterfacesCatalogId = 'interfaces_catalog'
-
-
-class InterfacesCatalog(GlobalCatalog):
-    id = InterfacesCatalogId
-
-    def add_interfaces(self, device):
-        for interface in device.os.interfaces():
-            ic = InterfaceConnections(interface)
-            self.catalog_object(ic)
-
-    def remove_interfaces(self, device):
-        for interface in device.os.interfaces():
-            self.uncatalog_object('/'.join(interface.getPhysicalPath()))
-
-
-class IInterfacesCatalogFactory(IGlobalCatalogFactory):
-    pass
-
-
-class InterfacesCatalogFactory(GlobalCatalogFactory):
-    implements(IInterfacesCatalogFactory)
-
-    def create(self, portal):
-        catalog = InterfacesCatalog()
-        self.setupCatalog(portal, catalog)
-
-    def setupCatalog(self, portal, catalog):
-        initializeInterfacesCatalog(catalog)
-        portal._setObject(InterfacesCatalogId, catalog)
-
-    def remove(self, portal):
-        portal._delObject(InterfacesCatalogId)
-
-def initializeInterfacesCatalog(catalog):
-    catalog.addIndex('id', makeCaseSensitiveFieldIndex('id'))
-    catalog.addIndex('device', makeCaseSensitiveFieldIndex('device'))
-    catalog.addIndex('macaddress', makeCaseSensitiveFieldIndex('macaddress'))
-    catalog.addIndex('clientmacs', makeCaseSensitiveKeywordIndex('clientmacs'))
-    catalog.addIndex('layers', makeCaseSensitiveKeywordIndex('layers'))
-
-    catalog.addColumn('id')
-    catalog.addColumn('device')
-    catalog.addColumn('macaddress')
-    catalog.addColumn('clientmacs')
-    catalog.addColumn('layers')
-
+from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
+       
 
 class InterfaceConnections(object):
     implements(IIndexableWrapper)
@@ -102,72 +56,45 @@ class InterfaceConnections(object):
     
     @property
     def layers(self):
-        def get_vlans(iface):
-            if not hasattr(iface, 'vlans'):
-                return []
-            if callable(iface.vlans):
-                return (vlan.id for vlan in iface.vlans())
-            else:
-                return iface.vlans
-
         res = ['layer2']
         res.extend(get_vlans(self.interface))
         return res
 
 
-class CatalogAPI(object):
-    '''
-        Usage from zendmd:
+class CatalogAPI(BaseCatalogAPI):
 
-from ZenPacks.zenoss.Layer2 import macs_catalog
-cat = macs_catalog.CatalogAPI(zport)
-cat.show_content()
-    '''
-    _catalog = None
-
-    def __init__(self, zport):
-        self.zport = zport
-
-    @property
-    def catalog(self):
-        ''' Find catalog in zport if exists, or create it from scratch'''
-        if self._catalog:
-            return self._catalog
-
-        if not hasattr(self.zport, InterfacesCatalogId):
-            factory = InterfacesCatalogFactory()
-            factory.create(self.zport)
-            log.debug('Created catalog %s' % InterfacesCatalogId)
-
-        self._catalog = getattr(self.zport, InterfacesCatalogId)
-        return self._catalog
-
-    def remove_catalog(self):
-        factory = InterfacesCatalogFactory()
-        factory.remove(self.zport)
+    name = 'interfaces_catalog'
+    fields = dict(
+        id='str',
+        device='str',
+        macaddress='str',
+        clientmacs='list',
+        layers='list'
+    )
 
     def add_device(self, device):
-        self.catalog.add_interfaces(device)
-        log.debug('%s added to %s' % (device, InterfacesCatalogId))
+        for interface in device.os.interfaces():
+            ic = InterfaceConnections(interface)
+            self.catalog.catalog_object(ic)
+        log.debug('%s added to %s' % (device, self.name))
 
     def remove_device(self, device):
-        self.catalog.remove_interfaces(device)
-        del self._catalog
-        log.debug('%s removed from %s' % (device, InterfacesCatalogId))
+        for interface in device.os.interfaces():
+            self.catalog.uncatalog_object(
+                '/'.join(interface.getPhysicalPath())
+            )
+        log.debug('%s removed from %s' % (device, self.name))
 
     def clear(self):
         for b in self.search():
             p = b.getPath()
             self.catalog.uncatalog_object(p)
 
-    def search(self, query={}):
-        return self.catalog.search(query)
-
     def get_device_interfaces(self, device_id, layers=None):
         query = dict(device=device_id)
         if layers:
             query['layers'] = layers
-        res = self.search(query)
+        res = self.search(**query)
         if res:
             return res
         else:
@@ -237,8 +164,10 @@ cat.show_content()
         ''' Return NetworkSegment of interface '''
 
         visited = NetworkSegment()
-        visited.zport = self.zport # needed for network tree
+        visited.zport = self.zport  # needed for network tree
+
         def visit(iface):
+            visited.layers.update(get_vlans(iface))
             if iface.id in visited:
                 return
             visited[iface.id] = iface
@@ -248,24 +177,6 @@ cat.show_content()
 
         return visited
 
-    def show_content(self, **query):
-        ''' Used to watch content of catalog in zendmd '''
-        try:
-            from tabulate import tabulate 
-        except ImportError:
-            return 'Please, use "pip install tabulate" to install tabulate'
-
-        print tabulate(
-            ((
-                b.id,
-                b.device,
-                b.macaddress,
-                ', '.join(b.clientmacs[:5]) + (' ...' if len(b.clientmacs) > 5 else ''),
-                ', '.join(b.layers),
-            ) for b in self.search(query)),
-            headers=('ID', 'Device', 'MAC', 'Client MACs', 'Layers')
-        )
-
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)
 
@@ -274,6 +185,10 @@ cat.show_content()
 
 
 class NetworkSegment(dict):
+    def __init__(self):
+        super(NetworkSegment, self).__init__()
+        self.layers = set(['layer2'])
+
     @property
     def id(self):
         return ', '.join(sorted(self.keys()))
@@ -297,5 +212,15 @@ class NetworkSegment(dict):
     def macs(self):
         return set(i.macaddress for i in self.values())
 
+
 def unique(l):
     return list(set(l))
+
+
+def get_vlans(iface):
+    if not hasattr(iface, 'vlans'):
+        return []
+    if callable(iface.vlans):
+        return (vlan.vlan_id for vlan in iface.vlans())
+    else:
+        return iface.vlans
