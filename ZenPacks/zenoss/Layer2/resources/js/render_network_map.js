@@ -9,6 +9,52 @@
 
 "use strict";
 
+var render_form = function(panel) {
+    var sidebar = Ext.create('Ext.form.Panel', {
+        title: 'sidebar',
+        //width: 200,
+        bodyPadding: 10,
+        defaultType: 'textfield',
+        layout : {
+            type: 'vbox',
+            padding: 5,
+            align: 'stretch',
+        },
+        items: [
+            {
+                fieldLabel: 'Device ID',
+                name: 'deviceID'
+            },
+            {
+                fieldLabel: 'Depth',
+                name: 'depth',
+                xtype: 'numberfield',
+                value: 2,
+                maxValue: 10,
+                minValue: 1,
+            },
+        ]
+    });
+
+    var map = Ext.create('Ext.panel.Panel', {
+        title: 'Network map',
+    });
+
+    panel.add(Ext.create('Ext.panel.Panel', {
+        title: 'network map panel',
+        layout: {
+            type: 'hbox',
+            pack: 'start',
+            align: 'stretch'
+        },
+        items: [
+            {html: sidebar, width: 200},
+            {html:'panel 2', flex:1},
+        ],
+    }));
+};
+
+/*
 var render_network_map = function(panel_selector, control_form_selector) {
     ////////////////////////////////////////////////////////
     // Library (function without external dependencies):  //
@@ -317,3 +363,4 @@ var render_network_map = function(panel_selector, control_form_selector) {
         });
     };
 };
+*/

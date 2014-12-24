@@ -36,6 +36,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
         "></script>
 
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
+        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
         <style type="text/css">
           #center {
@@ -43,13 +44,14 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
               overflow: hidden;
               position: relative;
           }
-          #zennetmap {
+        #zennetmap {
             height: 100%;
             width: 100%;
             overflow: hidden;
             position: relative; 
             background-color: #ffffff;
             border: 1px solid gray;
+            float: left;
         }
         .link {
             stroke: #ccc;
@@ -61,9 +63,10 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
         input {
             margin-right: 2em;
         }
-        form#nmdevice {
+        #nmdevice {
            padding: 1em; 
-           width: 100%;
+           width: 200px;
+           height: 100%;
            float: left;
            background-color: #ffffff;
         }
@@ -71,7 +74,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
     </tal:block>
 
     <tal:block metal:fill-slot="center_panel_content">
-        <form id="nmdevice">
+        <!-- <form>
             Device ID: <input type="text" name="root_id" value=""/> 
             Depth: <input type="number" name="depth" min="1" max="10" size="2" value="2"/>
             Filter by: <select id="filter_type_select">
@@ -88,14 +91,18 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
             <br /><br />
             <div id="layers_selection"></div>
         </form>
-        <div id="zennetmap"></div>
+        <div id="nmdevice"></div>
+        <div id="zennetmap"></div> -->
     </tal:block>
 
     <tal:block metal:fill-slot="script_afterLayout">
-    <!-- Use this slot to perform any post-layout steps. -->
         <script type="text/javascript">
             Ext.onReady(function(){
-                render_network_map('#zennetmap', '#nmdevice');
+                var cp = Ext.getCmp('center_panel');
+                cp.removeAll();
+                render_form(cp);
+                // var graph = graph_renderer('#zennetmap');
+                //graph.draw(graph_data);
             });
         </script>
     </tal:block>
