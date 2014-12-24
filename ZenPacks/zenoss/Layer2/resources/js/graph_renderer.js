@@ -50,10 +50,11 @@ window.graph_renderer = function(panel_selector) {
 
     var set_repulsion = function (force, value) {
         // set repulsion value on force layout
+        console.log(value);
         return force
             .linkDistance(+value)
             .chargeDistance(4 * value)
-            .charge(-5 * value);
+            .charge(-5 * value)
     };
 
     var force = set_repulsion(d3.layout.force(), 100)
@@ -151,6 +152,6 @@ window.graph_renderer = function(panel_selector) {
     return {
         draw: draw_graph,
         center: center,
-        set_repulsion: function(value) { set_repulsion(force, value) },
+        set_repulsion: function(value) { set_repulsion(force, value).start() },
     };
 };
