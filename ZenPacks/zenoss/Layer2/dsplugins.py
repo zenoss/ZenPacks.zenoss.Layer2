@@ -171,10 +171,12 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
     component = None
 
     def get_snmp_client(self, vlan, config, ds0):
-
+        """Returns configured SNMP client object"""
         # using community string indexing
         # http://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/40367-camsnmp40367.html
-        ds0.zSnmpCommunity = self.community + "@" + vlan
+        ds0.zSnmpCommunity = self.community
+        if vlan:
+            ds0.zSnmpCommunity = self.community + "@" + vlan
 
         sc = SnmpClient(
             hostname=config.id,
@@ -210,7 +212,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             yield drive(sc.doRun)
             self._prep_iftable(self.get_snmp_data(sc))
             sc.stop()
-                
+
         results['maps'] = self.get_maps()
 
         defer.returnValue(results)
@@ -228,6 +230,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         Yields sequence of strings - vlans ids,
         extracted from keys in self.iftable
         '''
+        yield ''  # for query without VLAN id
         for ifid in self.iftable:
             if 'vlan' in ifid.lower():
                 yield ifid.lower().replace('vlan', '')
