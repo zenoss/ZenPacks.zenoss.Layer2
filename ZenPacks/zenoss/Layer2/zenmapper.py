@@ -7,7 +7,6 @@
 #
 ##############################################################################
 
-from twisted.internet.defer import maybeDeferred
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
 import Globals
@@ -22,7 +21,6 @@ class ZenMapper(CyclingDaemon):
 
     name = 'zenmapper'
     mname = name
-    init_log = True
 
     def buildOptions(self):
         super(CyclingDaemon, self).buildOptions()
@@ -38,41 +36,19 @@ class ZenMapper(CyclingDaemon):
             " events. Default is %s." % DEFAULT_MONITOR)
 
     def main_loop(self):
-        if self.init_log:
-            log.info("Initializing")
-            self.init_log = False
-        obj = ZenMapperTask(self.dmd)
-        task = maybeDeferred(obj.find_connections)
-        task.addCallback(obj.onSuccess)
-        task.addErrback(obj.onError)
-
-
-class ZenMapperTask(object):
-    def __init__(self, dmd):
-        self.dmd = dmd
-        self.connection = CatalogAPI(dmd.zport)
-
-    def find_connections(self):
         log.info('Serching for connection providers')
-        devices = self.dmd.Devices.getSubDevices()
-        cp_list = []
-        for device in devices:
+        cat = CatalogAPI(self.dmd.zport)
+        for device in self.dmd.Devices.getSubDevices():
             try:
                 cp = IConnectionsProvider(device)
-                cp_list.extend(list(cp.get_connections()))
             except TypeError:
+                log.debug(
+                    'Ignoring {0} because could not adapt'.format(device.id)
+                )
                 continue
-        return cp_list
-
-    def onSuccess(self, result):
-        log.info('Updating catalog')
-        for connection in result:
-            self.connection.add_connection(connection)
+            for connection in cp.get_connections():
+                cat.add_connection(connection)
         commit()
-
-    def onError(self, reason):
-        log.error('Error collecting data: {}'.format(reason.getErrorMessage()))
-
 
 if __name__ == '__main__':
     zenmapper = ZenMapper()
