@@ -17,7 +17,7 @@ from Products.ZenModel.IpNetwork import IpNetwork
 from Products.ZenModel.Device import Device
 from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
-from .macs_catalog import CatalogAPI, NetworkSegment
+from .connections_catalog import CatalogAPI
 
 COMMON_LINK_COLOR = '#ccc'
 L2_LINK_COLOR = '#4682B4'
@@ -76,9 +76,10 @@ def get_edges(rootnode, depth=1, filter='/', layers=None):
     ):
         yield (
             nodea, nodeb,
-            isinstance(nodea, NetworkSegment) or isinstance(
-                nodeb, NetworkSegment
-            )
+            False
+            # isinstance(nodea, NetworkSegment) or isinstance(
+            #     nodeb, NetworkSegment
+            # )
         )
 
 
@@ -95,6 +96,7 @@ def getColor(node):
     return color
 
 
+'''
 def _fromDeviceToNetworks(dev, filter='/'):
     for iface in dev.os.interfaces():
         for ip in iface.ipaddresses():
@@ -150,23 +152,50 @@ def _fromNetworkToDevices(net, filter):
         dev = ip.device()
         if _passes_filter(dev, filter):
             yield dev
+'''
+
+
+class NodeAdapter(object):
+    def __init__(self, node):
+        self.node = node
+
+    @property
+    def id(self):
+        if hasattr(self.node, 'id'):
+            return self.node.id
+        else:
+            return self.node
+
+    def titleOrId(self):
+        if hasattr(self.node, 'titleOrId'):
+            return self.node.titleOrId()
+        else:
+            return self.id
+
+    def getIconPath(self):
+        if hasattr(self.node, 'getIconPath'):
+            return self.node.getIconPath()
+        else:
+            return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
+
+    def getEventSummary(self):
+        if hasattr(self.node, 'getEventSummary'):
+            return self.node.getEventSummary()
+        else:
+            return [
+                ['zenevents_5_noack noack', 0, 0],
+                ['zenevents_4_noack noack', 0, 0],
+                ['zenevents_3_noack noack', 0, 0],
+                ['zenevents_2_noack noack', 0, 0],
+                ['zenevents_1_noack noack', 0, 0]
+            ]
 
 
 def _get_related(node, filter, cat, layers=None):
-    if isinstance(node, IpNetwork):
-        return _fromNetworkToDevices(node, filter)
-    elif isinstance(node, Device):
-        return chain(
-            _fromDeviceToNetworks(node, filter),
-            _fromDeviceToNetworkSegments(node, filter, cat, layers)
-        )
-    elif isinstance(node, NetworkSegment):
-        return _fromNetworkSegmentToDevices(node, filter, cat)
-    else:
-        raise NotImplementedError
+    return map(NodeAdapter, cat.get_connected(node.id, layers))
+    # TODO: make filter work
 
-
-def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None):
+def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None, cat=None):
     """ Depth-first search of the network tree emanating from
         rootnode, returning (network, device) edges.
     """
@@ -174,12 +203,14 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None):
         return
     if not pairs:
         pairs = set()
-    cat = CatalogAPI(rootnode.zport)
+    if cat is None:
+        cat = CatalogAPI(rootnode.zport)
     for node in _get_related(rootnode, filter, cat, layers):
         pair = tuple(sorted(x.id for x in (rootnode, node)))
+        print pair
         if pair not in pairs:
             pairs.add(pair)
             yield (rootnode, node)
 
-            for n in _get_connections(node, depth - 1, pairs, filter, layers):
+            for n in _get_connections(node, depth - 1, pairs, filter, layers, cat):
                 yield n

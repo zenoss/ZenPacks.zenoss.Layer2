@@ -26,6 +26,10 @@ diamond = '''
     c d B
 '''
 
+two = '''
+    one two layer
+'''
+
 Y_to_existing = '''
     10.87.100.1 fake1
     fake1 fake2
