@@ -78,7 +78,10 @@ class BaseCatalogAPI(object):
             return 'Please, use "pip install tabulate" to install tabulate'
 
         print tabulate(
-            ((getattr(b, f) for f in self.fields.keys())
+            (self.braintuple(b)
                 for b in self.search(**query)),
             headers=self.fields.keys()
         )
+
+    def braintuple(self, brain):
+        return tuple(getattr(brain, f) for f in self.fields.keys())
