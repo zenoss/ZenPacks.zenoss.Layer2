@@ -12,6 +12,7 @@ import string
 
 from Products.ZenModel.IpInterface import IpInterface
 from ZenPacks.zenoss.Layer2.utils import asmac
+from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 
 Y = '''
     a1 b1
@@ -23,6 +24,10 @@ diamond = '''
     a c B
     b d A
     c d B
+'''
+
+two = '''
+    one two layer
 '''
 
 Y_to_existing = '''
@@ -84,6 +89,10 @@ def connect(d1, d2, layers=None):
 
     add_interface(d1, macaddress=mac1, clientmacs=[mac2], layers=layers)
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], layers=layers)
+
+    catapi = CatalogAPI(zport)
+    catapi.add_node(d1)
+    catapi.add_node(d2)
 
 def add_interface(dev, macaddress='', clientmacs=[], layers=None):
     ''' Add new interface to device '''

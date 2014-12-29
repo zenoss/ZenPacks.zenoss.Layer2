@@ -12,7 +12,7 @@ log = logging.getLogger('zen.Layer2')
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
-from .connections_provider import IConnection
+from .connections_provider import IConnection, IConnectionsProvider, connection_hash
 
 
 class CatalogAPI(BaseCatalogAPI):
@@ -39,3 +39,24 @@ class CatalogAPI(BaseCatalogAPI):
     def remove_connection(self, connection):
         self.catalog.uncatalog_object(connection.hash)
         log.debug('%s removed from %s' % (connection, self.name))
+
+    def add_node(self, node):
+        map(self.add_connection, IConnectionsProvider(node).get_connections())
+
+    def remove_node(self, node):
+        map(self.remove_connection, IConnectionsProvider(node).get_connections())
+
+    def get_connected(self, entity_id, layers=None):
+        q = dict(entity_id=entity_id)
+        if layers:
+            q['layers'] = layers
+        for b in self.search(**q):
+            for c in b.connected_to:
+                yield c
+
+    def get_existing_layers(self):
+        return set(layer for i in self.search() for layer in i.layers)
+
+    def clear(self):
+        for b in self.search():
+            self.catalog.uncatalog_object(connection_hash(b))

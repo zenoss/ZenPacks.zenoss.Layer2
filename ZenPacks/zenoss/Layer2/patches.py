@@ -24,7 +24,8 @@ from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
-from .macs_catalog import CatalogAPI
+from .macs_catalog import CatalogAPI as MACsCatalogAPI
+from .connections_catalog import CatalogAPI
 from .network_tree2 import get_edges, get_json, serialize
 
 unused(Globals)
@@ -54,7 +55,7 @@ def get_clients_links(self):
     if not macs:
         return ""
 
-    cat = CatalogAPI(self._object.zport)
+    cat = MACsCatalogAPI(self._object.zport)
     links = {
         "Other": []
     }
@@ -79,7 +80,7 @@ def get_clients_links(self):
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-    catapi = CatalogAPI(self.zport)
+    catapi = MACsCatalogAPI(self.zport)
     catapi.add_device(self)
 
 
@@ -87,7 +88,7 @@ def index_object(self, idxs=None, noips=False):
 def unindex_object(self):
     original(self)
 
-    catapi = CatalogAPI(self.zport)
+    catapi = MACsCatalogAPI(self.zport)
     catapi.remove_device(self)
 
 
@@ -133,9 +134,13 @@ def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
     if layers:
         layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-    return get_json(get_edges(
-        obj, int(depth), filter=filter, layers=layers
-    ), obj.id)
+    try:
+        return get_json(get_edges(
+            obj, int(depth), filter=filter, layers=layers
+        ), obj.id)
+    except Exception as e:
+        log.exception(e)
+        return get_json(e)
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getNetworkLayers(self):

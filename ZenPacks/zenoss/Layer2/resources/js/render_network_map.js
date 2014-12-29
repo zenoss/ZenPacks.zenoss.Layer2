@@ -9,311 +9,159 @@
 
 "use strict";
 
-var render_network_map = function(panel_selector, control_form_selector) {
-    ////////////////////////////////////////////////////////
-    // Library (function without external dependencies):  //
-    ////////////////////////////////////////////////////////
-
-    d3.selection.prototype.onReturn = function(callback) {
-        return this.on('keydown', function() {
-            if(d3.event.keyCode == 13) callback();
-        });
-    };
-
-    var parse_get_query = function (query) {
-        // Gets string in GET query format ('key=value&key=value') and returns 
-        // an object with attributes set accordingly to values. 
-        // If some keys are not set in query - sets for them default values.
-        var res = {};
-        query.split("&").forEach(function(val) {
-            var pair = val.split('=');
-            res[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-        });
-        if(!res['filter_type_selec']) res['filter_type_select'] = 'Device Class';
-        if(!res['depth']) res['depth'] = 2;
-        if(!res['root_id']) res['root_id'] = '';
-        if(!res['repulsion']) res['repulsion'] = 100;
-        if(res['layers']) {
-            res['layers'] = res['layers'].split(',');
-        } else {
-            res['layers'] = get_filter_options_by_type('Layers').map(function(e) {return e.data});
-        };
-        return res;
-    };
-
-    var serialize_get_query = function (data) {
-        // Return get query string build from attributes of data object.
-        return Object.keys(data).map(function(key) {
-            return [key, data[key]].map(encodeURIComponent).join("=");
-        }).join("&");
-    };
-
-    var get_form_data = function (form) {
-        // Return get query based on form values
-        var elements = form.elements;
-        var get_layers = function(elements) {
-            var res = [];
-            for(var i = 0; i < elements.length; i++) {
-                var e = elements[i];
-                if(e.name.startswith('layer_')) {
-                    if(e.checked) { res.push(e.name) };
-                }
-            };
-            return res.join(',');
-        };
-        return serialize_get_query({
-            'root_id': elements['root_id'].value,
-            'depth': elements['depth'].value,
-            'filter': elements['filter_select'].value,
-            'filter_type_select': elements['filter_type_select'].value,
-            'repulsion': elements['repulsion'].value,
-            'layers': get_layers(elements)
-        });
-    };
-
-
-    var set_repulsion = function (force, value) {
-        // set repulsion value on force layout
-        return force
-            .linkDistance(+value)
-            .chargeDistance(4 * value)
-            .charge(-5 * value);
-    };
-
-    ////////////////////
-    // Binding to UI: //
-    ////////////////////
-
-    // TODO: rewrite using Ext.js
-    var form = d3.select(control_form_selector);
-    var filter_label = form.select('#filter_label'); 
-    var filter_select = form.select('#filter_select');
-    var filter_type_select = form.select('#filter_type_select');
-    var refresh_button = form.select('#refresh_button');
-    var center_button = form.select('#center_button');
-    var scale_display = form.select('#scale_display');
-    var repulsion = form.select('#repulsion');
-    var layers_selection = form.select('#layers_selection');
-
-    var get_svg = function() {
-        var panel = d3.select(panel_selector);
-        var width = panel[0][0].clientWidth;
-        var height = panel[0][0].clientHeight;
-
-        var svg = panel.append("svg")
-            .attr("width", width)
-            .attr("height", height);
-        return svg;
-    }
-
+var render_form = function(panel) {
     var show_error = Zenoss.flares.Manager.error;
 
-    var get_hash = function () {
-        return window.location.hash.substring(1);
-    };
-    var set_hash = function (value) {
-        window.location.hash = '#' + value;
-    };
-    var display_scale = function (sc) {
-        scale_display.text('Scale: ' + Math.round(sc * 100) + '%');
+    var load_filters = function () {
+        var fs = Ext.getCmp('filter_select');
+        var data = window.filter_type_options[this.value];
+        fs.store.loadData(data);
+        fs.reset();
     };
 
-    var get_filter_options_by_type = function (filter_type) {
-        return window.filter_type_options[filter_type];
-    };
-
-    var load_filters = function(filter_type) {
-        // Load filter options for given type
-        filter_label.text(filter_type + ' filter: ');
-        var options = get_filter_options_by_type(filter_type);
-        var element_options = filter_select[0][0].options;
-        element_options.length = 0;
-        for(var i = 0; i < options.length; i++) {
-            element_options[element_options.length] = new Option(options[i].label, options[i].data);
-        };
-    };
-
-    var add_layers_checkboxes = function () {
-        var options = get_filter_options_by_type('Layers');
-        layers_selection.text('Display layers: ');
-        for(var i = 0; i < options.length; i++) {
-            var label = layers_selection.append('label')
-                .attr('name', options[i].data)
-                .text(options[i].label);
-
-            label.append('input')
-                .attr('type', 'checkbox')
-                .attr('id', options[i].data)
-                .attr('name', options[i].data)
-                .attr('value', options[i].data);
-        };
-    };
-
-    var updating = false;
-    var update_view = function() {
-        // Sets form fields and redraws graph according to hash state
-        if(updating) return;
-        updating = true;
-
-        // get new data and redraw map
-        var hash = get_hash();
-        d3.json('/zport/dmd/getJSONEdges?' + hash, function(error, json) {
-            updating = false;
-            if(error) return show_error(error);
-            if(json.error) return show_error(json.error); 
-            draw_graph(json);
-        });
-
-        // update form
-        var params = parse_get_query(hash);
-        var elements = form[0][0].elements;
-        elements['root_id'].value = params['root_id'];
-        elements['depth'].value = params['depth'];
-        elements['filter_select'].value = params['filter'];
-        elements['filter_type_select'].value = params['filter_type_select'];
-        load_filters(params['filter_type_select']);
-        elements['repulsion'].value = params['repulsion'];
-
-        add_layers_checkboxes();
-        elements = form[0][0].elements;
-        for(var i=0; i < params['layers'].length; i++) {
-            var l = params['layers'][i];
-            elements[l].checked = true;
-        };
-    };
-
-    /////////////////
-    // Events:     //
-    /////////////////
-
-    filter_type_select.on('change', function() {
-        load_filters(this.value);
-    });
-    window.addEventListener("hashchange", update_view);
-    update_view();
-
-    var refresh_map = function() {
-        set_hash(get_form_data(form[0][0]));
-        update_view();
-    };
-    refresh_button.on('click', refresh_map);
-    form.selectAll('input[type=text]').onReturn(refresh_map);
-    form.selectAll('input[type=number]').onReturn(refresh_map);
-
-    repulsion.on('input', function () {
-        set_repulsion(force, this.value).start();
-    });
-
-
-    var zoom = d3.behavior.zoom()
-        .scaleExtent([0.2, 2])
-        .on('zoom', function () {
-            var tr = d3.event.translate,
-                sc = d3.event.scale,
-                transform = 'translate(' + tr + ')scale(' + sc + ')';
-            display_scale(sc);
-            drawing_space.attr("transform", transform);
-        });
-
-    var svg = get_svg().call(zoom);
-    var drawing_space = svg.append('g'),
-        bottom_layer = drawing_space.append('g'),
-        top_layer = drawing_space.append('g');
-
-    center_button.on('click', function() {
-            zoom.translate([0,0]);
-            zoom.scale(1);
-            zoom.event(drawing_space.transition().duration(500));
-    });
-
-    var force = set_repulsion(d3.layout.force(), repulsion[0][0].value)
-        .gravity(0.05)
-        .size([svg.attr('width'), svg.attr('height')]);
-
-    force.drag().on("dragstart", function() {
-          // to disallow panning during drag
-          d3.event.sourceEvent.stopPropagation();
-    });
-
-
-    ///////////////////
-    // Graph drawing //
-    ///////////////////
-    var draw_graph = function (graph) {
-        force
-            .nodes(graph.nodes)
-            .links(graph.links)
-            .start();
-
-        var link = bottom_layer.selectAll(".link")
-            .data(graph.links);
-
-        // append
-        link.enter().append("line")
-            .attr("class", "link");
-
-        // update
-        link.style('stroke', function(d) {
-            return d.color || '#ccc'
-        });
-
-        // remove
-        link.exit().remove();
-
-
-        var node = top_layer.selectAll(".node")
-            .data(graph.nodes);
-
-        // append
-        var node_enter = node.enter().append("g")
-            .attr("class", "node")
-            .call(force.drag);
-
-        node_enter.append("circle").attr('r', 8);
-
-        node_enter.append("image")
-            .attr("x", -16)
-            .attr("y", -16)
-            .attr("width", 32)
-            .attr("height", 32);
-
-        node_enter.append("text")
-            .attr("dx", 25)
-            .attr("dy", ".35em");
-
-        // update
-        node.select('circle')
-            .attr('fill', function(d) {
-                return d.color;
-            })
-            .attr('stroke', function(d) {
-                if(d.highlight) return 'SlateBlue';
-                else return 'gray';
-            })
-            .attr('stroke-width',function(d) {
-                if(d.highlight) return '3';
-            })
-            .attr('r', function(d) {
-                if(d.highlight) return 25; else return 21;
-            });
-        node.select('image')
-            .attr("xlink:href", function(d) { return d.image; });
-        node.select('text')
-            .text(function (d) { return d.name.slice(0, 20) + ((d.name.length > 20) ? ' ...' : ''); });
-
-        // remove
-        node.exit().remove();
-
-        // animation:
-        force.on("tick", function () {
-            link.attr("x1", function (d) { return d.source.x; })
-                .attr("y1", function (d) { return d.source.y; })
-                .attr("x2", function (d) { return d.target.x; })
-                .attr("y2", function (d) { return d.target.y; });
-
-            node.attr("transform", function (d) {
-                return "translate(" + d.x + "," + d.y + ")";
-            });
+    var refresh_map = function () {
+        Ext.Ajax.request({
+            url: '/zport/dmd/getJSONEdges',
+            success: function (response, request) {
+                var res = JSON.parse(response.responseText);  
+                if(res.error) {
+                    return show_error(res.error);
+                }
+                graph.draw(res);
+            },
+            failure: show_error,
+            params: sidebar.getValues()
         });
     };
+
+    var sidebar = Ext.create('Ext.form.Panel', {
+        id: 'network_map_form',
+        width: 300,
+        bodyPadding: 10,
+        frame: true,
+        defaultType: 'textfield',
+        layout : {
+            type: 'vbox',
+            padding: 5,
+            align: 'stretch',
+        },
+        items: [
+            {
+                fieldLabel: 'Device ID',
+                name: 'root_id'
+            },
+            {
+                fieldLabel: 'Depth',
+                name: 'depth',
+                xtype: 'numberfield',
+                value: 2,
+                maxValue: 10,
+                minValue: 1,
+            },
+            {
+                fieldLabel: 'Filter by',
+                name: 'filter_type_select',
+                id: 'filter_type_select',
+                xtype: 'combo',
+                forceSelection: true,
+                queryMode: 'local',
+                store: Ext.create('Ext.data.Store', {
+                    fields: ['id', 'label'],
+                    data: [
+                        {'id': 'Device Class', 'label': 'Device Class'},
+                        {'id': 'Location', 'label': 'Location'},
+                        {'id': 'Group', 'label': 'Group'},
+                        {'id': 'System', 'label': 'System'},
+                    ],
+                }),
+                displayField: 'label',
+                valueField: 'id',
+                listeners: {
+                    select: load_filters,
+                },
+            },
+            {
+                fieldLabel: 'Filter',
+                name: 'filter',
+                id: 'filter_select',
+                xtype: 'combo',
+                forceSelection: true,
+                queryMode: 'local',
+                store: Ext.create('Ext.data.Store', {
+                    fields: ['data', 'label'],
+                    data: [
+                        {data: '/zport/dmd/Devices/', label: '/'},
+                    ],
+                }),
+                displayField: 'label',
+                valueField: 'data',
+            },
+            {
+                fieldLabel: 'Repulsion',
+                name: 'repulsion',
+                xtype: 'slider',
+                value: 100,
+                increment: 10,
+                minValue: 10,
+                maxValue: 500,
+                listeners: {
+                    change: function () {
+                        graph.set_repulsion(this.getValue());
+                    },
+                },
+            },
+            {
+                xtype: 'panel',
+                title: 'Layers',
+                flex: 1,
+                overflowY: 'scroll',
+                frame: true,
+                items: [
+                    {
+                        xtype: 'checkboxgroup',
+                        id: 'layers_group',
+                        columns: 1,
+                        items: window.filter_type_options['Layers'],
+                    },
+                ],
+            },
+            {
+                text: 'Refresh map',
+                name: 'refresh_button',
+                xtype: 'button',
+                handler: refresh_map,
+            },
+            {
+                text: 'Center map',
+                name: 'center_button',
+                xtype: 'button',
+                handler: function() {
+                    graph.center()
+                },
+            },
+        ],
+    });
+
+    console.log(window.filter_type_options['Layers'])
+
+    var map = Ext.create('Ext.panel.Panel', {
+        flex: 1,
+    });
+
+    var hbox_center_panel = Ext.create('Ext.panel.Panel', {
+        layout: {
+            type: 'hbox',
+            pack: 'start',
+            align: 'stretch'
+        },
+    });
+    hbox_center_panel.add(sidebar);
+    hbox_center_panel.add(map);
+    hbox_center_panel.doLayout();
+
+    panel.removeAll();
+    panel.add(hbox_center_panel);
+    panel.doLayout();
+    
+    var graph = graph_renderer('#' + map.body.id);
 };

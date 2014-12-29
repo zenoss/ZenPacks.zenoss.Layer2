@@ -28,6 +28,9 @@ class IConnection(IIndexableWrapper):
 
     invariant(check_connection)
 
+def connection_hash(c):
+    return str(hash(c.layers + c.connected_to + (c.entity_id, )))
+
 
 class Connection(object):
     ''' See IConnection for detailed documentation '''
@@ -41,7 +44,7 @@ class Connection(object):
 
     @property
     def hash(self):
-        return str(hash(self.layers + (self.entity_id, )))
+        return connection_hash(self)
 
     def __str__(self):
         return '<Connection for: %s>' % self.entity_id

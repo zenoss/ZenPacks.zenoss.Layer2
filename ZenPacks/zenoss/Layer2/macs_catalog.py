@@ -60,7 +60,6 @@ class InterfaceConnections(object):
         res.extend(get_vlans(self.interface))
         return res
 
-
 class CatalogAPI(BaseCatalogAPI):
 
     name = 'interfaces_catalog'
@@ -221,6 +220,6 @@ def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
         return []
     if callable(iface.vlans):
-        return (vlan.vlan_id for vlan in iface.vlans())
+        return map(str, (vlan.vlan_id for vlan in iface.vlans()))
     else:
         return iface.vlans
