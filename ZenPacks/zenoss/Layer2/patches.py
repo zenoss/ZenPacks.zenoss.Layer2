@@ -139,8 +139,7 @@ def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
             obj, int(depth), filter=filter, layers=layers
         ), obj.id)
     except Exception as e:
-        from traceback import print_exc
-        print_exc(e)
+        log.exception(e)
         return get_json(e)
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')

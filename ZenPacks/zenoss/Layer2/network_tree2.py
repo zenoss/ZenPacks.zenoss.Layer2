@@ -207,7 +207,6 @@ def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None, cat
         cat = CatalogAPI(rootnode.zport)
     for node in _get_related(rootnode, filter, cat, layers):
         pair = tuple(sorted(x.id for x in (rootnode, node)))
-        print pair
         if pair not in pairs:
             pairs.add(pair)
             yield (rootnode, node)
