@@ -58,5 +58,4 @@ class CatalogAPI(BaseCatalogAPI):
         return set(layer for i in self.search() for layer in i.layers)
 
     def clear(self):
-        for b in self.search():
-            self.catalog.uncatalog_object(connection_hash(b))
+        map(self.catalog.uncatalog_object, map(connection_hash, self.search()))

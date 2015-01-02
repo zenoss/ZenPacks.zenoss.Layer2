@@ -56,7 +56,7 @@ class TestDataSourcePlugin(BaseTestCase):
 
         res = list(self.plugin.get_vlans())
 
-        self.assertEqual(res, ['207', '208', '1'])
+        self.assertEqual(res, ['', '207', '208', '1'])
 
     def test_get_maps(self):
         clientmacs = [sentinel.clientmac1]
