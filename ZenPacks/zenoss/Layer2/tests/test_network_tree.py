@@ -14,8 +14,8 @@ from mock import Mock, sentinel, MagicMock
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.network_tree2 import get_json
-from ZenPacks.zenoss.Layer2.network_tree2 import COMMON_LINK_COLOR, L2_LINK_COLOR
+from ZenPacks.zenoss.Layer2.network_tree import get_json
+from ZenPacks.zenoss.Layer2.network_tree import COMMON_LINK_COLOR, L2_LINK_COLOR
 
 class TestGetJSON(BaseTestCase):
 

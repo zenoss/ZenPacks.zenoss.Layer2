@@ -26,7 +26,7 @@ from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
 from .macs_catalog import CatalogAPI as MACsCatalogAPI
 from .connections_catalog import CatalogAPI
-from .network_tree2 import get_edges, get_json, serialize
+from .network_tree import get_edges, get_json, serialize
 
 unused(Globals)
 
