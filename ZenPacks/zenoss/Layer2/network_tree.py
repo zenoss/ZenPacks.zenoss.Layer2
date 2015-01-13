@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2007, 2014, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2007, 2014, 2015 all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -8,9 +8,13 @@
 ##############################################################################
 
 import json
-
 from functools import partial
 from itertools import chain
+
+import logging
+log = logging.getLogger('zen.Layer2')
+
+from zExceptions import NotFound
 
 from Products.ZenModel.Link import ILink
 from Products.ZenModel.IpNetwork import IpNetwork
@@ -19,29 +23,28 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
 from .connections_catalog import CatalogAPI
 
-COMMON_LINK_COLOR = '#ccc'
-L2_LINK_COLOR = '#4682B4'
-
-serialize = partial(json.dumps, indent=2)
-
-
-def get_json(edges, main_node=None):
+def serialize(*args, **kwargs):
+    ''' 
+        If the only positional argument is Exception - serialize it, else
+        serialize dictionary of passed keyword arguments
     '''
-        Return JSON dump of network graph passed as edges.
-        edges is iterable of pairs of tuples with node data or exception
-        main_node is id of root node to highlight
-    '''
+    if args:
+        if isinstance(args[0], Exception):
+            msg = args[0].message
+        else:
+            msg = args[0]
+        return serialize(error=msg)
+    return json.dumps(kwargs, indent=2)
 
-    # In case of exception - return json with error message
-    if isinstance(edges, Exception):
-        return serialize(dict(
-            error=edges.message,
-        ))
+
+def get_connections_json(rootnode, depth=1, filter='/', layers=None):
+    zport = rootnode.zport
+    cat = CatalogAPI(zport)
 
     nodes = []
     links = []
-
     nodenums = {}
+
 
     def add_node(n):
         if n.id in nodenums:
@@ -51,118 +54,73 @@ def get_json(edges, main_node=None):
         nodes.append(dict(
             name=n.titleOrId(),
             image=n.getIconPath(),
-            color=getColor(n),
-            highlight=n.id == main_node,
+            color=n.getColor(),
+            highlight=n.id == rootnode.id,
         ))
 
-    for a, b, l2 in edges:
-        add_node(a)
-        add_node(b)
+    def add_link(a, b, color):
         links.append(dict(
             source=nodenums[a.id],
             target=nodenums[b.id],
-            color=L2_LINK_COLOR if l2 else COMMON_LINK_COLOR,
+            color=color,
         ))
 
-    return serialize(dict(
+    adapt_node = partial(NodeAdapter, dmd=zport.dmd)
+
+    def get_connections(rootnode, depth):
+        """ Depth-first search of the network tree emanating from rootnode """
+        if depth == 0:
+            return
+
+        a = adapt_node(rootnode)
+        add_node(a)
+
+        for node in _get_related(a):
+            b = adapt_node(node)
+            add_node(b)
+            add_link(a, b, 'gray')
+            get_connections(node, depth - 1)
+
+    def _get_related(node):
+        return cat.get_connected(node.get_path(), layers)
+        # TODO: make filter work
+
+    
+    try:
+        add_node(adapt_node(rootnode))
+        get_connections(rootnode, depth)
+    except Exception as e:
+        log.exception(e)
+        return serialize(e)
+
+
+    return serialize(
         links=links,
         nodes=nodes,
-    ))
-
-
-def get_edges(rootnode, depth=1, filter='/', layers=None):
-    for nodea, nodeb in _get_connections(
-        rootnode, int(depth), [], filter, layers
-    ):
-        yield (
-            nodea, nodeb,
-            False
-            # isinstance(nodea, NetworkSegment) or isinstance(
-            #     nodeb, NetworkSegment
-            # )
-        )
-
-
-def getColor(node):
-    if isinstance(node, IpNetwork):
-        return '#ffffff'
-    summary = node.getEventSummary()
-    colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
-    color = '#00ff00'
-    for i in range(5):
-        if summary[i][2] > 0:
-            color = colors[i]
-            break
-    return color
-
-
-'''
-def _fromDeviceToNetworks(dev, filter='/'):
-    for iface in dev.os.interfaces():
-        for ip in iface.ipaddresses():
-            net = ip.network()
-            if net is None or net.netmask == 32:
-                continue
-            else:
-                yield net
-
-
-def _fromDeviceToNetworkSegments(dev, filter, cat, layers=None):
-    try:
-        interfaces = cat.get_device_interfaces(dev.id, layers)
-    except IndexError:
-        return
-
-    def segment_connnects_something(seg):
-        if len(seg) < 2:
-            return False  # only segments with two or more MACs connnect something
-        for d in cat.get_if_client_devices(seg.macs):
-            if _passes_filter(dev, filter) and dev.id != d.id:
-                return True
-
-    segments = set()
-    for i in interfaces:
-        seg = cat.get_network_segment(i, layers)
-        if seg.id not in segments:
-            segments.add(seg.id)
-            if segment_connnects_something(seg):
-                yield seg
-
-
-def _fromNetworkSegmentToDevices(seg, filter, cat):
-    for dev in cat.get_if_client_devices(seg.macs):
-        if _passes_filter(dev, filter):
-            yield dev
-
-
-def _passes_filter(dev, filter):
-    if dev is None:
-        return False
-    paths = map('/'.join, IIndexableWrapper(dev).path())
-    for path in paths:
-        if path.startswith(filter) or path.startswith(
-            '/zport/dmd/Devices/Network/Router'
-        ):
-            return True
-    return False
-
-
-def _fromNetworkToDevices(net, filter):
-    for ip in net.ipaddresses():
-        dev = ip.device()
-        if _passes_filter(dev, filter):
-            yield dev
-'''
+    )
+    
 
 
 class NodeAdapter(object):
-    def __init__(self, node):
-        self.node = node
+    def __init__(self, node, dmd):
+        if isinstance(node, str):
+            try:
+                self.node = dmd.getObjByPath(node)
+            except (NotFound, KeyError) as e:
+                self.node = node
+        else:
+            self.node = node
 
     @property
     def id(self):
         if hasattr(self.node, 'id'):
             return self.node.id
+        else:
+            return self.node
+
+    def get_path(self):
+        if hasattr(self.node, 'getPhysicalPath'):
+            return '/'.join(self.node.getPhysicalPath())
         else:
             return self.node
 
@@ -178,38 +136,20 @@ class NodeAdapter(object):
         else:
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
+    def getColor(self):
+        if isinstance(self.node, IpNetwork):
+            return '#ffffff'
+        summary = self.getEventSummary()
+        colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
+        color = '#00af00'
+        if summary is None:
+            return color
+        for i in range(5):
+            if summary[i][2] > 0:
+                color = colors[i]
+                break
+        return color
+
     def getEventSummary(self):
         if hasattr(self.node, 'getEventSummary'):
             return self.node.getEventSummary()
-        else:
-            return [
-                ['zenevents_5_noack noack', 0, 0],
-                ['zenevents_4_noack noack', 0, 0],
-                ['zenevents_3_noack noack', 0, 0],
-                ['zenevents_2_noack noack', 0, 0],
-                ['zenevents_1_noack noack', 0, 0]
-            ]
-
-
-def _get_related(node, filter, cat, layers=None):
-    return map(NodeAdapter, cat.get_connected(node.id, layers))
-    # TODO: make filter work
-
-def _get_connections(rootnode, depth=1, pairs=None, filter='/', layers=None, cat=None):
-    """ Depth-first search of the network tree emanating from
-        rootnode, returning (network, device) edges.
-    """
-    if depth == 0:
-        return
-    if not pairs:
-        pairs = set()
-    if cat is None:
-        cat = CatalogAPI(rootnode.zport)
-    for node in _get_related(rootnode, filter, cat, layers):
-        pair = tuple(sorted(x.id for x in (rootnode, node)))
-        if pair not in pairs:
-            pairs.add(pair)
-            yield (rootnode, node)
-
-            for n in _get_connections(node, depth - 1, pairs, filter, layers, cat):
-                yield n

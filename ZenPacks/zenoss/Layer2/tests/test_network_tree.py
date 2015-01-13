@@ -20,12 +20,14 @@ from ZenPacks.zenoss.Layer2.network_tree import COMMON_LINK_COLOR, L2_LINK_COLOR
 class TestGetJSON(BaseTestCase):
 
     def test_empty(self):
+        ''' Check that empty pairs list gives proper empty JSON '''
         self.assertEqual(json.loads(get_json([])), {
             'links': [],
             'nodes': []
         })
 
     def test_two_nodes(self):
+        ''' Check JSON for two connected nodes '''
         a = MagicMock()
         a.titleOrId.return_value = 'a'
         a.getIconPath.return_value = 'a_img'
@@ -46,6 +48,7 @@ class TestGetJSON(BaseTestCase):
         })
 
     def test_l2_link(self):
+        ''' Check that l2 connection gives link of other color '''
         a = MagicMock()
         a.titleOrId.return_value = 'a'
         a.getIconPath.return_value = 'a_img'
