@@ -87,7 +87,8 @@ class BaseConnectionsProvider(object):
 
 from macs_catalog import InterfaceConnections
 
-class Layer2ConnectionsProvider(BaseConnectionsProvider):
+
+class DeviceConnectionsProvider(BaseConnectionsProvider):
     def setup(self):
         self.cat = CatalogAPI(self.context.dmd.zport)
 
@@ -107,3 +108,30 @@ class Layer2ConnectionsProvider(BaseConnectionsProvider):
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)
+            # Layer 3 connections
+            for ip in interface.ipaddresses():
+                net = ip.network()
+                if net is None or net.netmask == 32:
+                    continue
+                id = self.context.id
+                net_id = net.getPrimaryUrlPath()
+                yield Connection(id, (net_id, ), ['layer3', ])
+                yield Connection(net_id, (id, ), ['layer3', ])
+
+
+class NetworkConnectionsProvider(BaseConnectionsProvider):
+    def setup(self):
+        self.cat = CatalogAPI(self.context.dmd.zport)
+
+    def get_status(self):
+        return self.context.getStatus()
+
+    def get_connections(self):
+        for ip in self.context.ipaddresses():
+            dev = ip.device()
+            if not dev:
+                continue
+            id = self.context.id
+            dev_id = dev.getPrimaryUrlPath()
+            yield Connection(id, (dev_id, ), ['layer3', ])
+            yield Connection(dev_id, (id, ), ['layer3', ])
