@@ -36,7 +36,7 @@ class ZenMapper(CyclingDaemon):
             " events. Default is %s." % DEFAULT_MONITOR)
 
     def main_loop(self):
-        log.info('Serching for connection providers')
+        log.info('Searching for connection providers')
         cat = CatalogAPI(self.dmd.zport)
         for device in self.dmd.Devices.getSubDevices():
             try:
@@ -44,6 +44,18 @@ class ZenMapper(CyclingDaemon):
             except TypeError:
                 log.debug(
                     'Ignoring {0} because could not adapt'.format(device.id)
+                )
+                continue
+            for connection in cp.get_connections():
+                cat.add_connection(connection)
+        for network in self.dmd.Networks.getSubNetworks():
+            try:
+                cp = IConnectionsProvider(network)
+            except TypeError:
+                log.debug(
+                    'Ignoring network_{0} because could not adapt'.format(
+                        network.id
+                    )
                 )
                 continue
             for connection in cp.get_connections():

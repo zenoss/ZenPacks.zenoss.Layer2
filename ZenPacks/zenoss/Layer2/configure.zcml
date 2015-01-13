@@ -66,8 +66,14 @@
         />
 
     <adapter
-        factory=".connections_provider.Layer2ConnectionsProvider"
+        factory=".connections_provider.DeviceConnectionsProvider"
         for="Products.ZenModel.Device.Device"
+        provides=".connections_provider.IConnectionsProvider"
+    />
+
+    <adapter
+        factory=".connections_provider.NetworkConnectionsProvider"
+        for="Products.ZenModel.IpNetwork.IpNetwork"
         provides=".connections_provider.IConnectionsProvider"
     />
 

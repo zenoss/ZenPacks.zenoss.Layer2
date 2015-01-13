@@ -139,7 +139,7 @@ class CatalogAPI(BaseCatalogAPI):
         '''
         return [
             self.get_device_obj(brain.device)
-            for brain in self.search({'clientmacs': unique(mac_addresses)})
+            for brain in self.search(clientmacs=unique(mac_addresses))
         ]
 
     def get_if_client_devices(self, mac_addresses):
@@ -147,7 +147,7 @@ class CatalogAPI(BaseCatalogAPI):
         Returns list of client devices, connected to IpInterface by given MACs
         '''
         res = []
-        for i in self.search({'macaddress': unique(mac_addresses)}):
+        for i in self.search(macaddress=unique(mac_addresses)):
             res.append(self.get_device_obj(i.device))
         return res
 
@@ -155,7 +155,7 @@ class CatalogAPI(BaseCatalogAPI):
         ''' Return dictionary of interfaces which are directly connected to given '''
         res = {iface.id: iface}
         for a in iface.clientmacs:
-            for i in self.search({'macaddress': a}):
+            for i in self.search(macaddress=a):
                 res[i.id] = i
         return res
 
