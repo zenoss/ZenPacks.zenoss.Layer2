@@ -142,8 +142,6 @@ var render_form = function(panel) {
         ],
     });
 
-    console.log(window.filter_type_options['Layers'])
-
     var map = Ext.create('Ext.panel.Panel', {
         flex: 1,
     });

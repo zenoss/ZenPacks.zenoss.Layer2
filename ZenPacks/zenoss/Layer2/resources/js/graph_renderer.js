@@ -50,7 +50,6 @@ window.graph_renderer = function(panel_selector) {
 
     var set_repulsion = function (force, value) {
         // set repulsion value on force layout
-        console.log(value);
         return force
             .linkDistance(+value)
             .chargeDistance(4 * value)
@@ -137,10 +136,12 @@ window.graph_renderer = function(panel_selector) {
 
         // animation:
         force.on("tick", function () {
-            link.attr("x1", function (d) { return d.source.x; })
-                .attr("y1", function (d) { return d.source.y; })
-                .attr("x2", function (d) { return d.target.x; })
-                .attr("y2", function (d) { return d.target.y; });
+            link.attr({
+                "x1": function (d) { return d.source.x; },
+                "y1": function (d) { return d.source.y; },
+                "x2": function (d) { return d.target.x; },
+                "y2": function (d) { return d.target.y; },
+            });
 
             node.attr("transform", function (d) {
                 return "translate(" + d.x + "," + d.y + ")";
