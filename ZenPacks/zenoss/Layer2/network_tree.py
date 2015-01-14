@@ -58,21 +58,37 @@ def get_connections_json(rootnode, depth=1, filter='/', layers=None):
             highlight=n.id == rootnode.id,
         ))
 
+
+    added_links = set()
     def add_link(a, b, color):
+        s = nodenums[a.id]
+        t = nodenums[b.id]
+
+        key = tuple(sorted([s, t]))
+        if key in added_links:
+            return
+        added_links.add(key)
+
         links.append(dict(
-            source=nodenums[a.id],
-            target=nodenums[b.id],
+            source=s,
+            target=t,
             color=color,
         ))
 
     adapt_node = partial(NodeAdapter, dmd=zport.dmd)
 
+    visited = set()
     def get_connections(rootnode, depth):
         """ Depth-first search of the network tree emanating from rootnode """
         if depth == 0:
             return
 
         a = adapt_node(rootnode)
+
+        if a.id in visited:
+            return
+        visited.add(a.id)
+
         add_node(a)
 
         for node in _get_related(a):
