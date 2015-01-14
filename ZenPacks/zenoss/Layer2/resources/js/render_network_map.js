@@ -19,7 +19,20 @@ var render_form = function(panel) {
         fs.reset();
     };
 
+    var get_checked_layers = function () {
+        // build a comma-separated list of checked layers
+        var l = Ext.getCmp('layers_group').getValue();
+        var layers = [];
+        for(var k in l) {
+            if(l[k]) layers.push(l[k]);
+        };
+        return layers.join(',');
+    };
+
     var refresh_map = function () {
+        var params = sidebar.getValues();
+        params.layers = get_checked_layers();
+
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
             success: function (response, request) {
@@ -30,7 +43,7 @@ var render_form = function(panel) {
                 graph.draw(res);
             },
             failure: show_error,
-            params: sidebar.getValues()
+            params: params,
         });
     };
 
