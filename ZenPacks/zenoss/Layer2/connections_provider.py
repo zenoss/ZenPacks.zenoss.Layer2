@@ -31,6 +31,12 @@ class IConnection(IIndexableWrapper):
 def connection_hash(c):
     return str(hash(c.layers + c.connected_to + (c.entity_id, )))
 
+def to_path(obj):
+    ''' If object has path, replace it by that path, else do nothing '''
+    if hasattr(obj, 'getPhysicalPath'):
+        return '/'.join(obj.getPhysicalPath())
+    else:
+        return obj
 
 class Connection(object):
     ''' See IConnection for detailed documentation '''
@@ -38,8 +44,8 @@ class Connection(object):
     adapts(IGloballyIndexed)
 
     def __init__(self, entity_id, connected_to, layers):
-        self.entity_id = entity_id
-        self.connected_to = tuple(connected_to)
+        self.entity_id = to_path(entity_id)
+        self.connected_to = tuple(to_path(x) for x in connected_to)
         self.layers = tuple(layers)
 
     @property
@@ -98,13 +104,12 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
     def get_connections(self):
         for interface in self.context.os.interfaces():
             ic = InterfaceConnections(interface)
-            id = self.context.id
             layers = ic.layers
             mac = ic.macaddress.strip()
             if not mac:
                 continue
-            yield Connection(id, (mac, ), layers)
-            yield Connection(mac, (id, ), layers)
+            yield Connection(self.context, (mac, ), layers)
+            yield Connection(mac, (self.context, ), layers)
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)

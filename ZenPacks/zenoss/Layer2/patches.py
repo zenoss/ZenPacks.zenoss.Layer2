@@ -26,7 +26,7 @@ from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 
 from .macs_catalog import CatalogAPI as MACsCatalogAPI
 from .connections_catalog import CatalogAPI
-from .network_tree2 import get_edges, get_json, serialize
+from .network_tree import get_connections_json, serialize
 
 unused(Globals)
 
@@ -125,22 +125,16 @@ Device._relations += (
 def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
     ''' Get JSON representation of network nodes '''
     if not root_id:
-        return get_json(Exception("You should set a device name"))
+        return serialize("You should set a device name")
     root_id = urllib.unquote(root_id)
     obj = self.Devices.findDevice(root_id)
     if not obj:
-        return get_json(Exception('Device %r was not found' % root_id))
+        return serialize('Device %r was not found' % root_id)
 
     if layers:
         layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-    try:
-        return get_json(get_edges(
-            obj, int(depth), filter=filter, layers=layers
-        ), obj.id)
-    except Exception as e:
-        log.exception(e)
-        return get_json(e)
+    return get_connections_json(obj, int(depth), filter=filter, layers=layers)
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getNetworkLayers(self):
