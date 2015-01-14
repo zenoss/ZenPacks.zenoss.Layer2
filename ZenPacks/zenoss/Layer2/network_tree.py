@@ -99,8 +99,6 @@ def get_connections_json(rootnode, depth=1, filter='/', layers=None):
 
     def _get_related(node):
         return cat.get_connected(node.get_path(), layers)
-        # TODO: make filter work
-
     
     try:
         add_node(adapt_node(rootnode))
