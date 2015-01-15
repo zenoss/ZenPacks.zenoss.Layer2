@@ -118,7 +118,7 @@ window.graph_renderer = function(panel_selector) {
             })
             .attr('stroke', function(d) {
                 if(d.highlight) return 'SlateBlue';
-                else return 'gray';
+                else return 'Black';
             })
             .attr('stroke-width',function(d) {
                 if(d.highlight) return '3';
