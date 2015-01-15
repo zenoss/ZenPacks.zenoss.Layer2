@@ -37,7 +37,7 @@ def serialize(*args, **kwargs):
     return json.dumps(kwargs, indent=2)
 
 
-def get_connections_json(rootnode, depth=1, filter='/', layers=None):
+def get_connections_json(rootnode, depth=1, filter='/', layers=None, truncate_leafs=True):
     zport = rootnode.zport
     cat = CatalogAPI(zport)
 
@@ -89,15 +89,24 @@ def get_connections_json(rootnode, depth=1, filter='/', layers=None):
             return
         visited.add(a.id)
 
-        add_node(a)
 
-        for node in _get_related(a):
+        related = list(get_related(a))
+        if truncate_leafs and (len(related) < 2):
+            return
+
+        add_node(a)
+        for node in related:
             b = adapt_node(node)
+
+            rel = list(get_related(b))
+            if truncate_leafs and len(rel) < 2:
+                continue
+
             add_node(b)
             add_link(a, b, 'gray')
             get_connections(node, depth - 1)
 
-    def _get_related(node):
+    def get_related(node):
         return cat.get_connected(node.get_path(), layers)
     
     try:
