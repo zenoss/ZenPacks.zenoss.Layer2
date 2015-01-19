@@ -1,0 +1,23 @@
+.node text {
+    pointer-events: none;
+    font: 10px sans-serif;
+}
+
+rect {
+    fill: none;
+    stroke: black;
+}
+
+#controls_panel {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    width: 100px;
+    height: 80px;
+    padding: 10px;
+    background-color: #DFE9F6;
+    border-color: #99BCE8;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 5px;
+}

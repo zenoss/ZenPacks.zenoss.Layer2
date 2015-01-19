@@ -12,13 +12,6 @@
 var render_form = function(panel) {
     var show_error = Zenoss.flares.Manager.error;
 
-    var load_filters = function () {
-        var fs = Ext.getCmp('filter_select');
-        var data = window.filter_type_options[this.value];
-        fs.store.loadData(data);
-        fs.reset();
-    };
-
     var get_checked_layers = function () {
         // build a comma-separated list of checked layers
         var l = Ext.getCmp('layers_group').getValue();
@@ -33,6 +26,8 @@ var render_form = function(panel) {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
 
+        graph.draw({nodes: [], links: []});
+
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
             success: function (response, request) {
@@ -42,7 +37,9 @@ var render_form = function(panel) {
                 }
                 graph.draw(res);
             },
-            failure: show_error,
+            failure: function(error) {
+                show_error(error);
+            },
             params: params,
         });
     };
@@ -87,18 +84,10 @@ var render_form = function(panel) {
                 ],
             },
             {
-                text: 'Refresh map',
+                text: 'Apply',
                 name: 'refresh_button',
                 xtype: 'button',
                 handler: refresh_map,
-            },
-            {
-                text: 'Center map',
-                name: 'center_button',
-                xtype: 'button',
-                handler: function() {
-                    graph.center()
-                },
             },
         ],
     });
@@ -123,4 +112,6 @@ var render_form = function(panel) {
     panel.doLayout();
     
     var graph = graph_renderer('#' + map.body.id);
+
+    refresh_map();
 };

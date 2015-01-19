@@ -25,12 +25,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
-        <style type="text/css">
-        .node text {
-            pointer-events: none;
-            font: 10px sans-serif;
-        }
-        </style>
+        <link rel="stylesheet" type="text/css" href="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css" />
     </tal:block>
 
     <tal:block metal:fill-slot="script_afterLayout">

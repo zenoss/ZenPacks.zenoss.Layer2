@@ -33,20 +33,25 @@ window.graph_renderer = function(panel_selector) {
         .attr("height", height)
         .call(zoom);
 
-    var scale_display = svg.append('text')
-        .attr('x', width)
-        .attr('y', '1em')
-        .attr('style', 'text-anchor: end;');
-
     var drawing_space = svg.append('g'),
         bottom_layer = drawing_space.append('g'),
         top_layer = drawing_space.append('g');
 
-    var center =  function() {
+    var controls = panel.append('div')
+        .attr('id', 'controls_panel');
+
+    var scale_display = controls.append('div');
+
+    var center = function() {
+            display_scale(1);
             zoom.translate([0,0]);
             zoom.scale(1);
             zoom.event(drawing_space.transition().duration(500));
     };
+
+    var center_button = controls.append('button')
+        .text('Center')
+        .on('click', center);
 
     var force = d3.layout.force()
         .linkDistance(100)
@@ -142,8 +147,8 @@ window.graph_renderer = function(panel_selector) {
 
         center();
     };
+
     return {
         draw: draw_graph,
-        center: center,
     };
 };
