@@ -48,15 +48,10 @@ window.graph_renderer = function(panel_selector) {
             zoom.event(drawing_space.transition().duration(500));
     };
 
-    var set_repulsion = function (force, value) {
-        // set repulsion value on force layout
-        return force
-            .linkDistance(+value)
-            .chargeDistance(4 * value)
-            .charge(-5 * value)
-    };
-
-    var force = set_repulsion(d3.layout.force(), 100)
+    var force = d3.layout.force()
+        .linkDistance(100)
+        .chargeDistance(400)
+        .charge(-500)
         .gravity(0.05)
         .size([svg.attr('width'), svg.attr('height')]);
 
@@ -66,9 +61,6 @@ window.graph_renderer = function(panel_selector) {
     });
 
 
-    ///////////////////
-    // Graph drawing //
-    ///////////////////
     var draw_graph = function (graph) {
         force
             .nodes(graph.nodes)
@@ -153,6 +145,5 @@ window.graph_renderer = function(panel_selector) {
     return {
         draw: draw_graph,
         center: center,
-        set_repulsion: function(value) { set_repulsion(force, value).start() },
     };
 };

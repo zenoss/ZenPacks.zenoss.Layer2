@@ -37,7 +37,7 @@ def serialize(*args, **kwargs):
     return json.dumps(kwargs, indent=2)
 
 
-def get_connections_json(rootnode, depth=1, filter='/', layers=None, truncate_leafs=True):
+def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
     zport = rootnode.zport
     cat = CatalogAPI(zport)
 
@@ -109,13 +109,8 @@ def get_connections_json(rootnode, depth=1, filter='/', layers=None, truncate_le
     def get_related(node):
         return cat.get_connected(node.get_path(), layers)
     
-    try:
-        add_node(adapt_node(rootnode))
-        get_connections(rootnode, depth)
-    except Exception as e:
-        log.exception(e)
-        return serialize(e)
-
+    add_node(adapt_node(rootnode))
+    get_connections(rootnode, depth)
 
     return serialize(
         links=links,

@@ -19,21 +19,8 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
         <script type="text/javascript"
-            tal:define="
-                classlist python:[dict(label=x,data='/zport/dmd/Devices'+x) for x in here.dmd.Devices.deviceMoveTargets()];
-                loclist python:[dict(label=x, data='/zport/dmd/Locations'+x) for x in here.dmd.Locations.deviceMoveTargets()];
-                grouplist python:[dict(label=x, data='/zport/dmd/Groups'+x) for x in here.dmd.Groups.deviceMoveTargets()];
-                syslist python:[dict(label=x, data='/zport/dmd/Systems'+x) for x in here.dmd.Systems.deviceMoveTargets()];
-                layerslist python: [dict(boxLabel=x, inputValue='layer_' + x) for x in here.dmd.getNetworkLayers()];"
-            tal:content="string:
-                window.filter_type_options = {
-                    'Device Class': ${classlist},
-                    'Location': [{label:'/', data:'/'}].concat(${loclist}),
-                    'Group': [{label:'/', data:'/'}].concat(${grouplist}),
-                    'System': [{label:'/', data:'/'}].concat(${syslist}),
-                    'Layers': ${layerslist}
-                };
-        "></script>
+            tal:define="layerslist python: [dict(boxLabel=x, inputValue='layer_' + x) for x in here.dmd.getNetworkLayers()];"
+            tal:content="string: window.layers_options = ${layerslist};"></script>
 
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"></script>

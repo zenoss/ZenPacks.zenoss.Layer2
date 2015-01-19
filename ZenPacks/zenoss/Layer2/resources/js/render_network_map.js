@@ -72,58 +72,6 @@ var render_form = function(panel) {
                 minValue: 1,
             },
             {
-                fieldLabel: 'Filter by',
-                name: 'filter_type_select',
-                id: 'filter_type_select',
-                xtype: 'combo',
-                forceSelection: true,
-                queryMode: 'local',
-                store: Ext.create('Ext.data.Store', {
-                    fields: ['id', 'label'],
-                    data: [
-                        {'id': 'Device Class', 'label': 'Device Class'},
-                        {'id': 'Location', 'label': 'Location'},
-                        {'id': 'Group', 'label': 'Group'},
-                        {'id': 'System', 'label': 'System'},
-                    ],
-                }),
-                displayField: 'label',
-                valueField: 'id',
-                listeners: {
-                    select: load_filters,
-                },
-            },
-            {
-                fieldLabel: 'Filter',
-                name: 'filter',
-                id: 'filter_select',
-                xtype: 'combo',
-                forceSelection: true,
-                queryMode: 'local',
-                store: Ext.create('Ext.data.Store', {
-                    fields: ['data', 'label'],
-                    data: [
-                        {data: '/zport/dmd/Devices/', label: '/'},
-                    ],
-                }),
-                displayField: 'label',
-                valueField: 'data',
-            },
-            {
-                fieldLabel: 'Repulsion',
-                name: 'repulsion',
-                xtype: 'slider',
-                value: 100,
-                increment: 10,
-                minValue: 10,
-                maxValue: 500,
-                listeners: {
-                    change: function () {
-                        graph.set_repulsion(this.getValue());
-                    },
-                },
-            },
-            {
                 xtype: 'panel',
                 title: 'Layers',
                 flex: 1,
@@ -134,7 +82,7 @@ var render_form = function(panel) {
                         xtype: 'checkboxgroup',
                         id: 'layers_group',
                         columns: 1,
-                        items: window.filter_type_options['Layers'],
+                        items: window.layers_options,
                     },
                 ],
             },
