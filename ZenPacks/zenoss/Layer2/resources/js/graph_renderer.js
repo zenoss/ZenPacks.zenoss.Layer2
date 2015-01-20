@@ -68,6 +68,18 @@ window.graph_renderer = function(panel_selector) {
 
 
     var draw_graph = function (graph) {
+        panel.selectAll('.message').remove(); //remove old messages
+        svg.style('display', 'block');
+        if (typeof graph.nodes == 'undefined' || graph.nodes.length == 0) {
+            // Draw message - no data
+
+            svg.style('display', 'none');
+            panel.append('p')
+                .attr('class', 'message')
+                .text('No data');
+            return;
+        };
+
         force
             .nodes(graph.nodes)
             .links(graph.links)

@@ -22,6 +22,21 @@ rect {
     border-radius: 5px;
 }
 
+p.message {
+    background: none repeat scroll 0 0 #F6E17B;
+    display: block;
+    width: 300px;
+    color: #282828;
+    font-size: 30px;
+    padding: 30px;
+
+    margin: auto;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 10px;
+}
+
 .node circle {
     stroke: black;
     stroke-width: 1px;
