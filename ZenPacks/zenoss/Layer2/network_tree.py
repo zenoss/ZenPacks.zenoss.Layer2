@@ -155,13 +155,11 @@ class NodeAdapter(object):
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
     def getColor(self):
-        if isinstance(self.node, IpNetwork):
-            return '#ffffff'
         summary = self.getEventSummary()
+        if summary is None:
+            return '#ffffff'
         colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
         color = '#00af00'
-        if summary is None:
-            return color
         for i in range(5):
             if summary[i][2] > 0:
                 color = colors[i]
