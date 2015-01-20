@@ -53,6 +53,7 @@ window.graph_renderer = function(panel_selector) {
         .text('Center')
         .on('click', center);
 
+
     var force = d3.layout.force()
         .linkDistance(100)
         .chargeDistance(400)
@@ -110,15 +111,9 @@ window.graph_renderer = function(panel_selector) {
 
         // update
         node.select('circle')
-            .attr('fill', function(d) {
+            .attr('class', function(d) {
+                if(d.highlight) return 'highlighted ' + d.color;
                 return d.color;
-            })
-            .attr('stroke', function(d) {
-                if(d.highlight) return 'SlateBlue';
-                else return 'Black';
-            })
-            .attr('stroke-width',function(d) {
-                if(d.highlight) return '3';
             })
             .attr('r', function(d) {
                 if(d.highlight) return 25; else return 21;
@@ -147,6 +142,50 @@ window.graph_renderer = function(panel_selector) {
 
         center();
     };
+
+    var draw_legend = function (panel) {
+        var legend = panel.append("svg")
+            .attr("width", 90)
+            .attr("height", 130);
+
+        var node = legend.selectAll(".node")
+            .data([
+                { color: 'severity_critical', name: 'Critical' },
+                { color: 'severity_error', name: 'Error' },
+                { color: 'severity_warning', name: 'Warning' },
+                { color: 'severity_info', name: 'Info' },
+                { color: 'severity_debug', name: 'Debug' },
+                { color: 'severity_none', name: 'Map root', highlight: true },
+            ]);
+
+        // append
+        var node_enter = node.enter().append("g")
+            .attr("class", "node")
+
+        node_enter.append("circle").attr('r', 8);
+
+        node_enter.append("text")
+            .attr("dx", 25)
+            .attr("dy", ".35em");
+
+        // update
+
+        node.attr("transform", function (d, i) {
+            return 'translate(10, ' + (i + 1) * 20 + ')';
+        })
+        node.select('circle')
+            .attr('class', function(d) {
+                if(d.highlight) return 'highlighted ' + d.color;
+                return d.color;
+            })
+
+        node.select('text')
+            .text(function (d) { return d.name });
+
+        // remove
+        node.exit().remove();
+    };
+    draw_legend(controls);
 
     return {
         draw: draw_graph,

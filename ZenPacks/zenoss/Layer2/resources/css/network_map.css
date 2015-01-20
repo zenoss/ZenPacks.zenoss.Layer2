@@ -13,11 +13,40 @@ rect {
     right: 0px;
     top: 0px;
     width: 100px;
-    height: 80px;
+    height: 200px;
     padding: 10px;
     background-color: #DFE9F6;
     border-color: #99BCE8;
     border-width: 1px;
     border-style: solid;
     border-radius: 5px;
+}
+
+.node circle {
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.node circle.highlighted {
+    stroke: slateBlue;
+    stroke-width: 3px;
+}
+
+.severity_critical {
+    fill: #ff0000;
+}
+.severity_error {
+    fill: #ff8c00;
+}
+.severity_warning {
+    fill: #ffd700;
+}
+.severity_info {
+    fill: #00ff00;
+}
+.severity_debug {
+    fill: #00af00;
+}
+.severity_none {
+    fill: #ffffff;
 }

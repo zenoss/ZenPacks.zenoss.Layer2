@@ -157,14 +157,15 @@ class NodeAdapter(object):
     def getColor(self):
         summary = self.getEventSummary()
         if summary is None:
-            return '#ffffff'
+            return 'severity_none'
         colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
-        color = '#00af00'
+        colors = 'critical error warning info debug'.split()
+        color = 'debug'
         for i in range(5):
             if summary[i][2] > 0:
                 color = colors[i]
                 break
-        return color
+        return 'severity_%s' % color
 
     def getEventSummary(self):
         if hasattr(self.node, 'getEventSummary'):
