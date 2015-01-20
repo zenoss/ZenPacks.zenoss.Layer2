@@ -37,7 +37,7 @@ def serialize(*args, **kwargs):
     return json.dumps(kwargs, indent=2)
 
 
-def get_connections_json(rootnode, depth=1, filter='/', layers=None, truncate_leafs=True):
+def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
     zport = rootnode.zport
     cat = CatalogAPI(zport)
 
@@ -109,13 +109,8 @@ def get_connections_json(rootnode, depth=1, filter='/', layers=None, truncate_le
     def get_related(node):
         return cat.get_connected(node.get_path(), layers)
     
-    try:
-        add_node(adapt_node(rootnode))
-        get_connections(rootnode, depth)
-    except Exception as e:
-        log.exception(e)
-        return serialize(e)
-
+    add_node(adapt_node(rootnode))
+    get_connections(rootnode, depth)
 
     return serialize(
         links=links,
@@ -160,18 +155,17 @@ class NodeAdapter(object):
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
     def getColor(self):
-        if isinstance(self.node, IpNetwork):
-            return '#ffffff'
         summary = self.getEventSummary()
-        colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
-        color = '#00af00'
         if summary is None:
-            return color
+            return 'severity_none'
+        colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
+        colors = 'critical error warning info debug'.split()
+        color = 'debug'
         for i in range(5):
             if summary[i][2] > 0:
                 color = colors[i]
                 break
-        return color
+        return 'severity_%s' % color
 
     def getEventSummary(self):
         if hasattr(self.node, 'getEventSummary'):

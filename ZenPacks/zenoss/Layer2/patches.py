@@ -122,7 +122,7 @@ Device._relations += (
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
+def getJSONEdges(self, root_id='', depth='2', layers=None):
     ''' Get JSON representation of network nodes '''
     if not root_id:
         return serialize("You should set a device name")
@@ -131,10 +131,14 @@ def getJSONEdges(self, root_id='', depth='2', filter='/', layers=None):
     if not obj:
         return serialize('Device %r was not found' % root_id)
 
-    if layers:
-        layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
+    try:
+        if layers:
+            layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-    return get_connections_json(obj, int(depth), filter=filter, layers=layers)
+        return get_connections_json(obj, int(depth), layers=layers)
+    except Exception as e:
+        log.exception(e)
+        return serialize(e)
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getNetworkLayers(self):

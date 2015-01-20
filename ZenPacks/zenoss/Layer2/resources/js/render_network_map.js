@@ -12,13 +12,6 @@
 var render_form = function(panel) {
     var show_error = Zenoss.flares.Manager.error;
 
-    var load_filters = function () {
-        var fs = Ext.getCmp('filter_select');
-        var data = window.filter_type_options[this.value];
-        fs.store.loadData(data);
-        fs.reset();
-    };
-
     var get_checked_layers = function () {
         // build a comma-separated list of checked layers
         var l = Ext.getCmp('layers_group').getValue();
@@ -33,6 +26,8 @@ var render_form = function(panel) {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
 
+        graph.draw({nodes: [], links: []});
+
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
             success: function (response, request) {
@@ -42,7 +37,9 @@ var render_form = function(panel) {
                 }
                 graph.draw(res);
             },
-            failure: show_error,
+            failure: function(error) {
+                show_error(error);
+            },
             params: params,
         });
     };
@@ -72,58 +69,6 @@ var render_form = function(panel) {
                 minValue: 1,
             },
             {
-                fieldLabel: 'Filter by',
-                name: 'filter_type_select',
-                id: 'filter_type_select',
-                xtype: 'combo',
-                forceSelection: true,
-                queryMode: 'local',
-                store: Ext.create('Ext.data.Store', {
-                    fields: ['id', 'label'],
-                    data: [
-                        {'id': 'Device Class', 'label': 'Device Class'},
-                        {'id': 'Location', 'label': 'Location'},
-                        {'id': 'Group', 'label': 'Group'},
-                        {'id': 'System', 'label': 'System'},
-                    ],
-                }),
-                displayField: 'label',
-                valueField: 'id',
-                listeners: {
-                    select: load_filters,
-                },
-            },
-            {
-                fieldLabel: 'Filter',
-                name: 'filter',
-                id: 'filter_select',
-                xtype: 'combo',
-                forceSelection: true,
-                queryMode: 'local',
-                store: Ext.create('Ext.data.Store', {
-                    fields: ['data', 'label'],
-                    data: [
-                        {data: '/zport/dmd/Devices/', label: '/'},
-                    ],
-                }),
-                displayField: 'label',
-                valueField: 'data',
-            },
-            {
-                fieldLabel: 'Repulsion',
-                name: 'repulsion',
-                xtype: 'slider',
-                value: 100,
-                increment: 10,
-                minValue: 10,
-                maxValue: 500,
-                listeners: {
-                    change: function () {
-                        graph.set_repulsion(this.getValue());
-                    },
-                },
-            },
-            {
                 xtype: 'panel',
                 title: 'Layers',
                 flex: 1,
@@ -134,23 +79,15 @@ var render_form = function(panel) {
                         xtype: 'checkboxgroup',
                         id: 'layers_group',
                         columns: 1,
-                        items: window.filter_type_options['Layers'],
+                        items: window.layers_options,
                     },
                 ],
             },
             {
-                text: 'Refresh map',
+                text: 'Apply',
                 name: 'refresh_button',
                 xtype: 'button',
                 handler: refresh_map,
-            },
-            {
-                text: 'Center map',
-                name: 'center_button',
-                xtype: 'button',
-                handler: function() {
-                    graph.center()
-                },
             },
         ],
     });
@@ -175,4 +112,6 @@ var render_form = function(panel) {
     panel.doLayout();
     
     var graph = graph_renderer('#' + map.body.id);
+
+    refresh_map();
 };

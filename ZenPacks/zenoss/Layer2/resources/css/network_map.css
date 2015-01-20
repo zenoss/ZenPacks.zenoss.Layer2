@@ -1,0 +1,67 @@
+.node text {
+    pointer-events: none;
+    font: 10px sans-serif;
+}
+
+rect {
+    fill: none;
+    stroke: black;
+}
+
+#controls_panel {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    width: 100px;
+    height: 200px;
+    padding: 10px;
+    background-color: #DFE9F6;
+    border-color: #99BCE8;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 5px;
+}
+
+p.message {
+    background: none repeat scroll 0 0 #F6E17B;
+    display: block;
+    width: 300px;
+    color: #282828;
+    font-size: 30px;
+    padding: 30px;
+
+    margin: auto;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 10px;
+}
+
+.node circle {
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.node circle.highlighted {
+    stroke: slateBlue;
+    stroke-width: 3px;
+}
+
+.severity_critical {
+    fill: #ff0000;
+}
+.severity_error {
+    fill: #ff8c00;
+}
+.severity_warning {
+    fill: #ffd700;
+}
+.severity_info {
+    fill: #00ff00;
+}
+.severity_debug {
+    fill: #00af00;
+}
+.severity_none {
+    fill: #ffffff;
+}

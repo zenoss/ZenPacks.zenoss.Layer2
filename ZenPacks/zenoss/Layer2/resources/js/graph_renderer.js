@@ -33,30 +33,31 @@ window.graph_renderer = function(panel_selector) {
         .attr("height", height)
         .call(zoom);
 
-    var scale_display = svg.append('text')
-        .attr('x', width)
-        .attr('y', '1em')
-        .attr('style', 'text-anchor: end;');
-
     var drawing_space = svg.append('g'),
         bottom_layer = drawing_space.append('g'),
         top_layer = drawing_space.append('g');
 
-    var center =  function() {
+    var controls = panel.append('div')
+        .attr('id', 'controls_panel');
+
+    var scale_display = controls.append('div');
+
+    var center = function() {
+            display_scale(1);
             zoom.translate([0,0]);
             zoom.scale(1);
             zoom.event(drawing_space.transition().duration(500));
     };
 
-    var set_repulsion = function (force, value) {
-        // set repulsion value on force layout
-        return force
-            .linkDistance(+value)
-            .chargeDistance(4 * value)
-            .charge(-5 * value)
-    };
+    var center_button = controls.append('button')
+        .text('Center')
+        .on('click', center);
 
-    var force = set_repulsion(d3.layout.force(), 100)
+
+    var force = d3.layout.force()
+        .linkDistance(100)
+        .chargeDistance(400)
+        .charge(-500)
         .gravity(0.05)
         .size([svg.attr('width'), svg.attr('height')]);
 
@@ -66,10 +67,19 @@ window.graph_renderer = function(panel_selector) {
     });
 
 
-    ///////////////////
-    // Graph drawing //
-    ///////////////////
     var draw_graph = function (graph) {
+        panel.selectAll('.message').remove(); //remove old messages
+        svg.style('display', 'block');
+        if (typeof graph.nodes == 'undefined' || graph.nodes.length == 0) {
+            // Draw message - no data
+
+            svg.style('display', 'none');
+            panel.append('p')
+                .attr('class', 'message')
+                .text('No data');
+            return;
+        };
+
         force
             .nodes(graph.nodes)
             .links(graph.links)
@@ -113,15 +123,9 @@ window.graph_renderer = function(panel_selector) {
 
         // update
         node.select('circle')
-            .attr('fill', function(d) {
+            .attr('class', function(d) {
+                if(d.highlight) return 'highlighted ' + d.color;
                 return d.color;
-            })
-            .attr('stroke', function(d) {
-                if(d.highlight) return 'SlateBlue';
-                else return 'Black';
-            })
-            .attr('stroke-width',function(d) {
-                if(d.highlight) return '3';
             })
             .attr('r', function(d) {
                 if(d.highlight) return 25; else return 21;
@@ -150,9 +154,52 @@ window.graph_renderer = function(panel_selector) {
 
         center();
     };
+
+    var draw_legend = function (panel) {
+        var legend = panel.append("svg")
+            .attr("width", 90)
+            .attr("height", 130);
+
+        var node = legend.selectAll(".node")
+            .data([
+                { color: 'severity_critical', name: 'Critical' },
+                { color: 'severity_error', name: 'Error' },
+                { color: 'severity_warning', name: 'Warning' },
+                { color: 'severity_info', name: 'Info' },
+                { color: 'severity_debug', name: 'Debug' },
+                { color: 'severity_none', name: 'Map root', highlight: true },
+            ]);
+
+        // append
+        var node_enter = node.enter().append("g")
+            .attr("class", "node")
+
+        node_enter.append("circle").attr('r', 8);
+
+        node_enter.append("text")
+            .attr("dx", 25)
+            .attr("dy", ".35em");
+
+        // update
+
+        node.attr("transform", function (d, i) {
+            return 'translate(10, ' + (i + 1) * 20 + ')';
+        })
+        node.select('circle')
+            .attr('class', function(d) {
+                if(d.highlight) return 'highlighted ' + d.color;
+                return d.color;
+            })
+
+        node.select('text')
+            .text(function (d) { return d.name });
+
+        // remove
+        node.exit().remove();
+    };
+    draw_legend(controls);
+
     return {
         draw: draw_graph,
-        center: center,
-        set_repulsion: function(value) { set_repulsion(force, value).start() },
     };
 };
