@@ -1,3 +1,12 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
+
 from collections import defaultdict
 
 
@@ -5,8 +14,10 @@ def contract_edges(nodes, links):
     '''
         Changes graph, so only nodes with important=True are left, and those
         which are unimportant but connect important nodes.
+        Also unimportant nodes which connect the set of nodes which was already
+        connected will removed.
 
-        ! will mutate arguments!
+        For details see docstrings of tests in .tests.test_edge_contraction
     '''
 
     nodes = dict(enumerate(nodes))
@@ -120,15 +131,12 @@ def contract_edges(nodes, links):
             continue
         adj = frozenset(get_adjacent(i))
         if adj in already_connected:
-            for e_id in node['incident']:
-                lc = len(links)
+            for e_id in node['incident'][:]: # copy because number of incidents will decrease when link removing
                 del_link(e_id)
-                assert len(links) < lc
             del nodes[i]
             continue
         already_connected.add(adj)
 
-    _check_invariant(nodes, links)
 
     # Convert nodes and links from dicts back to lists
     new_nodes = []
@@ -157,10 +165,3 @@ def contract_edges(nodes, links):
         links=new_links,
         nodes=new_nodes,
     )
-
-def _check_invariant(nodes, links):
-    for i, l in links.items():
-        assert i in nodes[l['source']]['incident']
-        assert i in nodes[l['target']]['incident']
-
-
