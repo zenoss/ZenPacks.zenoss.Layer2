@@ -22,6 +22,7 @@ from Products.ZenModel.Device import Device
 from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
 from .connections_catalog import CatalogAPI
+from .edge_contraction import contract_edges
 
 def serialize(*args, **kwargs):
     ''' 
@@ -31,13 +32,16 @@ def serialize(*args, **kwargs):
     if args:
         if isinstance(args[0], Exception):
             msg = args[0].message
-        else:
+        elif isinstance(args[0], basestring):
             msg = args[0]
+        else:
+            return json.dumps(args[0], indent=2)
         return serialize(error=msg)
-    return json.dumps(kwargs, indent=2)
+    else:
+        return serialize(kwargs)
 
 
-def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
+def get_connections(rootnode, depth=1, layers=None):
     zport = rootnode.zport
     cat = CatalogAPI(zport)
 
@@ -56,6 +60,7 @@ def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
             image=n.getIconPath(),
             color=n.getColor(),
             highlight=n.id == rootnode.id,
+            important=not isinstance(n.node, str),
         ))
 
 
@@ -89,19 +94,10 @@ def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
             return
         visited.add(a.id)
 
-
-        related = list(get_related(a))
-        if truncate_leafs and (len(related) < 2):
-            return
-
         add_node(a)
-        for node in related:
+
+        for node in get_related(a):
             b = adapt_node(node)
-
-            rel = list(get_related(b))
-            if truncate_leafs and len(rel) < 2:
-                continue
-
             add_node(b)
             add_link(a, b, 'gray')
             get_connections(node, depth - 1)
@@ -112,12 +108,17 @@ def get_connections_json(rootnode, depth=1, layers=None, truncate_leafs=True):
     add_node(adapt_node(rootnode))
     get_connections(rootnode, depth)
 
-    return serialize(
+    return dict(
         links=links,
         nodes=nodes,
     )
-    
 
+def get_connections_json(rootnode, depth=1, layers=None):
+    return serialize(
+        contract_edges(
+            **get_connections(rootnode, depth, layers)
+        )
+    )
 
 class NodeAdapter(object):
     def __init__(self, node, dmd):
