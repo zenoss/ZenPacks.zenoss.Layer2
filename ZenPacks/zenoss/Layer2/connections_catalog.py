@@ -46,13 +46,27 @@ class CatalogAPI(BaseCatalogAPI):
     def remove_node(self, node):
         map(self.remove_connection, IConnectionsProvider(node).get_connections())
 
-    def get_connected(self, entity_id, layers=None):
+    def get_directly_connected(self, entity_id, layers=None):
         q = dict(entity_id=entity_id)
         if layers:
             q['layers'] = layers
         for b in self.search(**q):
             for c in b.connected_to:
                 yield c
+
+    def get_connected(self, entity_id, layers=None):
+        ''' Return set of all connected nodes '''
+        visited = set()
+
+        def visit(node):
+            if node in visited:
+                return
+            visited.add(node)
+            for n in self.get_directly_connected(node, layers):
+                visit(n)
+        visit(entity_id)
+
+        return visited
 
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)

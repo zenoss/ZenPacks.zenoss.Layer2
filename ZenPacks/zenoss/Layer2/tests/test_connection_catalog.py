@@ -80,10 +80,10 @@ class TestCatalogAPI(BaseTestCase):
         self.cat.remove_node(cp)
         self.assertEqual(len(self.cat.search()), 0)
 
-    def test_get_connected(self):
+    def test_get_directly_connected(self):
         self.cat.add_node(fake_connections_provider(self.dmd))
         self.assertTrue(
-            [x for x in self.cat.get_connected('connection_id')] ==
+            [x for x in self.cat.get_directly_connected('connection_id')] ==
             ['connected_to1', 'connected_to2']
         )
 
