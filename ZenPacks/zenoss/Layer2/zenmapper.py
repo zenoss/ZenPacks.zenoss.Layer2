@@ -48,6 +48,7 @@ class ZenMapper(CyclingDaemon):
 
 def update_catalog(dmd):
     cat = CatalogAPI(dmd.zport)
+    cat.clear()
     for entity in chain(
         dmd.Devices.getSubDevices(),
         dmd.Networks.getSubNetworks()
@@ -57,6 +58,7 @@ def update_catalog(dmd):
             cat.add_node(entity)
         except TypeError:
             log.debug('Could not adapt %. Ignoring.', entity.id)
+    cat.show_content()
 
 if __name__ == '__main__':
     main()

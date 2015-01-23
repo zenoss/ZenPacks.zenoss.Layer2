@@ -60,7 +60,7 @@ def get_connections(rootnode, depth=1, layers=None):
             image=n.getIconPath(),
             color=n.getColor(),
             highlight=n.id == rootnode.id,
-            important=not isinstance(n.node, str),
+            important=n.important,
         ))
 
 
@@ -159,7 +159,6 @@ class NodeAdapter(object):
         summary = self.getEventSummary()
         if summary is None:
             return 'severity_none'
-        colors = '#ff0000 #ff8c00 #ffd700 #00ff00 #00ff00'.split()
         colors = 'critical error warning info debug'.split()
         color = 'debug'
         for i in range(5):
@@ -169,5 +168,16 @@ class NodeAdapter(object):
         return 'severity_%s' % color
 
     def getEventSummary(self):
+        if not self.important:
+            return None
         if hasattr(self.node, 'getEventSummary'):
             return self.node.getEventSummary()
+
+    @property
+    def important(self):
+        if isinstance(self.node, str):
+            return False
+        from Products.ZenModel.IpNetwork import IpNetwork
+        if hasattr(self.node, 'aq_base') and isinstance(self.node.aq_base, IpNetwork):
+            return False
+        return True

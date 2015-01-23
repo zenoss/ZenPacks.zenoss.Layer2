@@ -113,12 +113,13 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)
+
             # Layer 3 connections
             for ip in interface.ipaddresses():
                 net = ip.network()
                 if net is None or net.netmask == 32:
                     continue
-                id = self.context.id
+                id = self.context.getPrimaryUrlPath()
                 net_id = net.getPrimaryUrlPath()
                 yield Connection(id, (net_id, ), ['layer3', ])
                 yield Connection(net_id, (id, ), ['layer3', ])
@@ -136,7 +137,7 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             dev = ip.device()
             if not dev:
                 continue
-            id = self.context.id
+            n_id = self.context.getPrimaryUrlPath()
             dev_id = dev.getPrimaryUrlPath()
-            yield Connection(id, (dev_id, ), ['layer3', ])
-            yield Connection(dev_id, (id, ), ['layer3', ])
+            yield Connection(n_id, (dev_id, ), ['layer3', ])
+            yield Connection(dev_id, (n_id, ), ['layer3', ])
