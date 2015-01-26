@@ -9,6 +9,7 @@
 
 from collections import defaultdict
 
+JOIN_TO_SEGMENTS = False
 
 def contract_edges(nodes, links):
     '''
@@ -73,6 +74,8 @@ def contract_edges(nodes, links):
             for j in get_adjacent(i):
                 if nodes[j].get('important'):
                     continue
+                if JOIN_TO_SEGMENTS:
+                    return (i, j)
                 j_hin = has_important_neighbour(j)
                 if not i_hin or not j_hin:
                     if i_hin:
@@ -128,18 +131,20 @@ def contract_edges(nodes, links):
         if len(node['incident']) < 2:
             del nodes[i]
 
+    
     # remove unimportant nodes which connect things other nodes already connect
-    already_connected = set()
-    for i, node in nodes.items():
-        if node.get('important'):
-            continue
-        adj = frozenset(get_adjacent(i))
-        if adj in already_connected:
-            for e_id in node['incident'][:]: # copy because number of incidents will decrease when link removing
-                del_link(e_id)
-            del nodes[i]
-            continue
-        already_connected.add(adj)
+    if not JOIN_TO_SEGMENTS:
+        already_connected = set()
+        for i, node in nodes.items():
+            if node.get('important'):
+                continue
+            adj = frozenset(get_adjacent(i))
+            if adj in already_connected:
+                for e_id in node['incident'][:]: # copy because number of incidents will decrease when link removing
+                    del_link(e_id)
+                del nodes[i]
+                continue
+            already_connected.add(adj)
 
 
     # Convert nodes and links from dicts back to lists
