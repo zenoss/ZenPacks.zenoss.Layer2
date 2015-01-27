@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2014, 2015 all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -13,6 +13,14 @@ import string
 from Products.ZenModel.IpInterface import IpInterface
 from ZenPacks.zenoss.Layer2.utils import asmac
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+
+
+def main():
+    create_topology(diamond, dmd)
+    # create_topology(Y_to_existing)
+    # create_topology(binary_tree_topology(deepness=3, root='test'))
+    # create_topology(Y)
+    commit()
 
 Y = '''
     a1 b1
@@ -51,38 +59,31 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
     return edges
     
 
-def main():
-    create_topology(diamond)
-    # create_topology(Y_to_existing)
-    # create_topology(binary_tree_topology(deepness=3, root='test'))
-    # create_topology(Y)
-    commit()
-
-def create_topology(connections):
+def create_topology(connections, dmd):
     ''' Connections - iterable of pairs of device id's '''
     if isinstance(connections, basestring):
         connections = parse_topology(connections)
 
     for c in connections:
         layers = c[2].split(',') if len(c) > 2 else None
-        connect(get_device(c[0]), get_device(c[1]), layers)
+        connect(get_device(c[0], dmd), get_device(c[1], dmd), dmd, layers)
 
     dmd.Devices.reIndex()
+
 
 def parse_topology(text):
     return (x.strip().split() for x in text.splitlines() if x.strip())
 
-def get_device(id):
+
+def get_device(id, dmd):
     ''' Find device if exists, or return new '''
     d = dmd.Devices.findDevice(id)
     if d:
         return d
-    return create_router(id)
-
-def create_router(id):
     return dmd.Devices.Network.Router.Cisco.createInstance(id)
 
-def connect(d1, d2, layers=None):
+
+def connect(d1, d2, dmd, layers=None):
     ''' Connect two devices by l2 link '''
     mac1 = random_mac()
     mac2 = random_mac()
@@ -90,9 +91,10 @@ def connect(d1, d2, layers=None):
     add_interface(d1, macaddress=mac1, clientmacs=[mac2], layers=layers)
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], layers=layers)
 
-    catapi = CatalogAPI(zport)
+    catapi = CatalogAPI(dmd.zport)
     catapi.add_node(d1)
     catapi.add_node(d2)
+
 
 def add_interface(dev, macaddress='', clientmacs=[], layers=None):
     ''' Add new interface to device '''
@@ -104,11 +106,16 @@ def add_interface(dev, macaddress='', clientmacs=[], layers=None):
         eth.vlans = layers
     dev.os.interfaces._setObject('unused_id_param', eth)
 
+
 def random_id(length=6):
    return ''.join(random.choice(string.lowercase) for i in range(length))
 
+
 def random_mac():
     return asmac(random_id())
+
+def router(name):
+    return '/zport/dmd/Devices/Network/Router/Cisco/devices/%s' % name
 
 if __name__ == '__main__':
     main()

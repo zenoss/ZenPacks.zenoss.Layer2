@@ -25,7 +25,11 @@ unused(Globals)
 
 
 class ZenPack(ZenPackBase):
-    """Layer2 loader."""
+    """ Layer2 zenpack loader """
+
+    packZProperties = [
+        ('zZenossGateway', '', 'string'),
+    ]
 
     def install(self, app):
         super(ZenPack, self).install(app)

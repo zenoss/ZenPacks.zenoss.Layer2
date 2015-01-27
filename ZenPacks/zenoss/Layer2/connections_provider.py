@@ -5,7 +5,7 @@ from Acquisition import ImplicitAcquisitionWrapper
 from Products.ZenModel.ZenModelRM import ZenModelRM
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
-from .macs_catalog import CatalogAPI, get_vlans
+from .macs_catalog import InterfaceConnections
 
 def check_connection(connection):
     assert isinstance(connection.entity_id, str), 'entity_id should be string'
@@ -65,7 +65,7 @@ class IConnectionsProvider(Interface):
         ''' Wraps a device or component and provides API to retrieve its connections '''
 
     def get_status():
-        ''' Returns true if device is up. '''
+        ''' Returns True if device is up. '''
 
     def get_connections():
         ''' Yields connection objects '''
@@ -79,10 +79,6 @@ class BaseConnectionsProvider(object):
 
     def __init__(self, context):
         self.context = context
-        self.setup()
-
-    def setup(self):
-        ''' Allow to set some shortcuts on class '''
 
     def get_status(self):
         ''' Let all the nodes be up by default '''
@@ -91,15 +87,11 @@ class BaseConnectionsProvider(object):
     def __str__(self):
         return '<ConnectionsProvider for: %s>' % self.context
 
-from macs_catalog import InterfaceConnections
 
 
 class DeviceConnectionsProvider(BaseConnectionsProvider):
-    def setup(self):
-        self.cat = CatalogAPI(self.context.dmd.zport)
-
     def get_status(self):
-        return self.context.getStatus()
+        return self.context.getStatus() == 0
 
     def get_connections(self):
         for interface in self.context.os.interfaces():
@@ -113,30 +105,25 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)
+
             # Layer 3 connections
             for ip in interface.ipaddresses():
                 net = ip.network()
                 if net is None or net.netmask == 32:
                     continue
-                id = self.context.id
+                id = self.context.getPrimaryUrlPath()
                 net_id = net.getPrimaryUrlPath()
                 yield Connection(id, (net_id, ), ['layer3', ])
                 yield Connection(net_id, (id, ), ['layer3', ])
 
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):
-    def setup(self):
-        self.cat = CatalogAPI(self.context.dmd.zport)
-
-    def get_status(self):
-        return self.context.getStatus()
-
     def get_connections(self):
         for ip in self.context.ipaddresses():
             dev = ip.device()
             if not dev:
                 continue
-            id = self.context.id
+            n_id = self.context.getPrimaryUrlPath()
             dev_id = dev.getPrimaryUrlPath()
-            yield Connection(id, (dev_id, ), ['layer3', ])
-            yield Connection(dev_id, (id, ), ['layer3', ])
+            yield Connection(n_id, (dev_id, ), ['layer3', ])
+            yield Connection(dev_id, (n_id, ), ['layer3', ])
