@@ -12,6 +12,7 @@ log = logging.getLogger('zen.Layer2')
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
+from zExceptions import NotFound
 from .connections_provider import IConnection, IConnectionsProvider, connection_hash
 
 
@@ -67,6 +68,37 @@ class CatalogAPI(BaseCatalogAPI):
         visit(entity_id)
 
         return visited
+
+    def get_status(self, node):
+        try:
+            node = self.zport.dmd.getObjByPath(node)
+        except (NotFound, KeyError) as e:
+            return True
+        return IConnectionsProvider(node).get_status()
+
+    def check_working_path(self, from_entity, to_entity):
+        layers = []
+        for c in self.search(entity_id=from_entity):
+            layers.extend(c.layers)
+        for layer in layers: # check if any of the layers has working path to the device
+            visited = set()
+            def visit(node):
+                if node in visited:
+                    return
+                if not self.get_status(node):
+                    return
+                if node == to_entity:
+                    raise StopIteration
+
+                visited.add(node)
+                for n in self.get_directly_connected(node, [layer]):
+                    visit(n)
+            try:
+                visit(from_entity)
+            except StopIteration:
+                return True
+
+        return False
 
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)

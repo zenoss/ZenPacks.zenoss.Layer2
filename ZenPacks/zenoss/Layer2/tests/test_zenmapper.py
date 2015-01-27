@@ -19,7 +19,7 @@ from Products.ZenUtils.Utils import monkeypatch
 import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.zenmapper import update_catalog
-from .create_fake_devices import create_topology
+from .create_fake_devices import create_topology, router
   
 
 class TestUpdateCatalog(BaseTestCase):
@@ -43,9 +43,6 @@ class TestUpdateCatalog(BaseTestCase):
         ''')
         update_catalog(self.dmd)
         self.assertIn(router('b'), self.cat.get_connected(router('a')))
-
-def router(name):
-    return '/zport/dmd/Devices/Network/Router/Cisco/devices/%s' % name
 
 def test_suite():
     from unittest import TestSuite, makeSuite

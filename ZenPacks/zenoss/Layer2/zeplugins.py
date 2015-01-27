@@ -42,9 +42,13 @@ class L2SuppressEventsPlugin(object):
 
         # Look up for upstream device(s)
         cat = CatalogAPI(dmd.zport)
-        for obj in cat.get_upstream_devices(dev.id):
-            if obj.getStatus() > 0:
-                # Upstream router is DOWN, let suppress event
-                log.debug("Upstream router for %s is %s and it's DOWN. Suppressing event." % (
-                    dev.titleOrId(), obj.titleOrId()))
+        if not cat.check_working_path(dmd.Devices.zZenossGateway, dev.getPrimaryUrlPath()):
+                log.debug("No path from %s to zenoss. Suppressing event." % dev.titleOrId())
                 evtproxy.eventState = STATUS_SUPPRESSED
+
+        # for obj in cat.get_upstream_devices(dev.id):
+        #     if obj.getStatus() > 0:
+        #         # Upstream router is DOWN, let suppress event
+        #         log.debug("Upstream router for %s is %s and it's DOWN. Suppressing event." % (
+        #             dev.titleOrId(), obj.titleOrId()))
+        #         evtproxy.eventState = STATUS_SUPPRESSED

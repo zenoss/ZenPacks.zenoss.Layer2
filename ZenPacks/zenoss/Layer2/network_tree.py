@@ -138,8 +138,8 @@ class NodeAdapter(object):
             return self.node
 
     def get_path(self):
-        if hasattr(self.node, 'getPhysicalPath'):
-            return '/'.join(self.node.getPhysicalPath())
+        if hasattr(self.node, 'getPrimaryUrlPath'):
+            return self.node.getPrimaryUrlPath()
         else:
             return self.node
 

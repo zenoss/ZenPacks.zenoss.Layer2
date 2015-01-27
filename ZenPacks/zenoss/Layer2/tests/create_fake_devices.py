@@ -114,6 +114,8 @@ def random_id(length=6):
 def random_mac():
     return asmac(random_id())
 
+def router(name):
+    return '/zport/dmd/Devices/Network/Router/Cisco/devices/%s' % name
 
 if __name__ == '__main__':
     main()
