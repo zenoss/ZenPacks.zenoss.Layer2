@@ -1,3 +1,12 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
+
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
 from Acquisition import ImplicitAcquisitionWrapper
@@ -6,6 +15,7 @@ from Products.ZenModel.ZenModelRM import ZenModelRM
 from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
 
 from .macs_catalog import InterfaceConnections
+
 
 def check_connection(connection):
     assert isinstance(connection.entity_id, str), 'entity_id should be string'
@@ -33,8 +43,8 @@ def connection_hash(c):
 
 def to_path(obj):
     ''' If object has path, replace it by that path, else do nothing '''
-    if hasattr(obj, 'getPhysicalPath'):
-        return '/'.join(obj.getPhysicalPath())
+    if hasattr(obj, 'getPrimaryUrlPath'):
+        return obj.getPrimaryUrlPath()
     else:
         return obj
 
@@ -111,10 +121,8 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 net = ip.network()
                 if net is None or net.netmask == 32:
                     continue
-                id = self.context.getPrimaryUrlPath()
-                net_id = net.getPrimaryUrlPath()
-                yield Connection(id, (net_id, ), ['layer3', ])
-                yield Connection(net_id, (id, ), ['layer3', ])
+                yield Connection(self.context, (net, ), ['layer3', ])
+                yield Connection(net, (self.context, ), ['layer3', ])
 
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):
@@ -123,7 +131,5 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             dev = ip.device()
             if not dev:
                 continue
-            n_id = self.context.getPrimaryUrlPath()
-            dev_id = dev.getPrimaryUrlPath()
-            yield Connection(n_id, (dev_id, ), ['layer3', ])
-            yield Connection(dev_id, (n_id, ), ['layer3', ])
+            yield Connection(self.context, (dev, ), ['layer3', ])
+            yield Connection(dev, (self.context, ), ['layer3', ])

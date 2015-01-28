@@ -40,6 +40,14 @@ class ZenMapper(CyclingDaemon):
             help="Name of monitor instance to use for heartbeat "
             " events. Default is %s." % DEFAULT_MONITOR)
 
+        self.parser.add_option('-d', '--device', dest='device',
+                help="Fully qualified device name ie www.confmon.com")
+
+    def get_devices_list(self):
+        if self.options.device:
+            log.info("Updating connections for device %s", self.options.device)
+            return d
+
     def main_loop(self):
         log.info('Updating catalog')
         update_catalog(self.dmd)

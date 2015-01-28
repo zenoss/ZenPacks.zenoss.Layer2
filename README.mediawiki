@@ -1,4 +1,4 @@
-This ZenPack provides the ability to monitor OSI Layer 2 infrastructure. Monitoring is performed via SNMP.
+This ZenPack provides the ability to monitor OSI Layer 2 infrastructure, and build network topology on top of layer2 and other layers. Monitoring is performed via SNMP.
 
 == Features ==
 
@@ -6,7 +6,8 @@ The features added by this ZenPack can be summarized as follows. They are each d
 
 * Discovery and periodic remodeling of Neighbor Switches using CDP/LLDP.
 * Monitoring of MAC Address table or Forwarding Table for each network interface of device.
-* Event suppression based on MAC Address table.
+* Creating connections between devices, based on Forwarding table information.
+* Event suppression based on network map connectivity.
 
 === Discovery ===
 
@@ -14,11 +15,65 @@ CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discove
 
 === Monitoring ===
 
-The ZenPack binds ''Layer2Info'' monitoring templates to the ''/Network'' device class in Zenoss. This activates monitoring of Layer 2 MAC forwarding tables for devices under that class. On the detail view of ''Interfaces'' components,  the ''Clients MAC addresses'' subpanel is added with a list of MAC addresses. Those addresses are grouped by the client device they belong to.
+The ZenPack binds ''Layer2Info'' monitoring templates to the ''/Network'' device class in Zenoss. This activates monitoring of Layer 2 MAC forwarding tables for devices under that class. On the detail view of ''Interfaces'' components,  the ''Clients MAC addresses'' subpanel is added with a list of MAC addresses.
 
 === Event suppression ===
+When a device throught which zenoss connects to other devices it monitors goes down, a flood of ''Device is DOWN!'' events for every device in an affected subnet can be generated. This ZenPack adds a zenevent plugin which suppresses such subsequent events for devices behind device which is down. As a result, a system administator receives only a primary, core error event.
 
-When an upstream switch goes down, a flood of ''Device is DOWN!'' events for every device in an affected subnet can be generated. This ZenPack adds a zenevent plugin which suppresses such subsequent events for leaf devices. As a result, a system administator receives only a primary, core error event.
+To determine connectivity of device to zenoss instance, this zenpack needs to know where on the network map zenoss instance is located. It is described on Configuration properties of devices class in <code>zZenossGateway</code> zproperty. You should put there id of the zenoss device, or device to which it is connected.
+
+
+== Network map ==
+[[File:Network map.png|thumb|320px|Network map]]
+
+To inspect interconnections between devices, you could use a network map page which is accessed by "Infrastructure" -> "Network Map" menu. It shows connections between devices, interfaces, networks and other entities, and also status of the device (Color of the event with the highest severity for that device.
+
+To display a network map you should fill the form on the left side of network map. Fill "Device ID" field with name of the device starting from which the map will be explored. Then set the depth of the map (how many hops to do when exploring the map). Also, you could select network layers which you want to show on the map, if you not select any, all of them will be displayed. To apply the selection and update (or show) the map on the screen, press "Apply" button at the bottom of the form.
+
+Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be bringed back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
+
+
+== zenmapper daemon ==
+To update catalog with connections for network map, is used zenmapper daemon. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
+
+== Writing your own connection provider ==
+Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modelled in NSX zenpack.
+
+We need to create new class, called for example NSXConnectionsProvider, which inherit from BaseConnectionsProvider, like this:
+
+<syntaxhighlight lang=python>
+# our provider will inherit from this:
+from ZenPacks.zenoss.Layer2.connections_provider import BaseConnectionsProvider
+
+# and will yield this:
+from ZenPacks.zenoss.Layer2.connections_provider import Connection
+
+class NSXConnectionsProvider(BaseConnectionsProvider):
+    def get_connections(self):
+        # self.context is a entity for which we will provide connections
+        for switch in self.context.nsxvirtualSwitchs():
+            # so, our device is called NSXManager, and it has switches
+            # yield connecions to the switches
+            yield Connection(self.context, (switch, ), ('layer3', 'nsx'))
+
+            # each switch has interfaces:
+            for i in switch.nsxinterfaces():
+                # yield connection to the interfaces
+                yield Connection(switch, (i, ), ['layer3', 'nsx'])
+
+                # and each interface has many to one connection to edges:
+                yield Connection(i, (i.nsxedge(), ), ['layer3', 'nsx'])
+</syntaxhighlight>
+
+So, we described how to get connections, now we need to tell zenoss, that this will be connections provider for any NSXManager devices. We do it by registering adapter in our zenpack's <code>configure.zcml</code>:
+
+<syntaxhighlight lang=xml>
+    <adapter
+        factory=".connections_provider.NSXConnectionsProvider"
+        for="ZenPacks.zenoss.NSX.NSXManager.NSXManager"
+        provides="ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider"
+    />
+</syntaxhighlight>
 
 == Requirements ==
 
@@ -52,11 +107,17 @@ The essential mechanism that separates network switches from network hubs is the
 
 Installing this ZenPack will add the following items to your Zenoss system.
 
-;Modeler Plugins
+'''Modeler Plugins'''
 * zenoss.snmp.CDPLLDPDiscover
 
-;Monitoring Templates
+'''Monitoring Templates'''
 * Layer2Info (in /Network)
+
+'''zProperties'''
+* zZenossGateway
+
+'''Daemons'''
+* zenmapper
 
 == Changes ==
 
