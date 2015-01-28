@@ -75,6 +75,12 @@ So, we described how to get connections, now we need to tell zenoss, that this w
     />
 </syntaxhighlight>
 
+To test connections that your provider yields, you could run 
+
+zenmapper run -v10 -d <name or id of your modelled device>
+
+And then look it up on the network map.
+
 == Requirements ==
 
 This ZenPack has the following requirements.

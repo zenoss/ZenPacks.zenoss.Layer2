@@ -30,8 +30,13 @@ class TestUpdateCatalog(BaseTestCase):
         self.dmd.Devices.createOrganizer('/Network/Router/Cisco')
 
         self.cat = CatalogAPI(self.dmd.zport)
-        self.zenmapper = ZenMapper()
+
+        class TestableZenMapper(ZenMapper):
+            def __init__(self):
+                ''' It breaks tests somewhere in parent class '''
+        self.zenmapper = TestableZenMapper()
         self.zenmapper.dmd = self.dmd
+        self.zenmapper.options = lambda: 1
         self.zenmapper.options.device = False
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
@@ -42,15 +47,8 @@ class TestUpdateCatalog(BaseTestCase):
         create_topology(topology, self.dmd, update_catalog=False)
 
     def test_empty_if_mapper_not_runned(self):
-        self.topology('''
-            a b
-        ''')
+        self.topology('a b')
         self.assertEquals(len(self.cat.search()), 0)
-
-    def test_adding_device(self):
-        d = self.dmd.Devices.Network.createInstance('test')
-        d.index_object()
-        self.assertTrue(self.dmd.Devices.getSubDevices())
 
     def test_pair(self):
         self.topology('''
