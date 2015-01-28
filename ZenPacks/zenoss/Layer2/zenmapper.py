@@ -45,27 +45,28 @@ class ZenMapper(CyclingDaemon):
 
     def get_devices_list(self):
         if self.options.device:
-            log.info("Updating connections for device %s", self.options.device)
-            return d
+            device = self.dmd.Devices.findDevice(self.options.device)
+            if device:
+                log.info("Updating connections for device %s", self.options.device)
+                return [device]
+            else:
+                log.error("Device with id %s was not found", self.options.device)
+        else:
+            return chain(
+                self.dmd.Devices.getSubDevices(),
+                self.dmd.Networks.getSubNetworks()
+            )
 
     def main_loop(self):
         log.info('Updating catalog')
-        update_catalog(self.dmd)
+        cat = CatalogAPI(self.dmd.zport)
+        for entity in self.get_devices_list():
+            try:
+                log.debug('Checking %s', entity.id)
+                cat.add_node(entity)
+            except TypeError:
+                log.debug('Could not adapt %. Ignoring.', entity.id)
         commit()
-
-
-def update_catalog(dmd):
-    cat = CatalogAPI(dmd.zport)
-    cat.clear()
-    for entity in chain(
-        dmd.Devices.getSubDevices(),
-        dmd.Networks.getSubNetworks()
-    ):
-        try:
-            log.debug('Checking %s', entity.id)
-            cat.add_node(entity)
-        except TypeError:
-            log.debug('Could not adapt %. Ignoring.', entity.id)
 
 if __name__ == '__main__':
     main()
