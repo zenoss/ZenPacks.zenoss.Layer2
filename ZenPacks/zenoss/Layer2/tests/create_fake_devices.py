@@ -59,14 +59,14 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
     return edges
     
 
-def create_topology(connections, dmd):
+def create_topology(connections, dmd, update_catalog=True):
     ''' Connections - iterable of pairs of device id's '''
     if isinstance(connections, basestring):
         connections = parse_topology(connections)
 
     for c in connections:
         layers = c[2].split(',') if len(c) > 2 else None
-        connect(get_device(c[0], dmd), get_device(c[1], dmd), dmd, layers)
+        connect(get_device(c[0], dmd), get_device(c[1], dmd), dmd, layers, update_catalog)
 
     dmd.Devices.reIndex()
 
@@ -83,7 +83,7 @@ def get_device(id, dmd):
     return dmd.Devices.Network.Router.Cisco.createInstance(id)
 
 
-def connect(d1, d2, dmd, layers=None):
+def connect(d1, d2, dmd, layers=None, update_catalog=True):
     ''' Connect two devices by l2 link '''
     mac1 = random_mac()
     mac2 = random_mac()
@@ -91,9 +91,10 @@ def connect(d1, d2, dmd, layers=None):
     add_interface(d1, macaddress=mac1, clientmacs=[mac2], layers=layers)
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], layers=layers)
 
-    catapi = CatalogAPI(dmd.zport)
-    catapi.add_node(d1)
-    catapi.add_node(d2)
+    if update_catalog:
+        catapi = CatalogAPI(dmd.zport)
+        catapi.add_node(d1)
+        catapi.add_node(d2)
 
 
 def add_interface(dev, macaddress='', clientmacs=[], layers=None):

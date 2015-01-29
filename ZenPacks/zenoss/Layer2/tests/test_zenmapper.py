@@ -18,30 +18,43 @@ from Products.ZenUtils.Utils import monkeypatch
 
 import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
-from ZenPacks.zenoss.Layer2.zenmapper import update_catalog
+from ZenPacks.zenoss.Layer2.zenmapper import ZenMapper
+
 from .create_fake_devices import create_topology, router
   
 
 class TestUpdateCatalog(BaseTestCase):
     def afterSetUp(self):
         super(TestUpdateCatalog, self).afterSetUp()
+
         self.dmd.Devices.createOrganizer('/Network/Router/Cisco')
+
         self.cat = CatalogAPI(self.dmd.zport)
+
+        class TestableZenMapper(ZenMapper):
+            def __init__(self):
+                ''' It breaks tests somewhere in parent class '''
+        self.zenmapper = TestableZenMapper()
+        self.zenmapper.dmd = self.dmd
+        self.zenmapper.options = lambda: 1
+        self.zenmapper.options.device = False
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
 
     def topology(self, topology):
-        create_topology(topology, self.dmd)
+        # import pudb; pudb.set_trace()
+        create_topology(topology, self.dmd, update_catalog=False)
 
-    def test_empty(self):
+    def test_empty_if_mapper_not_runned(self):
+        self.topology('a b')
         self.assertEquals(len(self.cat.search()), 0)
 
     def test_pair(self):
         self.topology('''
             a b
         ''')
-        update_catalog(self.dmd)
+        self.zenmapper.main_loop()
         self.assertIn(router('b'), self.cat.get_connected(router('a')))
 
 def test_suite():
