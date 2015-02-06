@@ -300,10 +300,11 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         return result
 
     def onError(self, result, config):
+        log.error(result)
         data = self.new_data()
         data['events'].append({
             'component': self.component,
-            'summary': str(result),
+            'summary': str(result.value),
             'eventKey': 'layer2_monitoring_error',
             'eventClass': '/Status',
             'severity': ZenEventClasses.Error,
