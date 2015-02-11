@@ -177,7 +177,7 @@ class CatalogAPI(object):
 
 
 def unique(l):
-    return list(set(l))
+    return list(set(i for i in l if isinstance(i, basestring)))
 
 def show_brain(b):
     print b.id
