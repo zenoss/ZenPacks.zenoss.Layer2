@@ -60,8 +60,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
-;Next
-* Remove add/remove from catalog logging.
+;1.0.1
+* Remove add/remove from catalog logging. (ZEN-15465)
+* Fix usage of incorrect community VLAN suffixes on BRIDGE-MIB queries. (ZEN-16951)
 
 ;1.0.0
 * Initial release
