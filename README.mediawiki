@@ -61,6 +61,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 == Changes ==
 
 ;1.0.1
+* Fix device overview links error. (ZEN-14063)
 * Remove add/remove from catalog logging. (ZEN-15465)
 * Fix usage of incorrect community VLAN suffixes on BRIDGE-MIB queries. (ZEN-16951)
 
