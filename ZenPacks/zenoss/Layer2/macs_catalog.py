@@ -213,7 +213,7 @@ class NetworkSegment(dict):
 
 
 def unique(l):
-    return list(set(l))
+    return list(set(i for i in l if isinstance(i, basestring)))
 
 
 def get_vlans(iface):
