@@ -29,17 +29,9 @@ class ZenPack(ZenPackBase):
 
     def install(self, app):
         super(ZenPack, self).install(app)
-
-        self.post_install(app)
-
-        log.info('Adding Layer2 relationships to existing devices')
         self._buildDeviceRelations()
 
-    def post_install(self, app):
-        """Perform work that can be done after normal ZenPack install."""
-        dc = app.zport.dmd.Devices.Network
-        dc.bindTemplates(dc.zDeviceTemplates + ['Layer2Info'])
-
     def _buildDeviceRelations(self):
+        # TODO: figure out how this is usefull and remove if it is not.
         for d in self.dmd.Devices.getSubDevicesGen():
             d.buildRelations()
