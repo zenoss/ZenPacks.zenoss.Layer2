@@ -118,27 +118,25 @@ class CatalogAPI(object):
         log.info('%s removed from %s' % (device, MACsCatalogId))
 
     def clear(self):
-        for b in self.search():
-            self.get_catalog().uncatalog_object(b.getPath())
+        self.get_catalog()._catalog.clear()
 
     def search(self, query={}):
         return self.get_catalog().search(query)
 
-    def get_device_macadresses(self, device_id):
-        ''' Return list of macadresses for device with given id '''
+    def find_device(self, device_id):
         res = self.search({'id': device_id})
         if res:
-            return res[0].macaddresses
+            return res[0]
         else:
-            raise IndexError('Device with id %r was not found' % device_id)
+            raise IndexError('Device with id %r was not found in macs catalog' % device_id)
+
+    def get_device_macadresses(self, device_id):
+        ''' Return list of macadresses for device with given id '''
+        return self.find_device(device_id).macaddresses
 
     def get_device_clientmacs(self, device_id):
         ''' Return list of clientmacs for device with given id '''
-        res = self.search({'id': device_id})
-        if res:
-            return res[0].clientmacs
-        else:
-            raise IndexError('Device with id %r was not found' % device_id)
+        return self.find_device(device_id).clientmacs
 
     def get_upstream_devices(self, device_id):
         '''
