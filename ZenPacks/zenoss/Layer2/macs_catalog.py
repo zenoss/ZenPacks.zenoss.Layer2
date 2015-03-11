@@ -156,6 +156,18 @@ class CatalogAPI(object):
             if brain.id != device_id
         ]
 
+    def get_only_client_devices(self, device_id):
+        return [brain
+            for brain in self.get_client_devices(device_id)
+            if not brain.clientmacs
+        ]
+
+    def get_upstream_devices_only_for_client(self, device_id):
+        if not self.get_device_clientmacs(device_id):
+            return self.get_upstream_devices(device_id)
+        else:
+            return []
+
     def get_if_upstream_devices(self, mac_addresses):
         '''
         Returns list of devices, connected to IpInterface by given MACs
@@ -172,6 +184,13 @@ class CatalogAPI(object):
         for b in self.search():
             show_brain(b)
 
+    def show_content2(self):
+        for b in self.search():
+            print b.id
+            print '    Upstream: ', ', '.join(str(d.id) for d in self.get_upstream_devices(b.id))
+            print '    Client:   ', ', '.join(str(d.id) for d in self.get_client_devices(b.id))
+            print '    Only client:     ', ', '.join(str(d.id) for d in self.get_only_client_devices(b.id))
+            print '    Only upstream:   ', ', '.join(str(d.id) for d in self.get_upstream_devices_only_for_client(b.id))
 
 def unique(l):
     return list(set(i for i in l if isinstance(i, basestring)))
@@ -179,7 +198,7 @@ def unique(l):
 def show_brain(b):
     print b.id
     print
-    for mac, clientmac in map(None, b.macaddresses, b.clientmacs):
+    for mac, clientmac in map(None, b.macaddresses, b.clientmacs)[:3]:
         print '%s\t%s' % (mac or '                 ', clientmac or '                 ')
     print '-' * 50
     print
