@@ -80,7 +80,6 @@ def get_clients_links(self):
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
 
-    log.info('Adding %s to catalog' % self)
     catapi = CatalogAPI(self.zport)
     catapi.add_device(self)
 
@@ -89,7 +88,6 @@ def index_object(self, idxs=None, noips=False):
 def unindex_object(self):
     original(self)
 
-    log.info('Removing %s from catalog' % self)
     catapi = CatalogAPI(self.zport)
     catapi.remove_device(self)
 

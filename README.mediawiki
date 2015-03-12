@@ -59,5 +59,14 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Layer2Info (in /Network)
 
 == Changes ==
+
+;1.0.1
+* Fix device overview links error. (ZEN-14063)
+* Remove add/remove from catalog logging. (ZEN-15465)
+* Fix usage of incorrect community VLAN suffixes on BRIDGE-MIB queries. (ZEN-16951)
+* Fix looping of impact relationships between switches. (ZEN-17020)
+* Fix incorrect modeling of neighbor switches and improve modeling time. (ZEN-17023)
+* Stop binding Layer2Info template to /Network by default. (ZEN-17035)
+
 ;1.0.0
 * Initial release
