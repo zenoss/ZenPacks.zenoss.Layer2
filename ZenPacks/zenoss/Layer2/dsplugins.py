@@ -147,6 +147,11 @@ class Layer2SnmpPlugin(SnmpPlugin):
     def name(self):
         return PLUGIN_NAME
 
+def join_vlan(community, vlan):
+    ''' Return the same community string with other vlan.
+        If it had vlan already - replace it.
+    '''
+    return community.split('@')[0] + '@' + vlan
 
 class Layer2InfoPlugin(PythonDataSourcePlugin):
     """
@@ -170,14 +175,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
 
     component = None
 
-    def get_snmp_client(self, vlan, config, ds0):
-        """Returns configured SNMP client object"""
-        # using community string indexing
-        # http://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/40367-camsnmp40367.html
-        ds0.zSnmpCommunity = self.community
-        if vlan:
-            ds0.zSnmpCommunity = self.community + "@" + vlan
-
+    def get_snmp_client(self, config, ds0):
         sc = SnmpClient(
             hostname=config.id,
             ipaddr=config.manageIp,
@@ -205,10 +203,9 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
 
         self.jobs = []
 
-        self.community = ds0.zSnmpCommunity
-
         for vlan in self.get_vlans(): # ["1", "951"]:
-            sc = self.get_snmp_client(vlan, config, ds0)
+            ds0.zSnmpCommunity = join_vlan(ds0.zSnmpCommunity, vlan)
+            sc = self.get_snmp_client(config, ds0)
             yield drive(sc.doRun)
             self._prep_iftable(self.get_snmp_data(sc))
             sc.stop()
@@ -230,10 +227,18 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         Yields sequence of strings - vlans ids,
         extracted from keys in self.iftable
         '''
-        yield ''  # for query without VLAN id
+        # TODO: find a better way to get a list of vlans
+        # not parsing from interface ids
         for ifid in self.iftable:
             if 'vlan' in ifid.lower():
-                yield ifid.lower().replace('vlan', '')
+                vlan_id = ifid.lower().replace('vlan', '')
+
+                # https://jira.zenoss.com/browse/ZEN-16951
+                # vlan_id should be integer, not any string
+                try:
+                    yield str(int(vlan_id))
+                except ValueError:
+                    pass
 
     @staticmethod
     def _extract_clientmacs(dot1dTpFdbTable, interface):
