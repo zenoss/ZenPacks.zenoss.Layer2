@@ -8,6 +8,15 @@
 #
 ######################################################################
 
+
+'''
+Layer2InfoPlugin only does modelling of client MAC addresses, for interfaces.
+It is implemented as monitoring plugin, not as modeler plugin because there is no way
+to tell one modeler to run after another, and we need to run this code after interfaces
+are modeled.
+
+'''
+
 from logging import getLogger
 log = getLogger('zen.Layer2Plugins')
 
@@ -150,6 +159,8 @@ class Layer2SnmpPlugin(SnmpPlugin):
 def join_vlan(community, vlan):
     ''' Return the same community string with other vlan.
         If it had vlan already - replace it.
+
+        http://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/40367-camsnmp40367.html
     '''
     return community.split('@')[0] + '@' + vlan
 
