@@ -11,16 +11,13 @@
 from twisted.internet import reactor, udp
 from twistedsnmp import agent, agentprotocol, bisectoidstore
 
+from bridge_oids import get_host_oids
 
 def main():
     simulate(
         agents={
-            '127.0.0.1': {
-                '.1.3.6.1.2.1.1.1.0': 'Host 1',
-            },
-            '127.0.0.2': {
-                '.1.3.6.1.2.1.1.1.0': 'Host 2',
-            },
+            '127.0.0.1': get_host_oids('localhost'),
+            '127.87.100.1': get_host_oids('Lol' * 5),
         },
         port=1611
     )
@@ -39,6 +36,7 @@ def simulate(agents, port=161):
                             OIDs=oids,
                         ),
                     ),
+                    community=None, # accept all communities
                 ),
                 ip,
                 8192,

@@ -148,7 +148,7 @@ class Layer2SnmpPlugin(SnmpPlugin):
         GetTableMap('dot1dBasePortEntry', dot1dBasePortEntry,
             {
                 '.1': 'dot1dBasePort',
-                 '.2': 'dot1dBasePortIfIndex'
+                '.2': 'dot1dBasePortIfIndex'
             }
         )
     )
@@ -238,6 +238,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         Yields sequence of strings - vlans ids,
         extracted from keys in self.iftable
         '''
+        yield ''
         # TODO: find a better way to get a list of vlans
         # not parsing from interface ids
         for ifid in self.iftable:
