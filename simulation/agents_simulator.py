@@ -7,21 +7,24 @@
 # installed.
 #
 ######################################################################
+import sys
 
+from twisted.internet import pollreactor
+pollreactor.install() # to use more than 1024 sockets
 from twisted.internet import reactor, udp
 from twistedsnmp import agent, agentprotocol, bisectoidstore
 
-from bridge_oids import get_host_oids
+from bridge_oids import Network, binary_tree_topology
 
 def main():
+    network = Network(binary_tree_topology(deepness=5))
+    if len(sys.argv) > 1 and sys.argv[1] == 'dump':
+        print network.get_batchdump()
+        return
     simulate(
-        agents={
-            '127.0.0.1': get_host_oids('localhost'),
-            '127.87.100.1': get_host_oids('Lol' * 5),
-        },
+        agents=network.get_oids(),
         port=1611
     )
-
 
 def simulate(agents, port=161):
     def start():
