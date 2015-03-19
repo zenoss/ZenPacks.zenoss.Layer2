@@ -148,7 +148,7 @@ class Layer2SnmpPlugin(SnmpPlugin):
         GetTableMap('dot1dBasePortEntry', dot1dBasePortEntry,
             {
                 '.1': 'dot1dBasePort',
-                 '.2': 'dot1dBasePortIfIndex'
+                '.2': 'dot1dBasePortIfIndex'
             }
         )
     )
@@ -161,8 +161,19 @@ def join_vlan(community, vlan):
         If it had vlan already - replace it.
 
         http://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/40367-camsnmp40367.html
+
+        >>> join_vlan('public', '1')
+        'public@1'
+        >>> join_vlan('public@1', '2')
+        'public@2'
+        >>> join_vlan('public@1', '')
+        'public'
+        >>> join_vlan('public', '')
+        'public'
     '''
-    return community.split('@')[0] + '@' + vlan
+    return community.split('@')[0] + (
+        ('@' + vlan) if vlan else ''
+    )
 
 class Layer2InfoPlugin(PythonDataSourcePlugin):
     """
@@ -238,6 +249,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         Yields sequence of strings - vlans ids,
         extracted from keys in self.iftable
         '''
+        yield ''  # for query without VLAN id
         # TODO: find a better way to get a list of vlans
         # not parsing from interface ids
         for ifid in self.iftable:
