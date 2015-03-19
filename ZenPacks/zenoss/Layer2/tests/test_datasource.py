@@ -7,6 +7,7 @@
 #
 ##############################################################################
 
+import doctest
 from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
@@ -15,6 +16,7 @@ from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 
 from ZenPacks.zenoss.Layer2.dsplugins import Layer2InfoPlugin, PLUGIN_NAME
 from ZenPacks.zenoss.Layer2.dsplugins import ForwardingEntryStatus
+from ZenPacks.zenoss.Layer2 import dsplugins
 from ZenPacks.zenoss.Layer2.utils import asmac
 
 class TestDataSourcePlugin(BaseTestCase):
@@ -157,8 +159,10 @@ class TestDataSourcePlugin(BaseTestCase):
 
         self.assertEqual(interface['clientmacs'], [asmac(mac)])
 
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
     suite.addTest(makeSuite(TestDataSourcePlugin))
+    suite.addTests(doctest.DocTestSuite(dsplugins))
     return suite
