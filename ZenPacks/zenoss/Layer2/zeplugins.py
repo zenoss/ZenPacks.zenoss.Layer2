@@ -58,8 +58,8 @@ class L2SuppressEventsPlugin(object):
             zdev.getPrimaryUrlPath(),
             dev.getPrimaryUrlPath()
         ):
-                log.debug(
-                    "No path from % to zenoss. Suppressing event.",
-                    dev.titleOrId()
-                )
-                evtproxy.eventState = STATUS_SUPPRESSED
+            log.debug(
+                "No path from % to zenoss. Suppressing event.",
+                dev.titleOrId()
+            )
+            evtproxy.eventState = STATUS_SUPPRESSED
