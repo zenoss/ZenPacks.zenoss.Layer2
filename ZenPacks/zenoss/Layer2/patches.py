@@ -63,15 +63,9 @@ def format_macs(macs, get_device_by_mac):
         else:
             links["Other"][mac[:8]].append(mac)
 
-    return '<table class="x-grid-table">%s</table>' % '\n'.join(
-        '<tr class="x-grid-row">'
-        '<td class="x-grid-cell">'
-        '<strong>{}</strong>'
-        '</td>{}'
-        '</tr>'.format(group, ''.join(
-            '<td class="x-grid-cell">'
-            '<div class="x-grid-cell-inner">{}</div>'
-            '</td>'.format('<br/>\n'.join(sorted(column)))
+    return '\n'.join(
+        '<strong>{}</strong>\n{}'.format(group, ''.join(
+            '{}<br /><br />'.format('<br/>\n'.join(sorted(column)))
             for column in columns.values()
         ))
         for group, columns in links.iteritems()

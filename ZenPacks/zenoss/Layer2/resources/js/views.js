@@ -126,7 +126,8 @@ Zenoss.nav.appendTo('Component', [{
                 xtype: 'panel',
                 viewName: 'macs',
                 showToolbar: false,
-                bodyStyle: 'margin: 10px;'
+                autoScroll: true,
+                bodyStyle: 'padding: 10px;'
             };
         if (!Ext.get('macs_panel')) {
             target.add(macs);
