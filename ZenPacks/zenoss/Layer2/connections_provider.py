@@ -12,7 +12,8 @@ from zope.component import adapts
 from Acquisition import ImplicitAcquisitionWrapper
 
 from Products.ZenModel.ZenModelRM import ZenModelRM
-from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
+from Products.Zuul.catalog.interfaces import IGloballyIndexed
+from Products.Zuul.catalog.interfaces import IIndexableWrapper
 
 from .macs_catalog import InterfaceConnections
 
@@ -32,14 +33,20 @@ def check_connection(connection):
 
 
 class IConnection(IIndexableWrapper):
-    entity_id = Attribute('Unique Id of entity for which connections are described')
-    connected_to = Attribute('Ids of entities to which this entity is connected')
+    entity_id = Attribute(
+        'Unique Id of entity for which connections are described'
+    )
+    connected_to = Attribute(
+        'Ids of entities to which this entity is connected'
+    )
     layers = Attribute('Names of layers for which this connections exists')
 
     invariant(check_connection)
 
+
 def connection_hash(c):
     return str(hash(c.layers + c.connected_to + (c.entity_id, )))
+
 
 def to_path(obj):
     ''' If object has path, replace it by that path, else do nothing '''
@@ -47,6 +54,7 @@ def to_path(obj):
         return obj.getPrimaryUrlPath()
     else:
         return obj
+
 
 class Connection(object):
     ''' See IConnection for detailed documentation '''
@@ -72,7 +80,10 @@ class Connection(object):
 class IConnectionsProvider(Interface):
 
     def __init__(context):
-        ''' Wraps a device or component and provides API to retrieve its connections '''
+        '''
+            Wraps a device or component and
+            provides API to retrieve its connections
+        '''
 
     def get_status():
         ''' Returns True if device is up. '''
@@ -96,7 +107,6 @@ class BaseConnectionsProvider(object):
 
     def __str__(self):
         return '<ConnectionsProvider for: %s>' % self.context
-
 
 
 class DeviceConnectionsProvider(BaseConnectionsProvider):

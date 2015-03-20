@@ -16,6 +16,7 @@ from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
 from ZenPacks.zenoss.Layer2.network_tree import get_connections_json, serialize
 
+
 class TestSerialize(BaseTestCase):
 
     def test_exception(self):
@@ -27,6 +28,7 @@ class TestSerialize(BaseTestCase):
         self.assertEqual(json.loads(serialize('test')), dict(
             error='test'
         ))
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite

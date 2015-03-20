@@ -44,8 +44,8 @@ class NeighborSwitch(DeviceComponent, ManagedEntity):
         ('switch', ToOne(
             ToManyCont,
             'Products.ZenModel.Device.Device',
-            'neighbor_switches')
-        ),
+            'neighbor_switches'
+        )),
     )
 
     # Meta-data: Zope object views and actions

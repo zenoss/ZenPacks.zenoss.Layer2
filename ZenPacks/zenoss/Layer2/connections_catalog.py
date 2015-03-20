@@ -13,7 +13,8 @@ log = logging.getLogger('zen.Layer2')
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
 from zExceptions import NotFound
-from .connections_provider import IConnection, IConnectionsProvider, connection_hash
+from .connections_provider import IConnection, IConnectionsProvider
+from .connections_provider import connection_hash
 
 
 class CatalogAPI(BaseCatalogAPI):
@@ -45,7 +46,10 @@ class CatalogAPI(BaseCatalogAPI):
         map(self.add_connection, IConnectionsProvider(node).get_connections())
 
     def remove_node(self, node):
-        map(self.remove_connection, IConnectionsProvider(node).get_connections())
+        map(
+            self.remove_connection,
+            IConnectionsProvider(node).get_connections()
+        )
 
     def get_directly_connected(self, entity_id, layers=None):
         q = dict(entity_id=entity_id)
@@ -80,8 +84,11 @@ class CatalogAPI(BaseCatalogAPI):
         layers = []
         for c in self.search(entity_id=from_entity):
             layers.extend(c.layers)
-        for layer in layers: # check if any of the layers has working path to the device
+
+        # check if any of the layers has working path to the device
+        for layer in layers:
             visited = set()
+
             def visit(node):
                 if node in visited:
                     return

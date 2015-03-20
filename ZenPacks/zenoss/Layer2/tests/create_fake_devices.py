@@ -44,6 +44,7 @@ Y_to_existing = '''
     fake1 fake3
 '''
 
+
 def binary_tree_topology(deepness=5, root='bin', edges=[]):
     if deepness <= 0:
         return
@@ -57,7 +58,7 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
     binary_tree_topology(deepness - 1, r, edges)
 
     return edges
-    
+
 
 def create_topology(connections, dmd, update_catalog=True):
     ''' Connections - iterable of pairs of device id's '''
@@ -66,7 +67,13 @@ def create_topology(connections, dmd, update_catalog=True):
 
     for c in connections:
         layers = c[2].split(',') if len(c) > 2 else None
-        connect(get_device(c[0], dmd), get_device(c[1], dmd), dmd, layers, update_catalog)
+        connect(
+            get_device(c[0], dmd),
+            get_device(c[1], dmd),
+            dmd,
+            layers,
+            update_catalog
+        )
 
     dmd.Devices.reIndex()
 
@@ -109,11 +116,15 @@ def add_interface(dev, macaddress='', clientmacs=[], layers=None):
 
 
 def random_id(length=6):
-   return ''.join(random.choice(string.lowercase) for i in range(length))
+    return ''.join(
+        random.choice(string.lowercase)
+        for i in range(length)
+    )
 
 
 def random_mac():
     return asmac(random_id())
+
 
 def router(name):
     return '/zport/dmd/Devices/Network/Router/Cisco/devices/%s' % name

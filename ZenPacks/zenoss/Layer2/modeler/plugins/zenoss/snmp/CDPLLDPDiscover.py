@@ -17,7 +17,9 @@ Link Layer Discovery Protocol from SNMP, and create DMD interface objects
 """
 
 from Products.ZenUtils.Utils import prepId
-from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin, GetTableMap
+from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin
+from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
+
 
 class CDPLLDPDiscover(SnmpPlugin):
     """
@@ -30,27 +32,23 @@ class CDPLLDPDiscover(SnmpPlugin):
 
     snmpGetTableMaps = (
         # CDP cache entries
-        GetTableMap('cdpCacheEntry', '.1.3.6.1.4.1.9.9.23.1.2.1.1',
-                {
-                    '.1': 'cdpCacheIfIndex',
-                    '.4': 'cdpCacheAddress',
-                    '.6': 'cdpCacheDeviceId',
-                    '.7': 'cdpCacheDevicePort',
-                    '.8': 'cdpCachePlatform',
-                    '.11': 'cdpCacheNativeVLAN',
-                    '.17': 'cdpCacheSysName',
-                    '.23': 'cdpCachePhysLocation'
-                }
-        ),
+        GetTableMap('cdpCacheEntry', '.1.3.6.1.4.1.9.9.23.1.2.1.1', {
+            '.1': 'cdpCacheIfIndex',
+            '.4': 'cdpCacheAddress',
+            '.6': 'cdpCacheDeviceId',
+            '.7': 'cdpCacheDevicePort',
+            '.8': 'cdpCachePlatform',
+            '.11': 'cdpCacheNativeVLAN',
+            '.17': 'cdpCacheSysName',
+            '.23': 'cdpCachePhysLocation'
+        }),
         # LLDP remote systems entries
-        GetTableMap('lldpRemEntry', '.1.0.8802.1.1.2.1.4.1.1',
-                {
-                    '.7': 'lldpRemPortId',
-                    '.8': 'lldpRemPortDesc',
-                    '.9': 'lldpRemSysName',
-                    '.10': 'lldpRemSysDesc'
-                }
-        ),
+        GetTableMap('lldpRemEntry', '.1.0.8802.1.1.2.1.4.1.1', {
+            '.7': 'lldpRemPortId',
+            '.8': 'lldpRemPortDesc',
+            '.9': 'lldpRemSysName',
+            '.10': 'lldpRemSysDesc'
+        }),
     )
 
     def process(self, device, results, log):
@@ -59,7 +57,10 @@ class CDPLLDPDiscover(SnmpPlugin):
         to NeighborSwitch objects.
         """
         getdata, tabledata = results
-        log.info('Modeler %s processing data for device %s', self.name(), device.id)
+        log.info(
+            'Modeler %s processing data for device %s',
+            self.name(), device.id
+        )
 
         log.debug("%s tabledata = %s", device.id, tabledata)
         oms = {}
@@ -92,8 +93,11 @@ class CDPLLDPDiscover(SnmpPlugin):
                 'id': idx,
                 'title': title,
                 'description': data.get('lldpRemSysDesc', ''),
-                'device_port': data.get('lldpRemPortDesc', '') or data.get('lldpRemPortId', ''),
-                })
+                'device_port': (
+                    data.get('lldpRemPortDesc', '')
+                    or data.get('lldpRemPortId', '')
+                ),
+            })
 
         rm = self.relMap()
         rm.extend(oms.values())

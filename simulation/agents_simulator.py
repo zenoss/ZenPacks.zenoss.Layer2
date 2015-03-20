@@ -10,11 +10,12 @@
 import sys
 
 from twisted.internet import pollreactor
-pollreactor.install() # to use more than 1024 sockets
+pollreactor.install()  # to use more than 1024 sockets
 from twisted.internet import reactor, udp
 from twistedsnmp import agent, agentprotocol, bisectoidstore
 
 from bridge_oids import Network, binary_tree_topology
+
 
 def main():
     network = Network(binary_tree_topology(deepness=5))
@@ -25,6 +26,7 @@ def main():
         agents=network.get_oids(),
         port=1611
     )
+
 
 def simulate(agents, port=161):
     def start():
@@ -39,7 +41,7 @@ def simulate(agents, port=161):
                             OIDs=oids,
                         ),
                     ),
-                    community=None, # accept all communities
+                    community=None,  # accept all communities
                 ),
                 ip,
                 8192,

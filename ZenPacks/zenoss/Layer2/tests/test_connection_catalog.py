@@ -140,7 +140,6 @@ class TestCheckWorkingPath(BaseTestCase):
             self.cat.check_working_path(router('a'), router('d'))
         )
 
-
     def test_check_one_way_down(self):
         self.topology('''
             a b
@@ -166,6 +165,7 @@ class TestCheckWorkingPath(BaseTestCase):
         self.assertFalse(
             self.cat.check_working_path(router('a'), router('d'))
         )
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite

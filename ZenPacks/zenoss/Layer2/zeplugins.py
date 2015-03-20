@@ -1,10 +1,10 @@
 ##############################################################################
-# 
+#
 # Copyright (C) Zenoss, Inc. 2014, 2015 all rights reserved.
-# 
+#
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
-# 
+#
 ##############################################################################
 
 
@@ -18,6 +18,7 @@ from .connections_catalog import CatalogAPI
 import logging
 
 log = logging.getLogger("zen.eventd")
+
 
 def get_device(dmd, id):
     dev = dmd.Devices.findDeviceByIdExact(id)
@@ -39,8 +40,10 @@ class L2SuppressEventsPlugin(object):
         """
         Apply the plugin to an event.
         """
-        if not evtproxy.agent == "zenping": return
-        if not "DOWN" in evtproxy.summary: return
+        if not evtproxy.agent == "zenping":
+            return
+        if not "DOWN" in evtproxy.summary:
+            return
 
         dev = get_device(dmd, evtproxy.device)
         if not dev:
@@ -51,6 +54,12 @@ class L2SuppressEventsPlugin(object):
             return
 
         cat = CatalogAPI(dmd.zport)
-        if not cat.check_working_path(zdev.getPrimaryUrlPath(), dev.getPrimaryUrlPath()):
-                log.debug("No path from %s to zenoss. Suppressing event." % dev.titleOrId())
+        if not cat.check_working_path(
+            zdev.getPrimaryUrlPath(),
+            dev.getPrimaryUrlPath()
+        ):
+                log.debug(
+                    "No path from % to zenoss. Suppressing event.",
+                    dev.titleOrId()
+                )
                 evtproxy.eventState = STATUS_SUPPRESSED
