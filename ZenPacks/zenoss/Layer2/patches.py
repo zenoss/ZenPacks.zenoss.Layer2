@@ -9,6 +9,7 @@
 
 import urllib
 import logging
+from collections import defaultdict
 log = logging.getLogger('zen.Layer2')
 
 import Globals
@@ -47,34 +48,36 @@ def get_ifinfo_for_layer2(self):
     return res
 
 
-def get_clients_links(self):
-    '''
-    Returns list of links to client devices
-    '''
-    macs = self._object.clientmacs
+def format_macs(macs, get_device_by_mac):
     if not macs:
         return ""
 
-    cat = MACsCatalogAPI(self._object.zport)
-    links = {
-        "Other": []
-    }
-    for mac in macs:
-        brains = cat.get_if_client_devices([mac])
-        if brains:
-            for brain in brains:
-                obj = brain.getObject()
-                link = '<a href="{}">{}</a>'.format(
-                    obj.getPrimaryUrlPath(), obj.titleOrId())
-                if link in links:
-                    links[link].append(mac)
-                else:
-                    links[link] = [mac]
-        else:
-            links["Other"].append(mac)
+    links = defaultdict(lambda: defaultdict(list))
 
-    return ' '.join(["<p><b>{}</b>: {}</p>".format(k, ', '.join(v)) \
-        for k, v in links.iteritems()])
+    for mac in macs:
+        device = get_device_by_mac(mac)
+        if device:
+            link = '<a href="{}">{}</a>'.format(
+                device.getPrimaryUrlPath(), device.titleOrId())
+            links[link][mac[:8]].append(mac)
+        else:
+            links["Other"][mac[:8]].append(mac)
+
+    return '\n'.join(
+        '<strong>{}</strong>\n{}'.format(group, ''.join(
+            '{}<br /><br />'.format('<br/>\n'.join(sorted(column)))
+            for column in columns.values()
+        ))
+        for group, columns in links.iteritems()
+    )
+
+
+def get_clients_links(self):
+    ''' Returns page of links to client devices '''
+    return format_macs(
+        self._object.clientmacs,
+        MACsCatalogAPI(self._object.zport).get_device_by_mac
+    )
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -140,6 +143,7 @@ def getJSONEdges(self, root_id='', depth='2', layers=None):
         log.exception(e)
         return serialize(e)
 
+
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getNetworkLayers(self):
     ''' Return existing network layers on network map '''
@@ -152,8 +156,8 @@ def getNetworkLayers(self):
 IpInterface.clientmacs = []
 IpInterface.baseport = 0
 IpInterface._properties = IpInterface._properties + (
-    {'id':'clientmacs', 'type':'string', 'mode':'w'},
-    {'id':'baseport', 'type':'int', 'mode':'w'},
+    {'id': 'clientmacs', 'type': 'string', 'mode': 'w'},
+    {'id': 'baseport', 'type': 'int', 'mode': 'w'},
 )
 
 IIpInterfaceInfo.clientmacs = schema.TextLine(

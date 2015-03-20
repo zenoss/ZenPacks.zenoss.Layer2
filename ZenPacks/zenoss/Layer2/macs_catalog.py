@@ -163,6 +163,11 @@ class CatalogAPI(BaseCatalogAPI):
             res.append(self.get_device_obj(i.device))
         return res
 
+    def get_device_by_mac(self, mac_address):
+        brains = list(self.search(macaddress=[mac_address]))
+        if brains:
+            return self.get_device_obj(brains[0].device)
+
     def get_connected_to(self, iface):
         ''' Return dictionary of interfaces which are directly connected to given '''
         res = {iface.id: iface}
