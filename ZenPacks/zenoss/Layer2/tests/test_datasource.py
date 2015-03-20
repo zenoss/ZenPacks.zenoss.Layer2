@@ -19,6 +19,7 @@ from ZenPacks.zenoss.Layer2.dsplugins import ForwardingEntryStatus
 from ZenPacks.zenoss.Layer2 import dsplugins
 from ZenPacks.zenoss.Layer2.utils import asmac
 
+
 class TestDataSourcePlugin(BaseTestCase):
     def setUp(self):
         self.plugin = Layer2InfoPlugin()
@@ -39,7 +40,10 @@ class TestDataSourcePlugin(BaseTestCase):
         self.assertEqual(events[0]['severity'], ZenEventClasses.Clear)
 
     def test_onError(self):
-        res = self.plugin.onError(Mock(value=sentinel.error_value), sentinel.config)
+        res = self.plugin.onError(
+            Mock(value=sentinel.error_value),
+            sentinel.config
+        )
         events = res['events']
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['component'], sentinel.component)

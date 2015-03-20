@@ -11,6 +11,7 @@ from collections import defaultdict
 
 JOIN_TO_SEGMENTS = False
 
+
 def contract_edges(nodes, links):
     '''
         Changes graph, so only nodes with important=True are left, and those
@@ -62,7 +63,7 @@ def contract_edges(nodes, links):
         return False
 
     def get_nodes_to_join():
-        ''' Return two adjacent unimportant nodes second of which 
+        ''' Return two adjacent unimportant nodes second of which
             is not a neighbour of important node.
 
             None if there are no such pair.
@@ -96,7 +97,6 @@ def contract_edges(nodes, links):
             pass
         del links[i]
 
-
     def join_pair(i, j):
         for e_id in nodes[j]['incident']:
             # move all edges to i node
@@ -109,11 +109,11 @@ def contract_edges(nodes, links):
             if e_id not in nodes[i]['incident']:
                 nodes[i]['incident'].append(e_id)
 
-        del nodes[j] # remove unused node
+        del nodes[j]  # remove unused node
         for li, l in links.iteritems():
             if l['source'] == l['target']:
                 del_link(li)
-                break # should it be only one? 
+                break  # should it be only one?
 
     # join two unimportant nodes one of which are not adjacent to important
     while True:
@@ -131,7 +131,6 @@ def contract_edges(nodes, links):
         if len(node['incident']) < 2:
             del nodes[i]
 
-    
     # remove unimportant nodes which connect things other nodes already connect
     if not JOIN_TO_SEGMENTS:
         already_connected = set()
@@ -140,12 +139,13 @@ def contract_edges(nodes, links):
                 continue
             adj = frozenset(get_adjacent(i))
             if adj in already_connected:
-                for e_id in node['incident'][:]: # copy because number of incidents will decrease when link removing
+                # copy, because number of incidents will decrease
+                # when link is removed
+                for e_id in node['incident'][:]:
                     del_link(e_id)
                 del nodes[i]
                 continue
             already_connected.add(adj)
-
 
     # Convert nodes and links from dicts back to lists
     new_nodes = []

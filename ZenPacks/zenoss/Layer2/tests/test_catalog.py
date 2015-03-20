@@ -12,6 +12,7 @@ from mock import Mock, sentinel
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from ZenPacks.zenoss.Layer2.macs_catalog import CatalogAPI
 
+
 def fake_device():
     d = Mock()
     d.getPhysicalPath.return_value = ('device_mock',)
@@ -25,6 +26,7 @@ def fake_device():
         getPhysicalPath=Mock(return_value=('device_mock', 'i1'))
     )]
     return d
+
 
 class TestCatalogAPI(BaseTestCase):
     def afterSetUp(self):
@@ -59,7 +61,10 @@ class TestCatalogAPI(BaseTestCase):
 
         self.cat.add_device(d)
 
-        self.assertEqual(self.cat.get_device_macadresses('device_mock'), ['MAC1'])
+        self.assertEqual(
+            self.cat.get_device_macadresses('device_mock'),
+            ['MAC1']
+        )
 
 
 def test_suite():

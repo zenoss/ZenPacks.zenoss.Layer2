@@ -18,7 +18,7 @@ class TestEdgeContraction(BaseTestCase):
     def test_chain(self):
         '''
             ! - 0 - 0 - 0 - !
-            to 
+            to
             ! - 0 - 0 - !
         '''
         nodes = [
@@ -35,7 +35,7 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 3, 'target': 4},
         ]
         self.assertEqual(contract_edges(nodes, links), dict(
-            nodes = [
+            nodes=[
                 {'name': 0, 'important': True},
                 {'name': 1},
                 {'name': 3},
@@ -51,8 +51,8 @@ class TestEdgeContraction(BaseTestCase):
     def test_star(self):
         '''
             0 - ! - 0
-            to 
-            ! 
+            to
+            !
         '''
         nodes = [
             {'name': 0, 'important': True},
@@ -92,8 +92,8 @@ class TestEdgeContraction(BaseTestCase):
     def test_branch(self):
         '''
             ! - 0 - 0
-            to 
-            ! 
+            to
+            !
         '''
         nodes = [
             {'name': 0, 'important': True},
@@ -122,36 +122,38 @@ class TestEdgeContraction(BaseTestCase):
 
     def test_branch(self):
         ''' test based on real data '''
-        nodes = [
-             {'color': 'severity_debug',
-              'highlight': True,
-              'image': '/zport/dmd/img/icons/router.png',
-              'important': True,
-              'name': 'a'},
-             {'color': 'severity_none',
-              'highlight': False,
-              'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png',
-              'important': False,
-              'name': '68:6E:6F:6D:78:6C'},
-             {'color': 'severity_none',
-              'highlight': False,
-              'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png',
-              'important': False,
-              'name': '70:77:78:65:67:6C'}
-        ]
+        nodes = [{
+            'color': 'severity_debug',
+            'highlight': True,
+            'image': '/zport/dmd/img/icons/router.png',
+            'important': True,
+            'name': 'a'
+        }, {
+            'color': 'severity_none',
+            'highlight': False,
+            'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png',
+            'important': False,
+            'name': '68:6E:6F:6D:78:6C'
+        }, {
+            'color': 'severity_none',
+            'highlight': False,
+            'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png',
+            'important': False,
+            'name': '70:77:78:65:67:6C'
+        }]
         links = [
             {'color': 'gray', 'source': 0, 'target': 1},
             {'color': 'gray', 'source': 0, 'target': 2}
         ]
         self.assertEqual(contract_edges(nodes, links), dict(
             links=[],
-            nodes=[
-                 {'color': 'severity_debug',
-                  'highlight': True,
-                  'image': '/zport/dmd/img/icons/router.png',
-                  'important': True,
-                  'name': 'a'},
-            ]
+            nodes=[{
+                'color': 'severity_debug',
+                'highlight': True,
+                'image': '/zport/dmd/img/icons/router.png',
+                'important': True,
+                'name': 'a'
+            }]
         ))
 
     def test_duplicate(self):
@@ -159,7 +161,7 @@ class TestEdgeContraction(BaseTestCase):
             ! - 0 - !
               \   /
                 0
-            to 
+            to
             ! - 0 - !
         '''
         nodes = [

@@ -15,6 +15,7 @@ from Products.ZenEvents import ZenEventClasses
 
 from zenoss.protocols.protobufs.zep_pb2 import STATUS_SUPPRESSED
 
+
 class TestSuppressEventsPlugin(BaseTestCase):
     def setUp(self):
         import ZenPacks.zenoss.Layer2.zeplugins as zeplugins

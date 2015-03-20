@@ -24,8 +24,9 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
 
+
 def serialize(*args, **kwargs):
-    ''' 
+    '''
         If the only positional argument is Exception - serialize it, else
         serialize dictionary of passed keyword arguments
     '''
@@ -49,7 +50,6 @@ def get_connections(rootnode, depth=1, layers=None):
     links = []
     nodenums = {}
 
-
     def add_node(n):
         if n.id in nodenums:
             return
@@ -63,8 +63,8 @@ def get_connections(rootnode, depth=1, layers=None):
             important=n.important,
         ))
 
-
     added_links = set()
+
     def add_link(a, b, color):
         s = nodenums[a.id]
         t = nodenums[b.id]
@@ -83,6 +83,7 @@ def get_connections(rootnode, depth=1, layers=None):
     adapt_node = partial(NodeAdapter, dmd=zport.dmd)
 
     visited = set()
+
     def get_connections(rootnode, depth):
         """ Depth-first search of the network tree emanating from rootnode """
         if depth == 0:
@@ -104,7 +105,7 @@ def get_connections(rootnode, depth=1, layers=None):
 
     def get_related(node):
         return cat.get_directly_connected(node.get_path(), layers)
-    
+
     add_node(adapt_node(rootnode))
     get_connections(rootnode, depth)
 
@@ -113,12 +114,14 @@ def get_connections(rootnode, depth=1, layers=None):
         nodes=nodes,
     )
 
+
 def get_connections_json(rootnode, depth=1, layers=None):
     return serialize(
         contract_edges(
             **get_connections(rootnode, depth, layers)
         )
     )
+
 
 class NodeAdapter(object):
     def __init__(self, node, dmd):
@@ -178,6 +181,9 @@ class NodeAdapter(object):
         if isinstance(self.node, str):
             return False
         from Products.ZenModel.IpNetwork import IpNetwork
-        if hasattr(self.node, 'aq_base') and isinstance(self.node.aq_base, IpNetwork):
+        if (
+            hasattr(self.node, 'aq_base')
+            and isinstance(self.node.aq_base, IpNetwork)
+        ):
             return False
         return True

@@ -18,11 +18,12 @@ from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
 from Products.Zuul.catalog.global_catalog import GlobalCatalog
 from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
 from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
-from Products.Zuul.catalog.interfaces import IGloballyIndexed, IIndexableWrapper
+from Products.Zuul.catalog.interfaces import IGloballyIndexed
+from Products.Zuul.catalog.interfaces import IIndexableWrapper
 from Products.ZCatalog.interfaces import ICatalogBrain
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
-       
+
 
 class InterfaceConnections(object):
     implements(IIndexableWrapper)
@@ -53,12 +54,13 @@ class InterfaceConnections(object):
             for x in getattr(self.interface, 'clientmacs', [])
             if x
         ]
-    
+
     @property
     def layers(self):
         res = ['layer2']
         res.extend(get_vlans(self.interface))
         return res
+
 
 class CatalogAPI(BaseCatalogAPI):
 
@@ -134,7 +136,8 @@ class CatalogAPI(BaseCatalogAPI):
         ]
 
     def get_only_client_devices(self, device_id):
-        return [brain
+        return [
+            brain
             for brain in self.get_client_devices(device_id)
             if not brain.clientmacs
         ]
@@ -169,7 +172,10 @@ class CatalogAPI(BaseCatalogAPI):
             return self.get_device_obj(brains[0].device)
 
     def get_connected_to(self, iface):
-        ''' Return dictionary of interfaces which are directly connected to given '''
+        '''
+            Return dictionary of interfaces
+            which are directly connected to given
+        '''
         res = {iface.id: iface}
         for a in iface.clientmacs:
             for i in self.search(macaddress=a):
@@ -231,10 +237,20 @@ class NetworkSegment(dict):
     def show_content2(self):
         for b in self.search():
             print b.id
-            print '    Upstream: ', ', '.join(str(d.id) for d in self.get_upstream_devices(b.id))
-            print '    Client:   ', ', '.join(str(d.id) for d in self.get_client_devices(b.id))
-            print '    Only client:     ', ', '.join(str(d.id) for d in self.get_only_client_devices(b.id))
-            print '    Only upstream:   ', ', '.join(str(d.id) for d in self.get_upstream_devices_only_for_client(b.id))
+            print '\tUpstream: ', csl(self.get_upstream_devices(b.id))
+            print '\tClient:   ', csl(self.get_client_devices(b.id))
+            print '\tOnly client:     ', csl(
+                self.get_only_client_devices(b.id)
+            )
+            print '\tOnly upstream:   ', csl(
+                self.get_upstream_devices_only_for_client(b.id)
+            )
+
+
+def csl(sequence):
+    ''' Return string with comma-separated list '''
+    return ', '.join(str(i) for i in sequence)
+
 
 def unique(l):
     return list(set(i for i in l if isinstance(i, basestring)))

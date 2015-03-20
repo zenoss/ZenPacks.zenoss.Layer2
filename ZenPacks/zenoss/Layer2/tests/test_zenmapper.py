@@ -21,7 +21,7 @@ from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.zenmapper import ZenMapper
 
 from .create_fake_devices import create_topology, router
-  
+
 
 class TestUpdateCatalog(BaseTestCase):
     def afterSetUp(self):
@@ -56,6 +56,7 @@ class TestUpdateCatalog(BaseTestCase):
         ''')
         self.zenmapper.main_loop()
         self.assertIn(router('b'), self.cat.get_connected(router('a')))
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite

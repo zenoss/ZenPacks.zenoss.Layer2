@@ -59,11 +59,13 @@ class DeviceRelationsProvider(BaseRelationsProvider):
     def getEdges(self):
         cat = CatalogAPI(self._object.zport)
         try:
-            for brain in cat.get_upstream_devices_only_for_client(self._object.id):
+            for brain in cat.get_upstream_devices_only_for_client(
+                self._object.id
+            ):
                 router = brain.getObject()
                 yield edge(guid(router), self.guid())
             for brain in cat.get_only_client_devices(self._object.id):
                 router = brain.getObject()
                 yield edge(self.guid(), guid(router))
         except IndexError:
-            pass # Not to worry, there is no such device in catalog.
+            pass  # Not to worry, there is no such device in catalog.

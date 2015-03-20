@@ -11,10 +11,9 @@
 
 '''
 Layer2InfoPlugin only does modelling of client MAC addresses, for interfaces.
-It is implemented as monitoring plugin, not as modeler plugin because there is no way
-to tell one modeler to run after another, and we need to run this code after interfaces
-are modeled.
-
+It is implemented as monitoring plugin, not as modeler plugin because there is
+no way to tell one modeler to run after another, and we need to run this code
+after interfaces are modeled.
 '''
 
 from logging import getLogger
@@ -25,7 +24,8 @@ import re
 from twisted.internet import defer
 
 from Products.DataCollector.SnmpClient import SnmpClient
-from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin, GetTableMap
+from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin
+from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 from Products.DataCollector.plugins.DataMaps import ObjectMap
 from Products.ZenEvents import ZenEventClasses
 from Products.ZenUtils.Utils import prepId
@@ -37,6 +37,7 @@ from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource \
 from .utils import asmac
 
 PLUGIN_NAME = "Layer2Info"
+
 
 class Layer2Options(object):
     """
@@ -81,39 +82,40 @@ dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
 # 	The status of this entry. The meanings of the values are:
 #   one of the attributes of ForwardingEntryStatus class
 
+
 class ForwardingEntryStatus(object):
-    other   = 1 # none of the following. This would
-                # include the case where some other
-                # MIB object (not the corresponding
-                # instance of dot1dTpFdbPort, nor an
-                # entry in the dot1dStaticTable) is
-                # being used to determine if and how
-                # frames addressed to the value of
-                # the corresponding instance of
-                # dot1dTpFdbAddress are being
-                # forwarded.
+    other = 1    # none of the following. This would
+                 # include the case where some other
+                 # MIB object (not the corresponding
+                 # instance of dot1dTpFdbPort, nor an
+                 # entry in the dot1dStaticTable) is
+                 # being used to determine if and how
+                 # frames addressed to the value of
+                 # the corresponding instance of
+                 # dot1dTpFdbAddress are being
+                 # forwarded.
 
-    invalid = 2 # this entry is not longer valid
-                # (e.g., it was learned but has since
-                # aged-out), but has not yet been
-                # flushed from the table.
+    invalid = 2  # this entry is not longer valid
+                 # (e.g., it was learned but has since
+                 # aged-out), but has not yet been
+                 # flushed from the table.
 
-    learned = 3 # the value of the corresponding
-                # instance of dot1dTpFdbPort was
-                # learned, and is being used.
+    learned = 3  # the value of the corresponding
+                 # instance of dot1dTpFdbPort was
+                 # learned, and is being used.
 
-    self    = 4 # the value of the corresponding
-                # instance of dot1dTpFdbAddress
-                # represents one of the bridge's
-                # addresses. The corresponding
-                # instance of dot1dTpFdbPort
-                # indicates which of the bridge's
-                # ports has this address.
+    self = 4     # the value of the corresponding
+                 # instance of dot1dTpFdbAddress
+                 # represents one of the bridge's
+                 # addresses. The corresponding
+                 # instance of dot1dTpFdbPort
+                 # indicates which of the bridge's
+                 # ports has this address.
 
-    mgmt    = 5 # the value of the corresponding
-                # instance of dot1dTpFdbAddress is
-                # also the value of an existing
-                # instance of dot1dStaticAddress.
+    mgmt = 5     # the value of the corresponding
+                 # instance of dot1dTpFdbAddress is
+                 # also the value of an existing
+                 # instance of dot1dStaticAddress.
 
 
 dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
@@ -137,30 +139,28 @@ class Layer2SnmpPlugin(SnmpPlugin):
 
     snmpGetTableMaps = (
         # Layer2: physical ports to MACs of clients
-        GetTableMap('dot1dTpFdbTable', dot1dTpFdbEntry,
-            {
-                '.1': 'dot1dTpFdbAddress',
-                '.2': 'dot1dTpFdbPort',
-                '.3': 'dot1dTpFdbStatus'
-            }
-        ),
+        GetTableMap('dot1dTpFdbTable', dot1dTpFdbEntry, {
+            '.1': 'dot1dTpFdbAddress',
+            '.2': 'dot1dTpFdbPort',
+            '.3': 'dot1dTpFdbStatus'
+        }),
         # Ports to Interfaces
-        GetTableMap('dot1dBasePortEntry', dot1dBasePortEntry,
-            {
-                '.1': 'dot1dBasePort',
-                '.2': 'dot1dBasePortIfIndex'
-            }
-        )
+        GetTableMap('dot1dBasePortEntry', dot1dBasePortEntry, {
+            '.1': 'dot1dBasePort',
+            '.2': 'dot1dBasePortIfIndex'
+        })
     )
 
     def name(self):
         return PLUGIN_NAME
 
+
 def join_vlan(community, vlan):
     ''' Return the same community string with other vlan.
         If it had vlan already - replace it.
 
-        http://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/40367-camsnmp40367.html
+        This is for SNMP Community String Indexing.
+        Read more: http://goo.gl/y32XSu
 
         >>> join_vlan('public', '1')
         'public@1'
@@ -174,6 +174,7 @@ def join_vlan(community, vlan):
     return community.split('@')[0] + (
         ('@' + vlan) if vlan else ''
     )
+
 
 class Layer2InfoPlugin(PythonDataSourcePlugin):
     """
@@ -204,7 +205,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             options=Layer2Options(),
             device=ds0,
             datacollector=self,
-            plugins=[Layer2SnmpPlugin(),]
+            plugins=[Layer2SnmpPlugin(), ]
         )
         sc.initSnmpProxy()
         return sc
@@ -225,7 +226,7 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
 
         self.jobs = []
 
-        for vlan in self.get_vlans(): # ["1", "951"]:
+        for vlan in self.get_vlans():  # ["1", "951"]:
             ds0.zSnmpCommunity = join_vlan(ds0.zSnmpCommunity, vlan)
             sc = self.get_snmp_client(config, ds0)
             yield drive(sc.doRun)
@@ -268,8 +269,10 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         ''' Gets clientmacs for interface from dot1dTpFdbTable '''
         for item in dot1dTpFdbTable.values():
             mac = item.get('dot1dTpFdbAddress')
-            if (mac
-                and (item.get('dot1dTpFdbStatus') == ForwardingEntryStatus.learned)
+            forwarding_status = item.get('dot1dTpFdbStatus')
+            if (
+                mac
+                and (forwarding_status == ForwardingEntryStatus.learned)
                 and (interface['baseport'] == item.get('dot1dTpFdbPort'))
             ):
                 interface['clientmacs'].append(asmac(mac))

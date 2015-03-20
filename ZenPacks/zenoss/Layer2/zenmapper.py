@@ -18,6 +18,7 @@ from transaction import commit
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
 
+
 def main():
     zenmapper = ZenMapper()
     zenmapper.run()
@@ -40,17 +41,25 @@ class ZenMapper(CyclingDaemon):
             help="Name of monitor instance to use for heartbeat "
             " events. Default is %s." % DEFAULT_MONITOR)
 
-        self.parser.add_option('-d', '--device', dest='device',
-                help="Fully qualified device name ie www.confmon.com")
+        self.parser.add_option(
+            '-d', '--device', dest='device',
+            help="Fully qualified device name ie www.confmon.com"
+        )
 
     def get_devices_list(self):
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
             if device:
-                log.info("Updating connections for device %s", self.options.device)
+                log.info(
+                    "Updating connections for device %s",
+                    self.options.device
+                )
                 return [device]
             else:
-                log.error("Device with id %s was not found", self.options.device)
+                log.error(
+                    "Device with id %s was not found",
+                    self.options.device
+                )
         else:
             return chain(
                 self.dmd.Devices.getSubDevices(),
