@@ -11,7 +11,7 @@ from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.patches import get_ifinfo_for_layer2
+from ZenPacks.zenoss.Layer2.patches import get_ifinfo_for_layer2, format_macs
 
 
 class TestPatches(BaseTestCase):
@@ -33,6 +33,13 @@ class TestPatches(BaseTestCase):
             }
         })
 
+    def test_format_macs(self):
+        html = format_macs(
+            ['aasdf', 'b', 'c'],
+            lambda mac: None
+        )
+        self.assertIn('Other', html)
+        self.assertIn('aasdf', html)
 
 
 def test_suite():
