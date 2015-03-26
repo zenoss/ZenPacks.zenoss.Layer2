@@ -60,6 +60,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.0.2
+* Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
+
 ;1.0.1
 * Fix device overview links error. (ZEN-14063)
 * Remove add/remove from catalog logging. (ZEN-15465)
