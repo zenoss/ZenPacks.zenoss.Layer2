@@ -53,7 +53,8 @@ ZC.NeighborSwitchPanel = Ext.extend(ZC.ComponentGridPanel, {
                     // The value is returned in link format in details, but
                     // it should be rendered so that html is not escaped.
                     return v;
-                }
+                },
+                width: 140
             // },{
             //     id: 'description',
             //     dataIndex: 'description',
