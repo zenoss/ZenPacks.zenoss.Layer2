@@ -80,6 +80,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
+* Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)
 
 ;1.0.1
 * Fix device overview links error. (ZEN-14063)
