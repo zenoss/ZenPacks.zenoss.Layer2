@@ -193,10 +193,17 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         'zSnmpPrivPassword',
         'zSnmpEngineId',
         'get_ifinfo_for_layer2',
+        'getHWManufacturerName',
         'macs_indexed',
     )
 
     component = None
+
+    def __init__(self, config):
+        self.isCisco = 'cisco' in getattr(
+            config.datasources[0],
+            'getHWManufacturerName',
+            '').lower()
 
     def get_snmp_client(self, config, ds0):
         sc = SnmpClient(
@@ -229,9 +236,16 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         for vlan in self.get_vlans():  # ["1", "951"]:
             ds0.zSnmpCommunity = join_vlan(ds0.zSnmpCommunity, vlan)
             sc = self.get_snmp_client(config, ds0)
-            yield drive(sc.doRun)
-            self._prep_iftable(self.get_snmp_data(sc))
-            sc.stop()
+
+            try:
+                yield drive(sc.doRun)
+            except Exception:
+                # Error will be logged at INFO by SnmpClient.
+                pass
+            else:
+                self._prep_iftable(self.get_snmp_data(sc))
+            finally:
+                sc.stop()
 
         results['maps'] = self.get_maps()
 
@@ -251,18 +265,21 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         extracted from keys in self.iftable
         '''
         yield ''  # for query without VLAN id
-        # TODO: find a better way to get a list of vlans
-        # not parsing from interface ids
-        for ifid in self.iftable:
-            if 'vlan' in ifid.lower():
-                vlan_id = ifid.lower().replace('vlan', '')
 
-                # https://jira.zenoss.com/browse/ZEN-16951
-                # vlan_id should be integer, not any string
-                try:
-                    yield str(int(vlan_id))
-                except ValueError:
-                    pass
+        # Only Cisco devices support community@VLAN SNMP contexts.
+        if self.isCisco:
+            # TODO: find a better way to get a list of vlans
+            # not parsing from interface ids
+            for ifid in self.iftable:
+                if 'vlan' in ifid.lower():
+                    vlan_id = ifid.lower().replace('vlan', '')
+
+                    # https://jira.zenoss.com/browse/ZEN-16951
+                    # vlan_id should be integer, not any string
+                    try:
+                        yield str(int(vlan_id))
+                    except ValueError:
+                        pass
 
     @staticmethod
     def _extract_clientmacs(dot1dTpFdbTable, interface):
