@@ -5,7 +5,11 @@ This is an Open Source ZenPack developed by Zenoss, Inc. Enterprise support for 
 This ZenPack provides support to model OSI Layer 2 (or data link layer) topology. Than that topology information is used to suppress events from devices connection to which was lost because they are connected to broken devices.  Data collection is performed using SNMP.
 
 == Gallery ==
-TODO:
+<gallery widths=250px heights=127px>
+CDPLLDPDiscover.PNG
+ClientMACs.PNG
+NeighborSwitches.PNG
+</gallery>
 
 == Features ==
 
@@ -15,22 +19,22 @@ The features added by this ZenPack can be summarized as follows. They are each d
 * Monitoring of MAC Address table or Forwarding Table for each network interface of device.
 * Event suppression based on MAC Address table.
 
-=== Discovered componets ===
-Layer2 zenpack adds almost no new components by itself, it just models client mac addresses on interfaces of existing bridge devices.
+=== Discovered components ===
+Layer2 ZenPack adds almost no new components by itself, it just models client mac addresses on interfaces of existing bridge devices.
 
 But, CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discovery of switches, located nearby selected device.
 
 === Monitoring ===
-ZenPack binds ''Layer2Info'' monitoring templates to ''/Network'' device class in Zenoss. This results in monitoring Layer 2 MAC forwarding tables for such devices. On a detail view of ''Interfaces'' component added ''Clients MAC addresses'' subpanel with a list of MAC addresses. Those are grouped by client device they belongs to.
+ZenPack binds ''Layer2Info'' monitoring templates to ''/Network'' device class in Zenoss. This results in monitoring Layer 2 MAC forwarding tables for such devices. On a detail view of ''Interfaces'' component added ''Clients MAC addresses'' sub-panel with a list of MAC addresses. Those are grouped by client device they belong to.
 
-This zenpack provides no performance monitoring, and generates no events, all that it does is build network topology, and then perform event suppression based on that topology.
+This ZenPack provides no performance monitoring, and generates no events, all that it does is build network topology, and then perform event suppression based on that topology.
 
 === Event suppression ===
 
-Situation when upstream switch goes down results in flooding with ''Device is DOWN!'' events for every device in this subnet. ZenPack adds zenevent plugin which suppresses such subsequent events for leaf devices. So system administator receives only primary, core error event.
+Situation when upstream switch goes down results in flooding with ''Device is DOWN!'' events for every device in this subnet. ZenPack adds zenevent plugin which suppresses such subsequent events for leaf devices. So system administrator receives only primary, core error event.
 
 == Usage ==
-To use this zenpack on some device or class of devices, you should bind Layer2Info monitoring template to that device, and in case SNMP community string in configuration properties is correct, after next monitoring cycle, interfaces will have client MAC addresses property, on panel under the components grid.
+To use this ZenPack on some device or class of devices, you should bind Layer2Info monitoring template to that device, and in case SNMP community string in configuration properties is correct, after next monitoring cycle, interfaces will have client MAC addresses property, on panel under the components grid.
 
 To model neighbor switches you should add <code>zenoss.snmp.CDPLLDPDiscover</code> modeler plugin.
 
