@@ -67,15 +67,46 @@ class NSXConnectionsProvider(BaseConnectionsProvider):
 
 So, we described how to get connections, now we need to tell zenoss, that this will be connections provider for any NSXManager devices. We do it by registering adapter in our zenpack's <code>configure.zcml</code>:
 
+
 <syntaxhighlight lang=xml>
+<configure zcml:condition="installed ZenPacks.zenoss.Layer2.connections_provider">
+    <!-- Add this adapters only when module connections_provider is possible to import
+         (Which meands that there is installed recent version of Layer2). -->
     <adapter
         factory=".connections_provider.NSXConnectionsProvider"
         for="ZenPacks.zenoss.NSX.NSXManager.NSXManager"
         provides="ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider"
     />
+</configure>
 </syntaxhighlight>
 
-To test connections that your provider yields, you could run 
+Another way to include adapters, is to put them in separate file, called for example <code>layer2.zcml</code>:
+
+<syntaxhighlight lang=xml>
+<?xml version = "1.0" encoding = "utf-8"?>
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    >
+
+	<adapter
+        factory=".connections_provider.DeviceConnectionsProvider"
+        for=".HyperVVSMS.HyperVVSMS"
+        provides="ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider"
+	    />
+
+</configure>
+</syntaxhighlight>
+
+and than include that file conditionally:
+
+<syntaxhighlight lang=xml>
+    <include file="layer2.zcml"
+             xmlns:zcml="http://namespaces.zope.org/zcml"
+             zcml:condition="installed ZenPacks.zenoss.Layer2.connections_provider" />
+</syntaxhighlight>
+
+To test connections that your provider yields, you could run
 
 zenmapper run -v10 -d <name or id of your modelled device>
 
