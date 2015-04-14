@@ -152,8 +152,10 @@ def asip(val):
     """Convert a byte string to a IP  """
     return '.'.join(str(ord(c)) for c in val)
 
+
 asoid = asip
 asoid.__doc__ = "Convert a byte string to a OID fragment  "
+
 
 def random_id(length=6):
     return ''.join(

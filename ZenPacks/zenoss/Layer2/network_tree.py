@@ -24,6 +24,7 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
 
+
 def get_connections_json(rootnode, depth=1, layers=None):
     '''
         Main function which is used from device to get responce text with
@@ -125,7 +126,6 @@ def get_connections(rootnode, depth=1, layers=None):
         links=links,
         nodes=nodes,
     )
-
 
 
 class NodeAdapter(object):

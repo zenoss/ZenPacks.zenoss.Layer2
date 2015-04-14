@@ -22,7 +22,8 @@ from ZenPacks.zenoss.Layer2.utils import asmac
 
 class TestDataSourcePlugin(BaseTestCase):
     def setUp(self):
-        self.plugin = Layer2InfoPlugin()
+        config = Mock(datasources=[Mock(getHWManufacturerName='Cisco')])
+        self.plugin = Layer2InfoPlugin(config)
         self.plugin.component = sentinel.component
 
     def test_onSuccess(self):
