@@ -9,7 +9,7 @@
 
 "use strict";
 
-window.graph_renderer = function(panel_selector) {
+window.graph_renderer = function(panel_selector, on_node_click) {
     var panel = d3.select(panel_selector);
     var width = panel[0][0].clientWidth;
     var height = panel[0][0].clientHeight;
@@ -107,6 +107,10 @@ window.graph_renderer = function(panel_selector) {
         // append
         var node_enter = node.enter().append("g")
             .attr("class", "node")
+            .on('click', function(d) {
+                if (d3.event.defaultPrevented) return; // No click when drag!
+                on_node_click(d)
+            })
             .call(force.drag);
 
         node_enter.append("circle").attr('r', 8);

@@ -69,6 +69,7 @@ def get_connections(rootnode, depth=1, layers=None):
         nodes.append(dict(
             name=n.titleOrId(),
             image=n.getIconPath(),
+            path=n.get_path(),
             color=n.getColor(),
             highlight=n.id == rootnode.id,
             important=n.important,

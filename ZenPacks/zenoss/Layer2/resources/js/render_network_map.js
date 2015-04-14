@@ -111,7 +111,11 @@ var render_form = function(panel) {
     panel.add(hbox_center_panel);
     panel.doLayout();
     
-    var graph = graph_renderer('#' + map.body.id);
+    var inspect_node = function(data) {
+        if(data.path) Zenoss.inspector.show(data.path);
+    };
+
+    var graph = graph_renderer('#' + map.body.id, inspect_node);
 
     refresh_map();
 };
