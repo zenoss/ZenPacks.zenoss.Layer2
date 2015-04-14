@@ -24,6 +24,17 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
 
+def get_connections_json(rootnode, depth=1, layers=None):
+    '''
+        Main function which is used from device to get responce text with
+        connections data for graph.
+    '''
+    return serialize(
+        contract_edges(
+            **get_connections(rootnode, depth, layers)
+        )
+    )
+
 
 def serialize(*args, **kwargs):
     '''
@@ -114,13 +125,6 @@ def get_connections(rootnode, depth=1, layers=None):
         nodes=nodes,
     )
 
-
-def get_connections_json(rootnode, depth=1, layers=None):
-    return serialize(
-        contract_edges(
-            **get_connections(rootnode, depth, layers)
-        )
-    )
 
 
 class NodeAdapter(object):
