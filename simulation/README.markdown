@@ -46,5 +46,15 @@ To simulate a number of agents you should do:
         port=1611
     )
 
-Or use oids generators from bridge_oids. This is done in agents_simulator.py in function main.
+Or use oids generators from bridge_oids. This is done in agents_simulator.py in function main. To change topology of simulated network, open that file and change source of main.
+
+You could also automatically model all the devices from simulator, by running inside virtualenv:
+
+    python agents_simulator.py dump > /tmp/network.dump
+    python agents_simulator.py
+
+And then, while previous command is still running, somewhere in other terminal run:
+
+    zenbatchload /tmp/network.dump
+
 

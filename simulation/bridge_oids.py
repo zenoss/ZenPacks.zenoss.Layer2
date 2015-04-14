@@ -80,8 +80,8 @@ def parse_topology(text):
 
 
 def connect(h1, h2):
-    mac1 = random_mac()
-    mac2 = random_mac()
+    mac1 = random_id()
+    mac2 = random_id()
 
     h1.add_interface(mac=mac1, clientmacs=[mac2])
     h2.add_interface(mac=mac2, clientmacs=[mac1])
@@ -130,11 +130,11 @@ class Host(object):
             oids[ipAddrTable + '.3.%s' % ip] = v2c.IpAddress(self.netmask)
 
             for clientmac in interface['clientmacs']:
-                oids[dot1dTpFdbTable + '.1.%s' % mac2oid(clientmac)] = clientmac
+                oids[dot1dTpFdbTable + '.1.%s' % asoid(clientmac)] = clientmac
                 # dot1dTpFdbPort
-                oids[dot1dTpFdbTable + '.2.%s' % mac2oid(clientmac)] = index
+                oids[dot1dTpFdbTable + '.2.%s' % asoid(clientmac)] = index
                 # dot1dTpFdbStatus = learned
-                oids[dot1dTpFdbTable + '.3.%s' % mac2oid(clientmac)] = 3
+                oids[dot1dTpFdbTable + '.3.%s' % asoid(clientmac)] = 3
 
             # binds port number and interface index
             oids[dot1dBasePortEntry + '.1.%s' % index] = index  # port number
@@ -144,18 +144,16 @@ class Host(object):
 
 
 def asmac(val):
-    """Convert a byte string to a MAC address string.  """
+    """ Convert a byte string to a MAC address string """
     return ':'.join('%02X' % ord(c) for c in val)
 
 
 def asip(val):
-    """Convert a byte string to a IP.  """
+    """Convert a byte string to a IP  """
     return '.'.join(str(ord(c)) for c in val)
 
-
-def mac2oid(val):
-    return '.'.join(str(int(b, 16)) for b in val.split(':'))
-
+asoid = asip
+asoid.__doc__ = "Convert a byte string to a OID fragment  "
 
 def random_id(length=6):
     return ''.join(
