@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+ * Copyright (C) Zenoss, Inc. 2014, 2015 all rights reserved.
  *
  * This content is made available according to terms specified in
  * License.zenoss under the directory where your Zenoss product is installed.
@@ -22,16 +22,51 @@ var render_form = function(panel) {
         return layers.join(',');
     };
 
+    var parse_hash = function(hash)
+    {
+      var res = {};
+      var a = hash.split('&');
+      for (var i in a)
+      {
+        var b = a[i].split('=');
+        res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
+      }
+      return res;
+    }
+    var format_hash = function(data) {
+       var res = [];
+        Object.keys(data).forEach(function(key) {
+            res.push(
+                encodeURIComponent(key) +
+                '=' +
+                encodeURIComponent(data[key])
+            );
+        });
+        return res.join('&');
+    };
+
+
     var refresh_map = function () {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
+
+        // Updating URL
+        var oldToken = Ext.History.getToken();
+        var newToken = format_hash({
+            root_id: params.root_id,
+            depth: params.depth,
+            layers: params.layers,
+        });
+        if (newToken !== oldToken) {
+            Ext.History.add(newToken);
+        };
 
         graph.draw({nodes: [], links: []});
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
             success: function (response, request) {
-                var res = JSON.parse(response.responseText);  
+                var res = JSON.parse(response.responseText);
                 if(res.error) {
                     return show_error(res.error);
                 }
@@ -43,6 +78,20 @@ var render_form = function(panel) {
             params: params,
         });
     };
+
+    Ext.History.on('change', function(token) {
+        var params = parse_hash(token);
+        var layers = params.layers.split(',');
+        var checkboxval = {}
+        for(var i = 0; i < layers.length; i++) {
+            checkboxval[layers[i] + '-inputEl'] = layers[i];
+        };
+        Ext.getCmp('layers_group').setValue(checkboxval);
+        Ext.getCmp('sidebar_root_id').setValue(params.root_id);
+        Ext.getCmp('sidebar_depth').setValue(params.depth);
+        refresh_map();
+    });
+
 
     var sidebar = Ext.create('Ext.form.Panel', {
         id: 'network_map_form',
@@ -57,10 +106,12 @@ var render_form = function(panel) {
         },
         items: [
             {
+                id: 'sidebar_root_id',
                 fieldLabel: 'Device ID',
                 name: 'root_id'
             },
             {
+                id: 'sidebar_depth',
                 fieldLabel: 'Depth',
                 name: 'depth',
                 xtype: 'numberfield',
@@ -91,7 +142,7 @@ var render_form = function(panel) {
             },
         ],
     });
-
+    window.sidebar = sidebar;
     var map = Ext.create('Ext.panel.Panel', {
         flex: 1,
     });
@@ -110,12 +161,10 @@ var render_form = function(panel) {
     panel.removeAll();
     panel.add(hbox_center_panel);
     panel.doLayout();
-    
+
     var inspect_node = function(data) {
         if(data.path) Zenoss.inspector.show(data.path);
     };
 
     var graph = graph_renderer('#' + map.body.id, inspect_node);
-
-    refresh_map();
 };
