@@ -18,7 +18,13 @@ from bridge_oids import Network, binary_tree_topology
 
 
 def main():
-    network = Network(binary_tree_topology(deepness=5))
+    '''
+        Create network topology, and then
+        print zenbatchdump for modeling those topology,
+        if dump is a first argument
+        else start simulation.
+    '''
+    network = Network(binary_tree_topology(deepness=2))
     if len(sys.argv) > 1 and sys.argv[1] == 'dump':
         print network.get_batchdump()
         return

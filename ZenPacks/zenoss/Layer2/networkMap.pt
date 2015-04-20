@@ -19,7 +19,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
         <script type="text/javascript"
-            tal:define="layerslist python: [dict(boxLabel=x, inputValue='layer_' + x) for x in here.dmd.getNetworkLayers()];"
+            tal:define="layerslist python: [dict(boxLabel=x, inputValue='layer_' + x, id='layer_' + x) for x in here.dmd.getNetworkLayers()];"
             tal:content="string: window.layers_options = ${layerslist};"></script>
 
         <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>

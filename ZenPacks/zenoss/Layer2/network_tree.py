@@ -25,6 +25,18 @@ from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
 
 
+def get_connections_json(rootnode, depth=1, layers=None):
+    '''
+        Main function which is used from device to get responce text with
+        connections data for graph.
+    '''
+    return serialize(
+        contract_edges(
+            **get_connections(rootnode, depth, layers)
+        )
+    )
+
+
 def serialize(*args, **kwargs):
     '''
         If the only positional argument is Exception - serialize it, else
@@ -58,6 +70,7 @@ def get_connections(rootnode, depth=1, layers=None):
         nodes.append(dict(
             name=n.titleOrId(),
             image=n.getIconPath(),
+            path=n.get_path(),
             color=n.getColor(),
             highlight=n.id == rootnode.id,
             important=n.important,
@@ -112,14 +125,6 @@ def get_connections(rootnode, depth=1, layers=None):
     return dict(
         links=links,
         nodes=nodes,
-    )
-
-
-def get_connections_json(rootnode, depth=1, layers=None):
-    return serialize(
-        contract_edges(
-            **get_connections(rootnode, depth, layers)
-        )
     )
 
 
