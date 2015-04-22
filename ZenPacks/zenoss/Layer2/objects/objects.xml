@@ -19,7 +19,7 @@
           3
         </property>
         <property id="cycletime" mode="w" type="string">
-          1800
+          43200
         </property>
         <property id="plugin_classname" mode="w" type="string">
           ZenPacks.zenoss.Layer2.dsplugins.Layer2InfoPlugin

@@ -147,11 +147,27 @@ class Layer2SnmpPlugin(SnmpPlugin):
     def name(self):
         return PLUGIN_NAME
 
+
 def join_vlan(community, vlan):
     ''' Return the same community string with other vlan.
         If it had vlan already - replace it.
+
+        This is for SNMP Community String Indexing.
+        Read more: http://goo.gl/y32XSu
+
+        >>> join_vlan('public', '1')
+        'public@1'
+        >>> join_vlan('public@1', '2')
+        'public@2'
+        >>> join_vlan('public@1', '')
+        'public'
+        >>> join_vlan('public', '')
+        'public'
     '''
-    return community.split('@')[0] + '@' + vlan
+    return community.split('@')[0] + (
+        ('@' + vlan) if vlan else ''
+    )
+
 
 class Layer2InfoPlugin(PythonDataSourcePlugin):
     """
@@ -170,10 +186,17 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         'zSnmpPrivPassword',
         'zSnmpEngineId',
         'get_ifinfo_for_layer2',
+        'getHWManufacturerName',
         'macs_indexed',
     )
 
     component = None
+
+    def __init__(self, config):
+        self.isCisco = 'cisco' in getattr(
+            config.datasources[0],
+            'getHWManufacturerName',
+            '').lower()
 
     def get_snmp_client(self, config, ds0):
         sc = SnmpClient(
@@ -206,9 +229,16 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         for vlan in self.get_vlans(): # ["1", "951"]:
             ds0.zSnmpCommunity = join_vlan(ds0.zSnmpCommunity, vlan)
             sc = self.get_snmp_client(config, ds0)
-            yield drive(sc.doRun)
-            self._prep_iftable(self.get_snmp_data(sc))
-            sc.stop()
+
+            try:
+                yield drive(sc.doRun)
+            except Exception:
+                # Error will be logged at INFO by SnmpClient.
+                pass
+            else:
+                self._prep_iftable(self.get_snmp_data(sc))
+            finally:
+                sc.stop()
 
         results['maps'] = self.get_maps()
 
@@ -227,18 +257,22 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         Yields sequence of strings - vlans ids,
         extracted from keys in self.iftable
         '''
-        # TODO: find a better way to get a list of vlans
-        # not parsing from interface ids
-        for ifid in self.iftable:
-            if 'vlan' in ifid.lower():
-                vlan_id = ifid.lower().replace('vlan', '')
+        yield ''  # for query without VLAN id
 
-                # https://jira.zenoss.com/browse/ZEN-16951
-                # vlan_id should be integer, not any string
-                try:
-                    yield str(int(vlan_id))
-                except ValueError:
-                    pass
+        # Only Cisco devices support community@VLAN SNMP contexts.
+        if self.isCisco:
+            # TODO: find a better way to get a list of vlans
+            # not parsing from interface ids
+            for ifid in self.iftable:
+                if 'vlan' in ifid.lower():
+                    vlan_id = ifid.lower().replace('vlan', '')
+
+                    # https://jira.zenoss.com/browse/ZEN-16951
+                    # vlan_id should be integer, not any string
+                    try:
+                        yield str(int(vlan_id))
+                    except ValueError:
+                        pass
 
     @staticmethod
     def _extract_clientmacs(dot1dTpFdbTable, interface):
