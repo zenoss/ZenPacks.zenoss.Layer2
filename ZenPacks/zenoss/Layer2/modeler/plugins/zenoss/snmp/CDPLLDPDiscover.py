@@ -34,6 +34,17 @@ class CiscoNetworkProtocol:
     IPv6 = 20
 
 
+import ipaddr
+
+
+class CiscoNetworkProtocol:
+
+    """Enumeration for CISCO-TC::CiscoNetworkProtocol type."""
+
+    IPv4 = 1
+    IPv6 = 20
+
+
 class CDPLLDPDiscover(SnmpPlugin):
     """
     Map CDP/LLDP entries to DMD 'NeighborSwitch' objects

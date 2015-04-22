@@ -1,4 +1,11 @@
-This ZenPack provides the ability to monitor OSI Layer 2 infrastructure, and build network topology on top of layer2 and other layers. Monitoring is performed via SNMP.
+This ZenPack provides support to model OSI Layer 2 (or data link layer) topology. Than that topology information is used to suppress events from devices connection to which was lost because they are connected to broken devices.  Data collection is performed using SNMP.
+
+== Gallery ==
+<gallery widths=250px heights=127px>
+CDPLLDPDiscover.PNG
+ClientMACs.PNG
+NeighborSwitches.PNG
+</gallery>
 
 == Features ==
 
@@ -9,16 +16,18 @@ The features added by this ZenPack can be summarized as follows. They are each d
 * Creating connections between devices, based on Forwarding table information.
 * Event suppression based on network map connectivity.
 
-=== Discovery ===
+=== Discovered components ===
+Layer2 ZenPack adds almost no new components by itself, it just models client mac addresses on interfaces of existing bridge devices.
 
 CDP/LLDP based collector plugin ''zenoss.snmp.CDPLLDPDiscover'' performs discovery of switches located nearby a selected device.
 
 === Monitoring ===
+ZenPack binds <code>Layer2Info</code> monitoring templates to <code>/Network</code> device class in Zenoss. This results in monitoring Layer 2 MAC forwarding tables for such devices. On a detail view of <code>Interfaces</code> component added <code>Clients MAC addresses</code> sub-panel with a list of MAC addresses. Those are grouped by client device they belong to.
 
-The ZenPack binds ''Layer2Info'' monitoring templates to the ''/Network'' device class in Zenoss. This activates monitoring of Layer 2 MAC forwarding tables for devices under that class. On the detail view of ''Interfaces'' components,  the ''Clients MAC addresses'' subpanel is added with a list of MAC addresses.
+The ZenPack binds ''Layer2Info'' monitoring templates to the ''/Network'' device class in Zenoss. This activates monitoring of Layer 2 MAC forwarding tables for devices under that class. On the detail view of ''Interfaces'' components, the ''Clients MAC addresses'' subpanel is added with a list of MAC addresses.
 
 === Event suppression ===
-When a device throught which zenoss connects to other devices it monitors goes down, a flood of ''Device is DOWN!'' events for every device in an affected subnet can be generated. This ZenPack adds a zenevent plugin which suppresses such subsequent events for devices behind device which is down. As a result, a system administator receives only a primary, core error event.
+When a device through which zenoss connects to other devices it monitors goes down, a flood of ''Device is DOWN!'' events for every device in an affected subnet can be generated. This ZenPack adds a zenevent plugin which suppresses such subsequent events for devices behind device which is down. As a result, a system administator receives only a primary, core error event.
 
 To determine connectivity of device to zenoss instance, this zenpack needs to know where on the network map zenoss instance is located. It is described on Configuration properties of devices class in <code>zZenossGateway</code> zproperty. You should put there id of the zenoss device, or device to which it is connected.
 
@@ -112,6 +121,20 @@ zenmapper run -v10 -d <name or id of your modelled device>
 
 And then look it up on the network map.
 
+== Usage ==
+
+This ZenPack has two separate capabilities. The first is to collect clients connected to switch ports so that event suppression can be done when the switch fails, and the second is to discover neighbor relationships between network devices using the CDP (Cisco Discovery Protocol) and LLDP (Link Layer Discover Protocol).
+
+=== Collecting Switch Port Clients ===
+
+To enable discovery of clients connected to switch ports you must bind the ''Layer2Info'' monitoring template to switch devices. The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB. It's recommended to only bind the Layer2Info monitoring template to access switch to which monitored servers are connected.
+
+The ''Layer2Info'' in this monitoring template has a default cycle time of 12 hours or 43,200 seconds. A 12 hour cycle was chosen because the datasource's function is to model, and the default modeling interval is also 12 hours. Reducing this cycle time is not recommended if the template is going to be bound to a large number of switches. The recommendation is that you should bind the template to no more than 3,600 devices per hub. If you reduced the cycle interval to 6 hours you would cut that number of devices per hub in half to 1,800 devices.
+
+=== Collecting Network Device Neighbors ===
+
+To collect neighbor information from network devices that support CDP or LLDP, you must enable the ``zenoss.snmp.CDPLLDPDiscover`` modeler plugin for the devices.
+
 == Requirements ==
 
 This ZenPack has the following requirements.
@@ -161,6 +184,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
 * Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)
+* Change default cycletime for Layer2Info from 30 minutes to 12 hours. (ZEN-17031)
 
 ;1.0.1
 * Fix device overview links error. (ZEN-14063)
