@@ -34,9 +34,18 @@ This ZenPack provides no performance monitoring, and generates no events, all th
 Situation when upstream switch goes down results in flooding with <code>Device is DOWN!</code> events for every device in this subnet. ZenPack adds zenevent plugin which suppresses such subsequent events for leaf devices. So system administrator receives only primary, core error event.
 
 == Usage ==
-To use this ZenPack on some device or class of devices, you should bind Layer2Info monitoring template to that device, and in case SNMP community string in configuration properties is correct, after next monitoring cycle, interfaces will have client MAC addresses property, on panel under the components grid.
 
-To model neighbor switches you should add <code>zenoss.snmp.CDPLLDPDiscover</code> modeler plugin.
+This ZenPack has two separate capabilities. The first is to collect clients connected to switch ports so that event suppression can be done when the switch fails, and the second is to discover neighbor relationships between network devices using the CDP (Cisco Discovery Protocol) and LLDP (Link Layer Discover Protocol).
+
+=== Collecting Switch Port Clients ===
+
+To enable discovery of clients connected to switch ports you must bind the ''Layer2Info'' monitoring template to switch devices. The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB. It's recommended to only bind the Layer2Info monitoring template to access switch to which monitored servers are connected.
+
+The ''Layer2Info'' in this monitoring template has a default cycle time of 12 hours or 43,200 seconds. A 12 hour cycle was chosen because the datasource's function is to model, and the default modeling interval is also 12 hours. Reducing this cycle time is not recommended if the template is going to be bound to a large number of switches. The recommendation is that you should bind the template to no more than 3,600 devices per hub. If you reduced the cycle interval to 6 hours you would cut that number of devices per hub in half to 1,800 devices.
+
+=== Collecting Network Device Neighbors ===
+
+To collect neighbor information from network devices that support CDP or LLDP, you must enable the ``zenoss.snmp.CDPLLDPDiscover`` modeler plugin for the devices.
 
 == Requirements ==
 
@@ -81,6 +90,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
 * Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)
+* Change default cycletime for Layer2Info from 30 minutes to 12 hours. (ZEN-17031)
 
 ;1.0.1
 * Fix device overview links error. (ZEN-14063)
