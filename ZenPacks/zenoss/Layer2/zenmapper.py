@@ -69,7 +69,11 @@ class ZenMapper(CyclingDaemon):
     def main_loop(self):
         log.info('Updating catalog')
         cat = CatalogAPI(self.dmd.zport)
-        for entity in self.get_devices_list():
+        devices = self.get_devices_list()
+        if not devices:
+            log.warning('No devices')
+            return
+        for entity in devices:
             try:
                 log.debug('Checking %s', entity.id)
                 cat.add_node(entity)
