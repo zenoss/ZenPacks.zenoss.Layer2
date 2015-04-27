@@ -25,14 +25,19 @@ from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
 
 
-def get_connections_json(rootnode, depth=1, layers=None):
+def get_connections_json(data_root, root_id, depth=1, layers=None):
     '''
         Main function which is used from device to get responce text with
         connections data for graph.
     '''
+
+    obj = data_root.Devices.findDevice(root_id)
+    obj = obj or data_root.dmd.getObjByPath(root_id)
+    if not obj:
+        return serialize('Node %r was not found' % root_id)
     return serialize(
         contract_edges(
-            **get_connections(rootnode, depth, layers)
+            **get_connections(obj, depth, layers)
         )
     )
 

@@ -128,17 +128,13 @@ Device._relations += (
 def getJSONEdges(self, root_id='', depth='2', layers=None):
     ''' Get JSON representation of network nodes '''
     if not root_id:
-        return serialize("You should set a device name")
+        return serialize("You should set a device or component name")
     root_id = urllib.unquote(root_id)
-    obj = self.Devices.findDevice(root_id)
-    if not obj:
-        return serialize('Device %r was not found' % root_id)
-
     try:
         if layers:
             layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-        return get_connections_json(obj, int(depth), layers=layers)
+        return get_connections_json(self, root_id, int(depth), layers=layers)
     except Exception as e:
         log.exception(e)
         return serialize(e)
