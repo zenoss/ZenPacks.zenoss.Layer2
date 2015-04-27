@@ -79,8 +79,9 @@ var render_form = function(panel) {
         });
     };
 
-    Ext.History.on('change', function(token) {
-        var params = parse_hash(token);
+    var on_hash_change = function(hash) {
+        console.log('hash change', hash);
+        var params = parse_hash(hash);
         var layers = params.layers.split(',');
         var checkboxval = {}
         for(var i = 0; i < layers.length; i++) {
@@ -90,8 +91,10 @@ var render_form = function(panel) {
         Ext.getCmp('sidebar_root_id').setValue(params.root_id);
         Ext.getCmp('sidebar_depth').setValue(params.depth);
         refresh_map();
-    });
+    };
 
+    Ext.History.init();
+    Ext.History.on('change', on_hash_change);
 
     var sidebar = Ext.create('Ext.form.Panel', {
         id: 'network_map_form',
@@ -142,7 +145,6 @@ var render_form = function(panel) {
             },
         ],
     });
-    window.sidebar = sidebar;
     var map = Ext.create('Ext.panel.Panel', {
         flex: 1,
     });
@@ -163,8 +165,9 @@ var render_form = function(panel) {
     panel.doLayout();
 
     var inspect_node = function(data) {
+        console.log(data.path);
         if(data.path) Zenoss.inspector.show(data.path);
     };
-
     var graph = graph_renderer('#' + map.body.id, inspect_node);
+    on_hash_change(Ext.History.getToken());
 };
