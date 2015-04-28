@@ -166,3 +166,43 @@ IIpInterfaceInfo.baseport = schema.TextLine(
 IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
 IpInterfaceInfo.get_clients_links = property(get_clients_links)
+
+
+# Help popup similar to defined in
+# Products/ZenUI3/tooltips/data/en/nav-help.xml
+NETWORK_MAP_HELP = '''
+<p>Network map drawing starts from root, id of which you should put into
+Device ID field of form at the left sidebar. Depth defines size of the map
+(maximal number of connections beetween each node on map and root).
+</p>
+<p>
+You could also Layers checkboxes to display only connections
+which belong to some layer.
+</p>
+<p>
+<a href="https://github.com/zenoss/ZenPacks.zenoss.Layer2#Network_map">
+Also,see documentation.</a>
+</p>
+'''
+
+
+from zope.i18n.negotiator import negotiator
+from Products.ZenUI3.navigation import getSelectedNames
+from Products.ZenUI3.tooltips.tooltips import PageLevelHelp, TooltipCatalog
+
+
+class NetworkMapHelp(PageLevelHelp):
+    def __init__(self, context, request):
+        # we completely overriding this metod, so calling super
+        # not for this class but for it's parent
+        super(PageLevelHelp, self).__init__(context, request)
+        primary, secondary = getSelectedNames(self)
+        if (primary, secondary) == ('Infrastructure', 'Network Map'):
+            self.tip = dict(
+                title='Network Map',
+                tip=NETWORK_MAP_HELP
+            )
+        else:
+            lang = negotiator.getLanguage(TooltipCatalog.langs('nav-help'),
+                                          self.request)
+            self.tip = TooltipCatalog.pagehelp(primary, lang)

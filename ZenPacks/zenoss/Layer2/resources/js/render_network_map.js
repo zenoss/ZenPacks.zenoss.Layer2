@@ -61,7 +61,7 @@ var render_form = function(panel) {
             Ext.History.add(newToken);
         };
 
-        graph.draw({nodes: [], links: []});
+        // graph.draw({});
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',

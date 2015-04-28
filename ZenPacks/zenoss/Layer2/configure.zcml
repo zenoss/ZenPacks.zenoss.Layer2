@@ -40,15 +40,6 @@
         />
 
     <!-- JavaScript needed for all Zenoss pages. -->
-    <!-- <browser:viewlet
-        name="js-layer2"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/layer2.js"
-        for="*"
-        weight="20"
-        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
-        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
-        permission="zope2.Public"
-        /> -->
     <browser:viewlet
         name="js-layer2views"
         paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js"

@@ -76,7 +76,7 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             svg.style('display', 'none');
             panel.append('p')
                 .attr('class', 'message')
-                .text('No data');
+                .text('No data. (See "Page Tips" for help).');
             return;
         };
 
