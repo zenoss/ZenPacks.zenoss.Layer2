@@ -179,10 +179,17 @@ Device ID field of form at the left sidebar. Depth defines size of the map
 You could also Layers checkboxes to display only connections
 which belong to some layer.
 </p>
+
+<p>When you click on some node you will make that node root
+and redraw network map. When you do right click on node -
+device inspector would be shown.</p>
+
+<p>You could zoom map using mouse wheel, pan it using mouse,
+and also move nodes using mouse drag.</p>
+
 <p>
 <a href="https://github.com/zenoss/ZenPacks.zenoss.Layer2#Network_map">
-Also,see documentation.</a>
-</p>
+Also,see documentation.</a></p>
 '''
 
 

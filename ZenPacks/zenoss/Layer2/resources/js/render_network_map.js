@@ -164,10 +164,15 @@ var render_form = function(panel) {
     panel.add(hbox_center_panel);
     panel.doLayout();
 
-    var inspect_node = function(data) {
-        console.log(data.path);
-        if(data.path) Zenoss.inspector.show(data.path);
+    var click_node = function(data, right, x, y) {
+        console.log(data);
+        if(right) {
+            if(data.path) Zenoss.inspector.show(data.path, x, y);
+            return;
+        }
+        Ext.getCmp('sidebar_root_id').setValue(data.path);
+        refresh_map();
     };
-    var graph = graph_renderer('#' + map.body.id, inspect_node);
+    var graph = graph_renderer('#' + map.body.id, click_node);
     on_hash_change(Ext.History.getToken());
 };
