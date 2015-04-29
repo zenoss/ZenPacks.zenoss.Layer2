@@ -176,7 +176,7 @@ Device ID field of form at the left sidebar. Depth defines size of the map
 (maximal number of connections beetween each node on map and root).
 </p>
 <p>
-You could also Layers checkboxes to display only connections
+You could also use Layers checkboxes to display only connections
 which belong to some layer.
 </p>
 
