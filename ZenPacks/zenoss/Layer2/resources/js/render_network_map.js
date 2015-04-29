@@ -61,7 +61,7 @@ var render_form = function(panel) {
             Ext.History.add(newToken);
         };
 
-        graph.draw({nodes: [], links: []});
+        // graph.draw({});
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
@@ -79,8 +79,9 @@ var render_form = function(panel) {
         });
     };
 
-    Ext.History.on('change', function(token) {
-        var params = parse_hash(token);
+    var on_hash_change = function(hash) {
+        console.log('hash change', hash);
+        var params = parse_hash(hash);
         var layers = params.layers.split(',');
         var checkboxval = {}
         for(var i = 0; i < layers.length; i++) {
@@ -90,8 +91,10 @@ var render_form = function(panel) {
         Ext.getCmp('sidebar_root_id').setValue(params.root_id);
         Ext.getCmp('sidebar_depth').setValue(params.depth);
         refresh_map();
-    });
+    };
 
+    Ext.History.init();
+    Ext.History.on('change', on_hash_change);
 
     var sidebar = Ext.create('Ext.form.Panel', {
         id: 'network_map_form',
@@ -142,7 +145,6 @@ var render_form = function(panel) {
             },
         ],
     });
-    window.sidebar = sidebar;
     var map = Ext.create('Ext.panel.Panel', {
         flex: 1,
     });
@@ -162,9 +164,15 @@ var render_form = function(panel) {
     panel.add(hbox_center_panel);
     panel.doLayout();
 
-    var inspect_node = function(data) {
-        if(data.path) Zenoss.inspector.show(data.path);
+    var click_node = function(data, right, x, y) {
+        console.log(data);
+        if(right) {
+            if(data.path) Zenoss.inspector.show(data.path, x, y);
+            return;
+        }
+        Ext.getCmp('sidebar_root_id').setValue(data.path);
+        refresh_map();
     };
-
-    var graph = graph_renderer('#' + map.body.id, inspect_node);
+    var graph = graph_renderer('#' + map.body.id, click_node);
+    on_hash_change(Ext.History.getToken());
 };

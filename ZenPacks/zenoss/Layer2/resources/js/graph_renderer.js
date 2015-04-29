@@ -76,7 +76,7 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             svg.style('display', 'none');
             panel.append('p')
                 .attr('class', 'message')
-                .text('No data');
+                .text('No data. (See "Page Tips" for help).');
             return;
         };
 
@@ -110,6 +110,12 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             .on('click', function(d) {
                 if (d3.event.defaultPrevented) return; // No click when drag!
                 on_node_click(d)
+            })
+            .on('contextmenu', function (d) {
+                if (d3.event.defaultPrevented) return; // No click when drag!
+                on_node_click(d, true, d3.event.clientX, d3.event.clientY) // right click
+
+                d3.event.preventDefault(); // Do not show context menu.
             })
             .call(force.drag);
 

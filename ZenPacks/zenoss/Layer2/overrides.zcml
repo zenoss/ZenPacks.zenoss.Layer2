@@ -12,4 +12,11 @@
         for="*"
         permission="zenoss.View"
         />
+
+    <browser:page
+        name="page-level-help"
+        class=".patches.NetworkMapHelp"
+        for="*"
+        permission="zope2.Public"
+        />
 </configure>

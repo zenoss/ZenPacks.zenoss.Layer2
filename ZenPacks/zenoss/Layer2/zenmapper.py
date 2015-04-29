@@ -60,6 +60,7 @@ class ZenMapper(CyclingDaemon):
                     "Device with id %s was not found",
                     self.options.device
                 )
+                return []
         else:
             return chain(
                 self.dmd.Devices.getSubDevices(),
@@ -71,10 +72,10 @@ class ZenMapper(CyclingDaemon):
         cat = CatalogAPI(self.dmd.zport)
         for entity in self.get_devices_list():
             try:
-                log.debug('Checking %s', entity.id)
+                log.info('Checking %s', entity.id)
                 cat.add_node(entity)
             except TypeError:
-                log.debug('Could not adapt %. Ignoring.', entity.id)
+                log.info('Could not adapt %. Ignoring.', entity.id)
         commit()
 
 if __name__ == '__main__':

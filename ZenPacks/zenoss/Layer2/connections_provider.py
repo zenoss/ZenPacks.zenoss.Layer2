@@ -64,7 +64,10 @@ class Connection(object):
     def __init__(self, entity_id, connected_to, layers):
         self.entity_id = to_path(entity_id)
         self.connected_to = tuple(to_path(x) for x in connected_to)
-        self.layers = tuple(layers)
+        if isinstance(layers, str):
+            self.layers = (layers, )  # put string into one-element tuple
+        else:
+            self.layers = tuple(layers)
 
     @property
     def hash(self):
