@@ -49,6 +49,9 @@ def get_ifinfo_for_layer2(self):
 
 
 def format_macs(macs, get_device_by_mac):
+    """
+    Renders data to use in UI panel
+    """
     if not macs:
         return ""
 
@@ -63,13 +66,15 @@ def format_macs(macs, get_device_by_mac):
         else:
             links["Other"][mac[:8]].append(mac)
 
-    return '\n'.join(
-        '<strong>{}</strong>\n{}'.format(group, ''.join(
-            '{}<br /><br />'.format('<br/>\n'.join(sorted(column)))
-            for column in columns.values()
-        ))
-        for group, columns in links.iteritems()
-    )
+    # Formats result to use in ExtJS tree view
+    result = []
+    for group, columns in links.iteritems():
+        children = [{'text': i, 'leaf': True} for k in columns.values() for i in k]
+        result.append({"text": group,
+                       "cls": "folder",
+                       "expanded": False,
+                       "children": sorted(children)})
+    return result
 
 
 def get_clients_links(self):

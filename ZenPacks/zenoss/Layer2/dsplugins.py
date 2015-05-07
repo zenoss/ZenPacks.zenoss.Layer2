@@ -355,13 +355,19 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         return result
 
     def onError(self, result, config):
+        """
+        This callback creates event if error occured.
+        """
         log.error(result)
         data = self.new_data()
-        data['events'].append({
-            'component': self.component,
-            'summary': str(result.value),
-            'eventKey': 'layer2_monitoring_error',
-            'eventClass': '/Status',
-            'severity': ZenEventClasses.Error,
-        })
+        msg = str(result.value)
+
+        if 'timeout' not in msg.lower():
+            data['events'].append({
+                'component': self.component,
+                'summary': msg,
+                'eventKey': 'layer2_monitoring_error',
+                'eventClass': '/Status',
+                'severity': ZenEventClasses.Error,
+            })
         return data
