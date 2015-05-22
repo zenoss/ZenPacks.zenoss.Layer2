@@ -34,14 +34,22 @@ class TestPatches(BaseTestCase):
         })
 
     def test_format_macs(self):
-        html = format_macs(
-            ['aasdf', 'b', 'c'],
-            lambda mac: None
+        self.assertEqual(
+            format_macs(
+                ['aasdf', 'b', 'c'],
+                lambda mac: None
+            ),
+            [{
+                'text': 'Other',
+                'expanded': False,
+                'children': [
+                    {'text': 'aasdf', 'leaf': True},
+                    {'text': 'b', 'leaf': True},
+                    {'text': 'c', 'leaf': True}
+                ],
+                'cls': 'folder'
+            }]
         )
-        from pprint import pprint;
-        pprint(html)
-        self.assertIn('Other', html)
-        self.assertIn('aasdf', html)
 
 
 def test_suite():
