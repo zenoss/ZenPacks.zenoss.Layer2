@@ -38,6 +38,8 @@ class TestPatches(BaseTestCase):
             ['aasdf', 'b', 'c'],
             lambda mac: None
         )
+        from pprint import pprint;
+        pprint(html)
         self.assertIn('Other', html)
         self.assertIn('aasdf', html)
 
