@@ -69,7 +69,10 @@ def format_macs(macs, get_device_by_mac):
     # Formats result to use in ExtJS tree view
     result = []
     for group, columns in links.iteritems():
-        children = [{'text': i, 'leaf': True} for k in columns.values() for i in k]
+        children = (
+            {'text': i, 'leaf': True}
+            for k in columns.values() for i in k
+        )
         result.append({"text": group,
                        "cls": "folder",
                        "expanded": False,

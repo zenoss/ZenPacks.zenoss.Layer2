@@ -32,7 +32,10 @@ def get_connections_json(data_root, root_id, depth=1, layers=None):
     '''
 
     obj = data_root.Devices.findDevice(root_id)
-    obj = obj or data_root.dmd.getObjByPath(root_id)
+    try:
+        obj = obj or data_root.dmd.getObjByPath(root_id)
+    except KeyError:
+        obj = None
     if not obj:
         return serialize('Node %r was not found' % root_id)
     return serialize(

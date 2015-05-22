@@ -18,10 +18,14 @@ import Globals
 
 from Products.ZenUtils.Utils import unused
 from Products.ZenModel.ZenPack import ZenPackBase
+from Products.ZenRelations.zPropertyCategory import setzPropertyCategory
 
 import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
+
+
+setzPropertyCategory('zZenossGateway', 'Misc')
 
 
 class ZenPack(ZenPackBase):
