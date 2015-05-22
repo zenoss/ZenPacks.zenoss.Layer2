@@ -125,7 +125,7 @@ def get_connections(rootnode, depth=1, layers=None):
             get_connections(node, depth - 1)
 
     def get_related(node):
-        return cat.get_directly_connected(node.get_path(), layers)
+        return cat.get_two_way_connected(node.get_path(), layers)
 
     add_node(adapt_node(rootnode))
     get_connections(rootnode, depth)

@@ -59,6 +59,20 @@ class CatalogAPI(BaseCatalogAPI):
             for c in b.connected_to:
                 yield c
 
+    def get_reverse_connected(self, entity_id, layers=None):
+        q = dict(connected_to=entity_id)
+        if layers:
+            q['layers'] = layers
+        for b in self.search(**q):
+            yield c.entity_id
+
+    def get_two_way_connected(self, entity_id, layers=None):
+        one_way = set(self.get_directly_connected(entity_id, layers))
+        # or
+        another = set(self.get_reverse_connected(entity_id, layers))
+        for c in one_way + another:
+            yield c
+
     def get_connected(self, entity_id, layers=None):
         ''' Return set of all connected nodes '''
         visited = set()
