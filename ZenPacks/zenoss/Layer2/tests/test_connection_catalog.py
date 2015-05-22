@@ -85,8 +85,15 @@ class TestCatalogAPI(BaseTestCase):
     def test_get_directly_connected(self):
         self.cat.add_node(fake_connections_provider(self.dmd))
         self.assertTrue(
-            [x for x in self.cat.get_directly_connected('connection_id')] ==
+            list(self.cat.get_directly_connected('connection_id')) ==
             ['connected_to1', 'connected_to2']
+        )
+
+    def test_get_reverse_connected(self):
+        self.cat.add_node(fake_connections_provider(self.dmd))
+        self.assertTrue(
+            list(self.cat.get_reverse_connected('connected_to1')) ==
+            ['connection_id']
         )
 
     def test_get_existing_layers(self):
