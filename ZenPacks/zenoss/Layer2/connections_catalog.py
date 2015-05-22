@@ -7,8 +7,10 @@
 #
 ##############################################################################
 
+from itertools import chain
 import logging
 log = logging.getLogger('zen.Layer2')
+
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
@@ -58,6 +60,20 @@ class CatalogAPI(BaseCatalogAPI):
         for b in self.search(**q):
             for c in b.connected_to:
                 yield c
+
+    def get_reverse_connected(self, entity_id, layers=None):
+        q = dict(connected_to=entity_id)
+        if layers:
+            q['layers'] = layers
+        for b in self.search(**q):
+            yield b.entity_id
+
+    def get_two_way_connected(self, entity_id, layers=None):
+        for c in chain(
+            self.get_directly_connected(entity_id, layers),
+            self.get_reverse_connected(entity_id, layers)
+        ):
+            yield c
 
     def get_connected(self, entity_id, layers=None):
         ''' Return set of all connected nodes '''

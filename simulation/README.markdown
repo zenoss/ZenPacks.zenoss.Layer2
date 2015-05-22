@@ -1,5 +1,5 @@
 
-## Installation 
+## Installation
 Please refer to https://github.com/cluther/snmposter#installation, to install all the dependencies needed for this simulator to run.
 
 ### On CentOS 6.4:
@@ -28,6 +28,12 @@ to start virtual python environment. From there you will need to install two mor
 
 
 ## Usage
+
+Do not forget to run 
+
+    source env/bin/activate
+
+before starting python scripts described here. Run `deactivate` to exit virtual python environment.
 
 Use snmpwalk_parser.py to convert snmpwalk output to python dictionaries which could be fed into agent simulator.
 
