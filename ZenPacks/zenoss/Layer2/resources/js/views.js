@@ -192,4 +192,33 @@ Zenoss.nav.appendTo('Component', [{
     }
 }]);
 
+/* Panel Override */
+Ext.onReady(function(){
+    /* Hide Software component for all /Network devices, ZEN-17697 */
+    DEVICE_ELEMENTS = "subselecttreepaneldeviceDetailNav"
+     Ext.ComponentMgr.onAvailable(DEVICE_ELEMENTS, function(){
+        var DEVICE_PANEL = Ext.getCmp(DEVICE_ELEMENTS);
+        Ext.apply(DEVICE_PANEL, {
+            listeners: {
+                afterrender: function() {
+                    var device_class = Zenoss.env.PARENT_CONTEXT;
+                    var tree = Ext.getCmp(DEVICE_PANEL.items.items[0].id);
+                    var items = tree.store.data.items;
+
+                    if (device_class.indexOf('/zport/dmd/Devices/Network/') == 0) {
+                        for (i in items){
+                            if (items[i].data.id.match(/software*/)){
+                                try {
+                                    tree.store.remove(items[i]);
+                                    tree.store.sync();
+                                } catch(err){}
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    })
+});
+
 })();
