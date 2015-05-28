@@ -344,12 +344,13 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         This method return a data structure with zero or more events, values
         and maps.  result - is what returned from collect.
         """
+        ds = config.datasources[0]
         for component in result['values'].keys():
             result['events'].append({
                 'component': component,
                 'summary': 'Layer2 Info ok',
-                'eventKey': 'layer2_monitoring_error',
-                'eventClass': '/Status',
+                'eventKey': ds.eventKey,
+                'eventClass': ds.eventClass,
                 'severity': ZenEventClasses.Clear,
             })
         return result
@@ -361,13 +362,14 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
         log.error(result)
         data = self.new_data()
         msg = str(result.value)
+        ds = config.datasources[0]
 
         if 'timeout' not in msg.lower():
             data['events'].append({
                 'component': self.component,
                 'summary': msg,
-                'eventKey': 'layer2_monitoring_error',
-                'eventClass': '/Status',
+                'eventKey': ds.eventKey,
+                'eventClass': ds.eventClass,
                 'severity': ZenEventClasses.Error,
             })
         return data

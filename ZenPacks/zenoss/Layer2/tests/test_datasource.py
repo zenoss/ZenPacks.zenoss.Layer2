@@ -25,6 +25,7 @@ class TestDataSourcePlugin(BaseTestCase):
         config = Mock(datasources=[Mock(getHWManufacturerName='Cisco')])
         self.plugin = Layer2InfoPlugin(config)
         self.plugin.component = sentinel.component
+        self.config = Mock(datasources=[Mock(eventClass=sentinel.eventClass)])
 
     def test_onSuccess(self):
         res = dict(
@@ -33,23 +34,25 @@ class TestDataSourcePlugin(BaseTestCase):
             },
             events=[],
         )
-        res = self.plugin.onSuccess(res, sentinel.config)
+        res = self.plugin.onSuccess(res, self.config)
 
         events = res['events']
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['component'], sentinel.component)
         self.assertEqual(events[0]['severity'], ZenEventClasses.Clear)
+        self.assertEqual(events[0]['eventClass'], sentinel.eventClass)
 
     def test_onError(self):
         res = self.plugin.onError(
             Mock(value=sentinel.error_value),
-            sentinel.config
+            self.config
         )
         events = res['events']
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['component'], sentinel.component)
         self.assertEqual(events[0]['summary'], 'sentinel.error_value')
         self.assertEqual(events[0]['severity'], ZenEventClasses.Error)
+        self.assertEqual(events[0]['eventClass'], sentinel.eventClass)
 
     def test_get_vlans(self):
         self.plugin.iftable = {
