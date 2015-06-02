@@ -15,6 +15,7 @@ import logging
 log = logging.getLogger('zen.Layer2')
 
 import Globals
+from transaction import commit
 
 from Products.ZenUtils.Utils import unused
 from Products.ZenModel.ZenPack import ZenPackBase
@@ -35,3 +36,8 @@ class ZenPack(ZenPackBase):
         # TODO: figure out how this is usefull and remove if it is not.
         for d in self.dmd.Devices.getSubDevicesGen():
             d.buildRelations()
+
+    def remove(self, app, leaveObjects=False):
+        super(ZenPack, self).remove(app, leaveObjects)
+        app.zport._delObject('macs_catalog')
+        commit()
