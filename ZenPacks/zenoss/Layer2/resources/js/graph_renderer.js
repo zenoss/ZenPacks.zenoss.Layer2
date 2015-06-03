@@ -67,15 +67,11 @@ window.graph_renderer = function(panel_selector, on_node_click) {
           force.stop();
     })
     .on('drag', function(d) {
-        d.px += d3.event.dx;
-        d.py += d3.event.dy;
         d.x += d3.event.dx;
         d.y += d3.event.dy; 
-        tick(); // this is the key to make it work together with updating both px,py,x,y on d !
     })
     .on('dragend', function(d) {
         d.fixed = true;
-        tick();
         force.resume();
     });
 
@@ -155,13 +151,18 @@ window.graph_renderer = function(panel_selector, on_node_click) {
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
         node.select('text')
-            .text(function (d) { return d.name.slice(0, 20) + ((d.name.length > 20) ? ' ...' : ''); });
+            .text(function (d) {
+                return (
+                    d.name.slice(0, 20) +
+                    ((d.name.length > 20) ? ' ...' : '')
+                );
+            });
 
         // remove
         node.exit().remove();
 
         // animation:
-        force.on("tick", function () {
+        var tick = function () {
             link.attr({
                 "x1": function (d) { return d.source.x; },
                 "y1": function (d) { return d.source.y; },
@@ -172,7 +173,8 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             node.attr("transform", function (d) {
                 return "translate(" + d.x + "," + d.y + ")";
             });
-        });
+        };
+        force.on("tick", tick);
 
         center();
     };

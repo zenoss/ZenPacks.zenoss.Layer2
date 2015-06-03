@@ -164,44 +164,50 @@ var render_form = function(panel) {
     panel.add(hbox_center_panel);
     panel.doLayout();
 
-    var context_menu = Ext.create('Ext.menu.Menu', {
-        height: 58,
-        width: 140,
-        margin: '0 0 10 0',
-        items: [{
-            id: 'pin_down',
-            xtype: 'menucheckitem',
-            text: 'Pin down',
-            handler: function() {
-                context_menu.data.fixed = this.checked;
-            }
-        }, {
-            text: 'Device info',
-            handler: function() {
-                console.log(context_menu);
-                if(context_menu.data_path) {
-                    Zenoss.inspector.show(
-                        context_menu.data.path,
-                        context_menu.node_x,
-                        context_menu.node_y
-                    );
-                };
-            },
-        }]
-     });
-
     var click_node = function(data, right, x, y) {
         if(right) {
-            Ext.getCmp('pin_down').setChecked(data.fixed);
-            context_menu.data = data;
-            context_menu.node_x = x;
-            context_menu.node_y = y;
-            context_menu.showAt([x, y]);
-            return;
-        }
-        Ext.getCmp('sidebar_root_id').setValue(data.path);
-        refresh_map();
+            window.context_menu.show(data, x, y);
+        } else {
+            Ext.getCmp('sidebar_root_id').setValue(data.path);
+            refresh_map();
+        };
     };
     var graph = graph_renderer('#' + map.body.id, click_node);
     on_hash_change(Ext.History.getToken());
 };
+
+window.context_menu = (function () {
+    var obj = {};
+    var pin_down = Ext.create('Ext.menu.CheckItem', {
+        text: 'Pin down',
+        handler: function() {
+            obj.data.fixed = this.checked;
+        }
+    });
+    var show_inspector = function () {
+        if(obj.data.path) {
+            Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
+        };
+    };
+    var menu = Ext.create('Ext.menu.Menu', {
+        height: 58,
+        width: 140,
+        items: [
+            pin_down,
+            {
+                text: 'Device info',
+                handler: show_inspector,
+            }
+        ]
+    });
+
+    obj.show = function (data, x, y) {
+        obj.data = data;
+        obj.x = x;
+        obj.y = y;
+        console.log(data.fixed);
+        pin_down.setChecked(data.fixed & 1);
+        menu.showAt([x, y]);
+    };
+    return obj;
+})();
