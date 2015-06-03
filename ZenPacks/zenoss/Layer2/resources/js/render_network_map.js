@@ -80,7 +80,6 @@ var render_form = function(panel) {
     };
 
     var on_hash_change = function(hash) {
-        console.log('hash change', hash);
         var params = parse_hash(hash);
         var layers = params.layers.split(',');
         var checkboxval = {}
@@ -205,7 +204,6 @@ window.context_menu = (function () {
         obj.data = data;
         obj.x = x;
         obj.y = y;
-        console.log(data.fixed);
         pin_down.setChecked(data.fixed & 1);
         menu.showAt([x, y]);
     };
