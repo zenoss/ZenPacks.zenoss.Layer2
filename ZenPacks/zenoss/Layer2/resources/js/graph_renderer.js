@@ -64,8 +64,20 @@ window.graph_renderer = function(panel_selector, on_node_click) {
     force.drag().on("dragstart", function() {
           // to disallow panning during drag
           d3.event.sourceEvent.stopPropagation();
+          force.stop();
+    })
+    .on('drag', function(d) {
+        d.px += d3.event.dx;
+        d.py += d3.event.dy;
+        d.x += d3.event.dx;
+        d.y += d3.event.dy; 
+        tick(); // this is the key to make it work together with updating both px,py,x,y on d !
+    })
+    .on('dragend', function(d) {
+        d.fixed = true;
+        tick();
+        force.resume();
     });
-
 
     var draw_graph = function (graph) {
         panel.selectAll('.message').remove(); //remove old messages

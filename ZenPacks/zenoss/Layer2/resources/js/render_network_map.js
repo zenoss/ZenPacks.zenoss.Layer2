@@ -164,10 +164,39 @@ var render_form = function(panel) {
     panel.add(hbox_center_panel);
     panel.doLayout();
 
+    var context_menu = Ext.create('Ext.menu.Menu', {
+        height: 58,
+        width: 140,
+        margin: '0 0 10 0',
+        items: [{
+            id: 'pin_down',
+            xtype: 'menucheckitem',
+            text: 'Pin down',
+            handler: function() {
+                context_menu.data.fixed = this.checked;
+            }
+        }, {
+            text: 'Device info',
+            handler: function() {
+                console.log(context_menu);
+                if(context_menu.data_path) {
+                    Zenoss.inspector.show(
+                        context_menu.data.path,
+                        context_menu.node_x,
+                        context_menu.node_y
+                    );
+                };
+            },
+        }]
+     });
+
     var click_node = function(data, right, x, y) {
-        console.log(data);
         if(right) {
-            if(data.path) Zenoss.inspector.show(data.path, x, y);
+            Ext.getCmp('pin_down').setChecked(data.fixed);
+            context_menu.data = data;
+            context_menu.node_x = x;
+            context_menu.node_y = y;
+            context_menu.showAt([x, y]);
             return;
         }
         Ext.getCmp('sidebar_root_id').setValue(data.path);
