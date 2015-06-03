@@ -80,7 +80,6 @@ var render_form = function(panel) {
     };
 
     var on_hash_change = function(hash) {
-        console.log('hash change', hash);
         var params = parse_hash(hash);
         var layers = params.layers.split(',');
         var checkboxval = {}
@@ -165,14 +164,48 @@ var render_form = function(panel) {
     panel.doLayout();
 
     var click_node = function(data, right, x, y) {
-        console.log(data);
         if(right) {
-            if(data.path) Zenoss.inspector.show(data.path, x, y);
-            return;
-        }
-        Ext.getCmp('sidebar_root_id').setValue(data.path);
-        refresh_map();
+            window.context_menu.show(data, x, y);
+        } else {
+            Ext.getCmp('sidebar_root_id').setValue(data.path);
+            refresh_map();
+        };
     };
     var graph = graph_renderer('#' + map.body.id, click_node);
     on_hash_change(Ext.History.getToken());
 };
+
+window.context_menu = (function () {
+    var obj = {};
+    var pin_down = Ext.create('Ext.menu.CheckItem', {
+        text: 'Pin down',
+        handler: function() {
+            obj.data.fixed = this.checked;
+        }
+    });
+    var show_inspector = function () {
+        if(obj.data.path) {
+            Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
+        };
+    };
+    var menu = Ext.create('Ext.menu.Menu', {
+        height: 58,
+        width: 140,
+        items: [
+            pin_down,
+            {
+                text: 'Device info',
+                handler: show_inspector,
+            }
+        ]
+    });
+
+    obj.show = function (data, x, y) {
+        obj.data = data;
+        obj.x = x;
+        obj.y = y;
+        pin_down.setChecked(data.fixed & 1);
+        menu.showAt([x, y]);
+    };
+    return obj;
+})();

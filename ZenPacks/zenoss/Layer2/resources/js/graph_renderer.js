@@ -64,8 +64,16 @@ window.graph_renderer = function(panel_selector, on_node_click) {
     force.drag().on("dragstart", function() {
           // to disallow panning during drag
           d3.event.sourceEvent.stopPropagation();
+          force.stop();
+    })
+    .on('drag', function(d) {
+        d.x += d3.event.dx;
+        d.y += d3.event.dy; 
+    })
+    .on('dragend', function(d) {
+        d.fixed = true;
+        force.resume();
     });
-
 
     var draw_graph = function (graph) {
         panel.selectAll('.message').remove(); //remove old messages
@@ -143,13 +151,18 @@ window.graph_renderer = function(panel_selector, on_node_click) {
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
         node.select('text')
-            .text(function (d) { return d.name.slice(0, 20) + ((d.name.length > 20) ? ' ...' : ''); });
+            .text(function (d) {
+                return (
+                    d.name.slice(0, 20) +
+                    ((d.name.length > 20) ? ' ...' : '')
+                );
+            });
 
         // remove
         node.exit().remove();
 
         // animation:
-        force.on("tick", function () {
+        var tick = function () {
             link.attr({
                 "x1": function (d) { return d.source.x; },
                 "y1": function (d) { return d.source.y; },
@@ -160,7 +173,8 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             node.attr("transform", function (d) {
                 return "translate(" + d.x + "," + d.y + ")";
             });
-        });
+        };
+        force.on("tick", tick);
 
         center();
     };
