@@ -38,4 +38,7 @@ class ZenPack(ZenPackBase):
 
     def remove(self, app, leaveObjects=False):
         super(ZenPack, self).remove(app, leaveObjects)
-        app.zport._delObject('macs_catalog')
+        try:
+            app.zport._delObject('macs_catalog')
+        except AttributeError:
+            pass # already deleted
