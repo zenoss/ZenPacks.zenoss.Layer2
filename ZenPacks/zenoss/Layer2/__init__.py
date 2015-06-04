@@ -35,3 +35,10 @@ class ZenPack(ZenPackBase):
         # TODO: figure out how this is usefull and remove if it is not.
         for d in self.dmd.Devices.getSubDevicesGen():
             d.buildRelations()
+
+    def remove(self, app, leaveObjects=False):
+        super(ZenPack, self).remove(app, leaveObjects)
+        try:
+            app.zport._delObject('macs_catalog')
+        except AttributeError:
+            pass # already deleted
