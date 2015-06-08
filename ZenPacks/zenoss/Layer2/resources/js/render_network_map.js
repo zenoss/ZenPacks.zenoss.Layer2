@@ -110,7 +110,25 @@ var render_form = function(panel) {
             {
                 id: 'sidebar_root_id',
                 fieldLabel: 'Device ID',
-                name: 'root_id'
+                name: 'root_id',
+                xtype: 'combo',
+                valueField: 'name',
+                displayField: 'name',
+                store: new Ext.data.DirectStore({
+                    directFn: Zenoss.remote.DeviceRouter.getDeviceUuidsByName,
+                    root: 'data',
+                    model: 'Zenoss.model.BasicUUID',
+                    remoteFilter: true
+                }),
+                minChars: 3,
+                typeAhead: false,
+                hideLabel: true,
+                hideTrigger: true,
+                listConfig: {
+                    loadingText: 'Searching...',
+                    emptyText: 'No matching devices found.',
+                },
+                pageSize: 10
             },
             {
                 id: 'sidebar_depth',
