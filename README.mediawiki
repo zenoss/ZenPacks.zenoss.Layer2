@@ -158,6 +158,8 @@ Please refer the the Zenoss Service Dynamics documentation if you run into any o
 * Don't understand how to add a device
 * Don't understand how to model a device
 
+If you are reinstalling or updating this zenpack on Europa, you should first check in control center that zenmapper daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand. 
+
 If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics) users should contact [https://support.zenoss.com Zenoss Customer Support]. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
 
 == Layer2 Terminology ==
@@ -165,7 +167,7 @@ The essential mechanism that separates network switches from network hubs is the
 
 == Installed Items ==
 
-Installing this ZenPack will add the following items to your Zenoss system.
+Installing this ZenPack will add the following items to your Zenoss system. 
 
 '''Modeler Plugins'''
 * zenoss.snmp.CDPLLDPDiscover
