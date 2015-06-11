@@ -17,30 +17,17 @@ Link Layer Discovery Protocol from SNMP, and create DMD interface objects
 """
 
 import struct
+import ipaddr
 
 from Products.ZenUtils.Utils import prepId
 from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin
 from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 
-
-import ipaddr
-
-
-class CiscoNetworkProtocol:
-
-    """Enumeration for CISCO-TC::CiscoNetworkProtocol type."""
-
-    IPv4 = 1
-    IPv6 = 20
-
-
-import ipaddr
+from ZenPacks.zenoss.Layer2.utils import asip
 
 
 class CiscoNetworkProtocol:
-
     """Enumeration for CISCO-TC::CiscoNetworkProtocol type."""
-
     IPv4 = 1
     IPv6 = 20
 
@@ -81,65 +68,71 @@ class CDPLLDPDiscover(SnmpPlugin):
         From SNMP info gathered from the device, convert them
         to NeighborSwitch objects.
         """
-        getdata, tabledata = results
         log.info(
             'Modeler %s processing data for device %s',
             self.name(), device.id
         )
 
+        getdata, tabledata = results
         log.debug("%s tabledata = %s", device.id, tabledata)
-        oms = {}
-
-        # CDP data
-        for idx, data in tabledata.get("cdpCacheEntry").items():
-            idx = prepId("cdp_{}".format(idx))
-            title = data.get('cdpCachePlatform', '')
-            if idx in oms or not title:
-                continue
-
-            cdpCacheAddress = data.get('cdpCacheAddress')
-            cdpCacheAddressType = data.get(
-                'cdpCacheAddressType',
-                CiscoNetworkProtocol.IPv4)
-
-            ip_address = None
-
-            if cdpCacheAddress:
-                if cdpCacheAddressType == CiscoNetworkProtocol.IPv4:
-                    ip_address = self.asip(cdpCacheAddress)
-                elif cdpCacheAddressType == CiscoNetworkProtocol.IPv6:
-                    ip_address = ipaddr.IPAddress(
-                        int(cdpCacheAddress.encode('hex'), 16)).compressed
-
-            oms[idx] = self.objectMap({
-                'id': idx,
-                'title': title,
-                'description': data.get('cdpCacheSysName', ''),
-                'device_port': data.get('cdpCacheDevicePort', ''),
-                'ip_address': ip_address,
-                'native_vlan': data.get('cdpCacheNativeVLAN', ''),
-                'location': data.get('cdpCachePhysLocation', ''),
-                })
-
-        # LLDP data
-        for idx, data in tabledata.get("lldpRemEntry").items():
-            idx = prepId("lldp_{}".format(idx))
-            title = data.get('lldpRemSysName', '')
-            if idx in oms or not title:
-                continue
-
-            oms[idx] = self.objectMap({
-                'id': idx,
-                'title': title,
-                'description': data.get('lldpRemSysDesc', ''),
-                'device_port': (
-                    data.get('lldpRemPortDesc', '')
-                    or data.get('lldpRemPortId', '')
-                ),
-            })
 
         rm = self.relMap()
-        rm.extend(oms.values())
+        for om in _extract_cdp_lldp_maps(tabledata):
+            rm.append(self.objectMap(om))
 
         log.debug(rm)
         return rm
+
+
+def _extract_cdp_lldp_maps(tabledata):
+    oms = {}
+
+    # CDP data
+    for idx, data in tabledata.get("cdpCacheEntry", {}).items():
+        idx = prepId("cdp_{}".format(idx))
+        title = data.get('cdpCachePlatform', '')
+        if idx in oms or not title:
+            continue
+
+        cdpCacheAddress = data.get('cdpCacheAddress')
+        cdpCacheAddressType = data.get(
+            'cdpCacheAddressType',
+            CiscoNetworkProtocol.IPv4)
+
+        ip_address = None
+
+        if cdpCacheAddress:
+            if cdpCacheAddressType == CiscoNetworkProtocol.IPv4:
+                ip_address = asip(cdpCacheAddress)
+            elif cdpCacheAddressType == CiscoNetworkProtocol.IPv6:
+                ip_address = ipaddr.IPAddress(
+                    int(cdpCacheAddress.encode('hex'), 16)).compressed
+
+        oms[idx] = {
+            'id': idx,
+            'title': title,
+            'description': data.get('cdpCacheSysName', ''),
+            'device_port': data.get('cdpCacheDevicePort', ''),
+            'ip_address': ip_address,
+            'native_vlan': data.get('cdpCacheNativeVLAN', ''),
+            'location': data.get('cdpCachePhysLocation', ''),
+            }
+
+    # LLDP data
+    for idx, data in tabledata.get("lldpRemEntry", {}).items():
+        idx = prepId("lldp_{}".format(idx))
+        title = data.get('lldpRemSysName', '')
+        if idx in oms or not title:
+            continue
+
+        oms[idx] = {
+            'id': idx,
+            'title': title,
+            'description': data.get('lldpRemSysDesc', ''),
+            'device_port': (
+                data.get('lldpRemPortDesc', '')
+                or data.get('lldpRemPortId', '')
+            ),
+        }
+    return oms.values()
+
