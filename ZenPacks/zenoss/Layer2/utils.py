@@ -19,6 +19,10 @@ def asmac(val):
     """Convert a byte string to a MAC address string.  """
     return ':'.join('%02X' % ord(c) for c in val)
 
+def asip(val):
+    """Convert a byte string to an IP address string.  """
+    return '.'.join(str(ord(c)) for c in val)
+
 
 CATALOG_INDEX_TYPES = {
     'str': makeCaseSensitiveFieldIndex,
