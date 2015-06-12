@@ -135,4 +135,3 @@ def _extract_cdp_lldp_maps(tabledata):
             ),
         }
     return oms.values()
-

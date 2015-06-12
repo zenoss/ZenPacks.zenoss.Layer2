@@ -34,10 +34,12 @@ class TestUpdateCatalog(BaseTestCase):
         class TestableZenMapper(ZenMapper):
             def __init__(self):
                 ''' It breaks tests somewhere in parent class '''
+
         self.zenmapper = TestableZenMapper()
         self.zenmapper.dmd = self.dmd
         self.zenmapper.options = lambda: 1
         self.zenmapper.options.device = False
+        self.zenmapper.options.clear = False
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
