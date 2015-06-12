@@ -11,7 +11,8 @@ from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.modeler.plugins.zenoss.snmp.CDPLLDPDiscover import _extract_cdp_lldp_maps
+from ZenPacks.zenoss.Layer2.modeler.plugins\
+    .zenoss.snmp.CDPLLDPDiscover import _extract_cdp_lldp_maps
 
 cdpCacheEntry = {
     '10648.28': {
@@ -31,7 +32,6 @@ lldpRemEntry = {
         'lldpRemSysName': 'asdf'
     }
 }
-
 
 
 class TestCDPLLDPDiscover(BaseTestCase):
@@ -54,7 +54,6 @@ class TestCDPLLDPDiscover(BaseTestCase):
             'native_vlan': 1,
             'title': 'asdf'
         }])
-
 
     def test_cdp(self):
         res = _extract_cdp_lldp_maps({

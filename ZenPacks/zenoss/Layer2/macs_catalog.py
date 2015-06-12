@@ -260,6 +260,6 @@ def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
         return []
     if callable(iface.vlans):
-        return map(str, ('vlan{}'.format(vlan.vlan_id) for vlan in iface.vlans()))
+        return ['vlan{}'.format(vlan.vlan_id) for vlan in iface.vlans()]
     else:
         return iface.vlans
