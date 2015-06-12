@@ -39,7 +39,14 @@ class ZenMapper(CyclingDaemon):
             "--monitor", dest="monitor",
             default=DEFAULT_MONITOR,
             help="Name of monitor instance to use for heartbeat "
-            " events. Default is %s." % DEFAULT_MONITOR)
+            " events. Default is %s." % DEFAULT_MONITOR
+        )
+        self.parser.add_option(
+            "--clear",
+            dest="clear",
+            action="store_true",
+            help="Clear MACs catalog"
+        )
 
         self.parser.add_option(
             '-d', '--device', dest='device',
@@ -68,14 +75,19 @@ class ZenMapper(CyclingDaemon):
             )
 
     def main_loop(self):
-        log.info('Updating catalog')
-        cat = CatalogAPI(self.dmd.zport)
-        for entity in self.get_devices_list():
-            try:
-                log.info('Checking %s', entity.id)
+        if self.options.clear:
+            log.info('Clearing catalog')
+            cat = CatalogAPI(self.dmd.zport)
+            cat.clear()
+        else:
+            log.info('Updating catalog')
+            cat = CatalogAPI(self.dmd.zport)
+            for entity in self.get_devices_list():
+                # try:
+                #     log.info('Checking %s', entity.id)
                 cat.add_node(entity)
-            except TypeError:
-                log.info('Could not adapt %. Ignoring.', entity.id)
+                # except TypeError:
+                #     log.info('Could not adapt %s. Ignoring.', entity.id)
         commit()
 
 if __name__ == '__main__':

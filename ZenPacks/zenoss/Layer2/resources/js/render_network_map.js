@@ -14,25 +14,32 @@ var render_form = function(panel) {
 
     var get_checked_layers = function () {
         // build a comma-separated list of checked layers
-        var l = Ext.getCmp('layers_group').getValue();
-        var layers = [];
-        for(var k in l) {
-            if(l[k]) layers.push(l[k]);
-        };
+        var records = Ext.getCmp('layers_group').getView().getChecked(),
+            layers = [];
+
+        Ext.Array.each(records, function(rec){
+            layers.push(rec.get('value'));
+        });
+
         return layers.join(',');
     };
 
-    var parse_hash = function(hash)
-    {
-      var res = {};
-      var a = hash.split('&');
-      for (var i in a)
-      {
-        var b = a[i].split('=');
-        res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
-      }
-      return res;
+    var parse_hash = function(hash) {
+        var res = {
+            'layers': '',
+            'root_id': '',
+            'depth': 2
+        };
+        if (hash) {
+            var a = hash.split('&');
+            for (var i in a) {
+                var b = a[i].split('=');
+                res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
+            }
+        }
+        return res;
     }
+
     var format_hash = function(data) {
        var res = [];
         Object.keys(data).forEach(function(key) {
@@ -45,6 +52,51 @@ var render_form = function(panel) {
         return res.join('&');
     };
 
+    var format_layers_data = function(checked_data) {
+        var data = window.layers_options,
+            vlans = [],
+            vxlans = [],
+            obj = {},
+            res = {
+                "text": ".",
+                "expanded": true,
+                "children": []
+            };
+
+        Ext.Array.each(data, function(rec){
+            obj = {
+                "text": rec.boxLabel,
+                "value": rec.inputValue,
+                "id": rec.id,
+                "leaf": true,
+                "checked": (checked_data.indexOf(rec.inputValue) > -1)
+            }
+
+            if (rec.boxLabel.indexOf('vlan') == 0) {
+                obj.text = obj.text.replace(/vlan/gi, '');
+                vlans.push(obj);
+            } else if (rec.boxLabel.indexOf('vxlan') == 0) {
+                obj.text = obj.text.replace(/vxlan/gi, '');
+                vxlans.push(obj);
+            } else {
+                res.children.push(obj);
+            }
+        });
+
+        if (vlans.length)
+            res.children.push({
+                "text": "VLANs",
+                "children": vlans
+            });
+
+        if (vxlans.length)
+            res.children.push({
+                "text": "VXLANs",
+                "children": vxlans
+            });
+
+        return res;
+    }
 
     var refresh_map = function () {
         var params = sidebar.getValues();
@@ -80,13 +132,10 @@ var render_form = function(panel) {
     };
 
     var on_hash_change = function(hash) {
-        var params = parse_hash(hash);
-        var layers = params.layers.split(',');
-        var checkboxval = {}
-        for(var i = 0; i < layers.length; i++) {
-            checkboxval[layers[i] + '-inputEl'] = layers[i];
-        };
-        Ext.getCmp('layers_group').setValue(checkboxval);
+        var params = parse_hash(hash),
+            layers = params.layers.split(',');
+
+        Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
         Ext.getCmp('sidebar_root_id').setValue(params.root_id);
         Ext.getCmp('sidebar_depth').setValue(params.depth);
         refresh_map();
@@ -129,36 +178,44 @@ var render_form = function(panel) {
                     emptyText: 'No matching devices found.',
                 },
                 pageSize: 10
-            },
-            {
+            }, {
                 id: 'sidebar_depth',
                 fieldLabel: 'Depth',
                 name: 'depth',
                 xtype: 'numberfield',
                 value: 2,
                 maxValue: 10,
-                minValue: 1,
-            },
-            {
-                xtype: 'panel',
+                minValue: 1
+            }, {
+                xtype: 'treepanel',
+                id: 'layers_group',
+                store: new Ext.data.TreeStore({
+                    proxy: {
+                        type: 'memory'
+                    },
+                    root: format_layers_data([]),
+                    folderSort: true,
+                    model: new Ext.define('Layer', {
+                        extend: 'Ext.data.Model',
+                        fields: [
+                            {name: 'id', type: 'string'},
+                            {name: 'text', type: 'string'},
+                            {name: 'value', type: 'string'}
+                        ]
+                    })
+                }),
                 title: 'Layers',
                 flex: 1,
                 overflowY: 'scroll',
                 frame: true,
-                items: [
-                    {
-                        xtype: 'checkboxgroup',
-                        id: 'layers_group',
-                        columns: 1,
-                        items: window.layers_options,
-                    },
-                ],
-            },
-            {
+                rootVisible: false,
+                displayField: 'text',
+                useArrows: true
+            }, {
                 text: 'Apply',
                 name: 'refresh_button',
                 xtype: 'button',
-                handler: refresh_map,
+                handler: refresh_map
             },
         ],
     });
