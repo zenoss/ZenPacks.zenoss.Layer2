@@ -46,4 +46,4 @@ class DeviceLinkProvider(object):
                 links.add('Switch: <a href="{}">{}</a>'.format(
                     obj.getPrimaryUrlPath(), obj.titleOrId()
                 ))
-        return list(links)
+        return ['<br />'] + list(links)
