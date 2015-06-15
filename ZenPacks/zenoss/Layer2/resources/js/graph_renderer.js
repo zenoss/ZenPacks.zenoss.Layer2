@@ -68,7 +68,7 @@ window.graph_renderer = function(panel_selector, on_node_click) {
     })
     .on('drag', function(d) {
         d.x += d3.event.dx;
-        d.y += d3.event.dy; 
+        d.y += d3.event.dy;
     })
     .on('dragend', function(d) {
         d.fixed = true;
@@ -155,8 +155,10 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             .attr('r', function(d) {
                 if(d.highlight) return 25; else return 21;
             });
+
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
+
         node.select('text.display-short')
             .text(function (d) {
                 return (

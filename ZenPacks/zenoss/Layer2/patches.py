@@ -188,12 +188,15 @@ You could also use Layers checkboxes to display only connections
 which belong to some layer.
 </p>
 
-<p>When you click on some node you will make that node root
-and redraw network map. When you do right click on node -
-device inspector would be shown.</p>
+<p>When you click on some node you will navigate to the page
+of the device that node represents.</p>
+
+<p>Right click on node shows a context menu, from which you could
+pin and unpin node, make the node a new root of map,
+and show device info for the node.</p>
 
 <p>You could zoom map using mouse wheel, pan it using mouse,
-and also move nodes using mouse drag.</p>
+and also move nodes using mouse drag. Nodes that are moved become fixed.</p>
 
 <p>
 <a href="https://github.com/zenoss/ZenPacks.zenoss.Layer2#Network_map">
