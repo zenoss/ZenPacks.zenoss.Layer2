@@ -1,5 +1,5 @@
 .node text {
-    pointer-events: none;
+    pointer-events: visible;
     font: 10px sans-serif;
 }
 
@@ -13,8 +13,13 @@
 .node:hover text.display-short {
     display: none;
 }
+.node:hover {
+    cursor: pointer;
+}
 .node:hover text.display-full {
     display: block;
+    fill: blue;
+    text-decoration: underline;
 }
 
 rect {

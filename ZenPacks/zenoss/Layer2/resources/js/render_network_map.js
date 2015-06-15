@@ -240,10 +240,13 @@ var render_form = function(panel) {
 
     var click_node = function(data, right, x, y) {
         if(right) {
-            window.context_menu.show(data, x, y);
+            window.context_menu.show(data, x, y, refresh_map);
         } else {
-            Ext.getCmp('sidebar_root_id').setValue(data.path);
-            refresh_map();
+            if(data.path.indexOf('/zport/dmd/Devices/') == 0) {
+                window.location.href = data.path;
+            } else {
+                show_error(data.path + ' is not a device.')
+            };
         };
     };
     var graph = graph_renderer('#' + map.body.id, click_node);
@@ -263,11 +266,18 @@ window.context_menu = (function () {
             Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
         };
     };
+    var change_root = function () {
+        Ext.getCmp('sidebar_root_id').setValue(obj.data.path);
+        obj.refresh_map();
+    };
     var menu = Ext.create('Ext.menu.Menu', {
-        height: 58,
         width: 140,
         items: [
             pin_down,
+            {
+                text: 'Put map root here',
+                handler: change_root,
+            },
             {
                 text: 'Device info',
                 handler: show_inspector,
@@ -275,10 +285,11 @@ window.context_menu = (function () {
         ]
     });
 
-    obj.show = function (data, x, y) {
+    obj.show = function (data, x, y, refresh_map) {
         obj.data = data;
         obj.x = x;
         obj.y = y;
+        obj.refresh_map = refresh_map;
         pin_down.setChecked(data.fixed & 1);
         menu.showAt([x, y]);
     };
