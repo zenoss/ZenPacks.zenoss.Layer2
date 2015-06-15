@@ -3,6 +3,20 @@
     font: 10px sans-serif;
 }
 
+
+.node text.display-short {
+    display: block;
+}
+.node text.display-full {
+    display: none;
+}
+.node:hover text.display-short {
+    display: none;
+}
+.node:hover text.display-full {
+    display: block;
+}
+
 rect {
     fill: none;
     stroke: black;

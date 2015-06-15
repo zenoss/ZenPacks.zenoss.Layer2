@@ -135,7 +135,14 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             .attr("width", 32)
             .attr("height", 32);
 
-        node_enter.append("text")
+        var node_text = node_enter.append('g');
+        node_text.append("text")
+            .attr("class", "display-short")
+            .attr("dx", 25)
+            .attr("dy", ".35em");
+
+        node_text.append("text")
+            .attr("class", "display-full")
             .attr("dx", 25)
             .attr("dy", ".35em");
 
@@ -150,13 +157,15 @@ window.graph_renderer = function(panel_selector, on_node_click) {
             });
         node.select('image')
             .attr("xlink:href", function(d) { return d.image; });
-        node.select('text')
+        node.select('text.display-short')
             .text(function (d) {
                 return (
                     d.name.slice(0, 20) +
                     ((d.name.length > 20) ? ' ...' : '')
                 );
             });
+        node.select('text.display-full')
+            .text(function (d) { return d.name; });
 
         // remove
         node.exit().remove();
