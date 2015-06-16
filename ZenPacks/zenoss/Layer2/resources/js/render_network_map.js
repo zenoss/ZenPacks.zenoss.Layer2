@@ -121,6 +121,7 @@ var render_form = function(panel) {
                 if(res.error) {
                     return show_error(res.error);
                 }
+                var graph = graph_renderer('#' + map.body.id, click_node);
                 graph.draw(res);
             },
             failure: function(error) {
@@ -249,7 +250,6 @@ var render_form = function(panel) {
         };
     };
 
-    var graph = graph_renderer('#' + map.body.id, click_node);
     on_hash_change(Ext.History.getToken());
 };
 
