@@ -33,6 +33,7 @@ var render_form = function(panel) {
         if (hash) {
             var a = hash.split('&');
             for (var i in a) {
+                if(a[i] == 'deviceDetailNav:network_map') continue;
                 var b = a[i].split('=');
                 res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
             }
@@ -41,7 +42,7 @@ var render_form = function(panel) {
     }
 
     var format_hash = function(data) {
-       var res = [];
+        var res = ['deviceDetailNav:network_map'];
         Object.keys(data).forEach(function(key) {
             res.push(
                 encodeURIComponent(key) +
@@ -112,8 +113,6 @@ var render_form = function(panel) {
         if (newToken !== oldToken) {
             Ext.History.add(newToken);
         };
-
-        // graph.draw({});
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
@@ -249,6 +248,7 @@ var render_form = function(panel) {
             };
         };
     };
+
     var graph = graph_renderer('#' + map.body.id, click_node);
     on_hash_change(Ext.History.getToken());
 };

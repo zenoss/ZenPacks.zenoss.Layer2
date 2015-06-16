@@ -13,10 +13,16 @@
 Ext.define('NetworkMapPanel', {
     extend: 'Ext.panel.Panel',
     alias: ['widget.network_map'],
+    layout: {
+        type: 'fit',
+    },
     config: {
         title: 'Network map',
-        html: 'Hey there!',
         viewName: 'network_map_view',
+    },
+    onRender: function () {
+        this.callParent();
+        render_form(this);
     },
     setContext: function(uid) {
         console.log('setting context', uid)
@@ -31,9 +37,5 @@ Zenoss.nav.appendTo('Device', [{
     xtype: 'network_map',
     viewName: 'network_map_view',
 }]);
-
-Ext.onReady(function(){
-    //render_form(Ext.getCmp('network_map'));
-});
 
 }());
