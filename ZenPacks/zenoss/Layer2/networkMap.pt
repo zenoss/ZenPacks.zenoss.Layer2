@@ -31,7 +31,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
     <tal:block metal:fill-slot="script_afterLayout">
         <script type="text/javascript">
             Ext.onReady(function(){
-                render_form(Ext.getCmp('center_panel'));
+                window.form_panel.render(Ext.getCmp('center_panel'));
             });
         </script>
     </tal:block>

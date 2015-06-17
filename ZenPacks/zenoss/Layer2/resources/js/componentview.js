@@ -8,7 +8,7 @@
  ****************************************************************************/
 
 
-(function () {
+Ext.onReady(function(){
 
 Ext.define('NetworkMapPanel', {
     extend: 'Ext.panel.Panel',
@@ -22,12 +22,10 @@ Ext.define('NetworkMapPanel', {
     },
     onRender: function () {
         this.callParent();
-        render_form(this);
+        window.form_panel.render(this);
     },
     setContext: function(uid) {
-        console.log('setting context', uid)
-        // this._contextUid = uid;
-        // this._setSwfContext(this._contextUid);
+        window.form_panel.change_root(uid);
     },
 });
 
@@ -38,4 +36,4 @@ Zenoss.nav.appendTo('Device', [{
     viewName: 'network_map_view',
 }]);
 
-}());
+});
