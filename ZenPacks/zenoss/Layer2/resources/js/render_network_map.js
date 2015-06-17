@@ -32,8 +32,11 @@ var render_form = function(panel) {
         };
         if (hash) {
             var a = hash.split('&');
+            if(
+                (a[0].indexOf('deviceDetailNav') == 0) &&
+                (a[0] != 'deviceDetailNav:network_map')
+            ) return null; // not our panel
             for (var i in a) {
-                if(a[i] == 'deviceDetailNav:network_map') continue;
                 var b = a[i].split('=');
                 res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
             }
@@ -132,8 +135,10 @@ var render_form = function(panel) {
     };
 
     var on_hash_change = function(hash) {
-        var params = parse_hash(hash),
-            layers = params.layers.split(',');
+        var params = parse_hash(hash);
+        if (params === null) return; // not our panel
+
+        var layers = params.layers.split(',');
 
         Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
         Ext.getCmp('sidebar_root_id').setValue(params.root_id);
