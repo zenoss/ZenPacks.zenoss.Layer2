@@ -59,8 +59,7 @@
     };
 
     var format_layers_data = function(checked_data) {
-        var data = window.layers_options,
-            vlans = [],
+        var vlans = [],
             vxlans = [],
             obj = {},
             res = {
@@ -69,7 +68,7 @@
                 "children": []
             };
 
-        Ext.Array.each(data, function(rec){
+        Ext.Array.each(layers_options, function(rec){
             obj = {
                 "text": rec.boxLabel,
                 "value": rec.inputValue,
@@ -116,6 +115,24 @@
         };
     };
 
+    var layers_options;
+    var on_layers_loaded = function (callback) {
+        if (typeof layers_options === 'undefined') {
+            Ext.Ajax.request({
+                url: '/zport/dmd/getNetworkLayersList',
+                success: function (response, request) {
+                    layers_options = JSON.parse(response.responseText);
+                    callback();
+                },
+                failure: function(error) {
+                    show_error(error);
+                }
+            });
+        } else {
+            callback(); // we already have the data
+        };
+    };
+
     var refresh_map = function () {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
@@ -154,7 +171,9 @@
 
         var layers = params.layers.split(',');
 
-        Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
+        on_layers_loaded(function () {
+            Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
+        });
         Ext.getCmp('sidebar_depth').setValue(params.depth);
         window.form_panel.change_root(params.root_id);
     };
