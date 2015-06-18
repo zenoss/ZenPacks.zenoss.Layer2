@@ -2,7 +2,7 @@
 <!--
 ##############################################################################
 # 
-# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2014, 2015, all rights reserved.
 # 
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -17,21 +17,12 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
 
     <tal:block metal:fill-slot="head-local">
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-
-        <script type="text/javascript"
-            tal:define="layerslist python: [dict(boxLabel=x, inputValue='layer_' + x, id='layer_' + x) for x in here.dmd.getNetworkLayers()];"
-            tal:content="string: window.layers_options = ${layerslist};"></script>
-
-        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"></script>
-        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"></script>
-        <script type="text/javascript" src="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"></script>
-        <link rel="stylesheet" type="text/css" href="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css" />
     </tal:block>
 
     <tal:block metal:fill-slot="script_afterLayout">
         <script type="text/javascript">
             Ext.onReady(function(){
-                render_form(Ext.getCmp('center_panel'));
+                window.form_panel.render(Ext.getCmp('center_panel'));
             });
         </script>
     </tal:block>

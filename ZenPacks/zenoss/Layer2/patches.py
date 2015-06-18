@@ -154,6 +154,14 @@ def getNetworkLayers(self):
     cat = CatalogAPI(self.zport)
     return cat.get_existing_layers()
 
+@monkeypatch('Products.ZenModel.DataRoot.DataRoot')
+def getNetworkLayersList(self):
+    ''' Return existing network layers list for checkboxes options '''
+    return serialize([
+        dict(boxLabel=x, inputValue='layer_' + x, id='layer_' + x)
+        for x in self.getNetworkLayers()
+    ])
+
 # -- IP Interfaces overrides --------------------------------------------------
 
 # Monkey patching IpInterface and add Layer2 properties

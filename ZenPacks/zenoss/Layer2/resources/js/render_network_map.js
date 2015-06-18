@@ -9,7 +9,9 @@
 
 "use strict";
 
-var render_form = function(panel) {
+(function(){
+    window.form_panel = {}; 
+
     var show_error = Zenoss.flares.Manager.error;
 
     var get_checked_layers = function () {
@@ -32,6 +34,10 @@ var render_form = function(panel) {
         };
         if (hash) {
             var a = hash.split('&');
+            if(
+                (a[0].indexOf('deviceDetailNav') == 0) &&
+                (a[0] != 'deviceDetailNav:network_map')
+            ) return null; // not our panel
             for (var i in a) {
                 var b = a[i].split('=');
                 res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
@@ -41,7 +47,7 @@ var render_form = function(panel) {
     }
 
     var format_hash = function(data) {
-       var res = [];
+        var res = ['deviceDetailNav:network_map'];
         Object.keys(data).forEach(function(key) {
             res.push(
                 encodeURIComponent(key) +
@@ -53,8 +59,7 @@ var render_form = function(panel) {
     };
 
     var format_layers_data = function(checked_data) {
-        var data = window.layers_options,
-            vlans = [],
+        var vlans = [],
             vxlans = [],
             obj = {},
             res = {
@@ -63,7 +68,7 @@ var render_form = function(panel) {
                 "children": []
             };
 
-        Ext.Array.each(data, function(rec){
+        Ext.Array.each(layers_options, function(rec){
             obj = {
                 "text": rec.boxLabel,
                 "value": rec.inputValue,
@@ -98,6 +103,36 @@ var render_form = function(panel) {
         return res;
     }
 
+    var click_node = function(data, right, x, y) {
+        if(right) {
+            show_context_menu(data, x, y, refresh_map);
+        } else {
+            if(data.path.indexOf('/zport/dmd/Devices/') == 0) {
+                window.location.href = data.path;
+            } else {
+                show_error(data.path + ' is not a device.')
+            };
+        };
+    };
+
+    var layers_options;
+    var on_layers_loaded = function (callback) {
+        if (typeof layers_options === 'undefined') {
+            Ext.Ajax.request({
+                url: '/zport/dmd/getNetworkLayersList',
+                success: function (response, request) {
+                    layers_options = JSON.parse(response.responseText);
+                    callback();
+                },
+                failure: function(error) {
+                    show_error(error);
+                }
+            });
+        } else {
+            callback(); // we already have the data
+        };
+    };
+
     var refresh_map = function () {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
@@ -113,8 +148,6 @@ var render_form = function(panel) {
             Ext.History.add(newToken);
         };
 
-        // graph.draw({});
-
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
             success: function (response, request) {
@@ -122,6 +155,7 @@ var render_form = function(panel) {
                 if(res.error) {
                     return show_error(res.error);
                 }
+                var graph = graph_renderer('#' + map.body.id, click_node);
                 graph.draw(res);
             },
             failure: function(error) {
@@ -132,17 +166,17 @@ var render_form = function(panel) {
     };
 
     var on_hash_change = function(hash) {
-        var params = parse_hash(hash),
-            layers = params.layers.split(',');
+        var params = parse_hash(hash);
+        if (params === null) return; // not our panel
 
-        Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
-        Ext.getCmp('sidebar_root_id').setValue(params.root_id);
+        var layers = params.layers.split(',');
+
+        on_layers_loaded(function () {
+            Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
+        });
         Ext.getCmp('sidebar_depth').setValue(params.depth);
-        refresh_map();
+        window.form_panel.change_root(params.root_id);
     };
-
-    Ext.History.init();
-    Ext.History.on('change', on_hash_change);
 
     var sidebar = Ext.create('Ext.form.Panel', {
         id: 'network_map_form',
@@ -230,68 +264,66 @@ var render_form = function(panel) {
             align: 'stretch'
         },
     });
-    hbox_center_panel.add(sidebar);
-    hbox_center_panel.add(map);
-    hbox_center_panel.doLayout();
 
-    panel.removeAll();
-    panel.add(hbox_center_panel);
-    panel.doLayout();
+    window.form_panel.change_root = function(new_id) {
+        Ext.getCmp('sidebar_root_id').setValue(new_id);
+        refresh_map();
+    };
 
-    var click_node = function(data, right, x, y) {
-        if(right) {
-            window.context_menu.show(data, x, y, refresh_map);
-        } else {
-            if(data.path.indexOf('/zport/dmd/Devices/') == 0) {
-                window.location.href = data.path;
-            } else {
-                show_error(data.path + ' is not a device.')
+    window.form_panel.render = function(panel) {
+        Ext.History.init();
+        Ext.History.on('change', on_hash_change);
+
+        hbox_center_panel.add(sidebar);
+        hbox_center_panel.add(map);
+        hbox_center_panel.doLayout();
+
+        panel.removeAll();
+        panel.add(hbox_center_panel);
+        panel.doLayout();
+
+        on_hash_change(Ext.History.getToken());
+    };
+
+    var show_context_menu = (function () {
+        var obj = {};
+        var pin_down = Ext.create('Ext.menu.CheckItem', {
+            text: 'Pin down',
+            handler: function() {
+                obj.data.fixed = this.checked;
+            }
+        });
+        var show_inspector = function () {
+            if(obj.data.path) {
+                Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
             };
         };
-    };
-    var graph = graph_renderer('#' + map.body.id, click_node);
-    on_hash_change(Ext.History.getToken());
-};
-
-window.context_menu = (function () {
-    var obj = {};
-    var pin_down = Ext.create('Ext.menu.CheckItem', {
-        text: 'Pin down',
-        handler: function() {
-            obj.data.fixed = this.checked;
-        }
-    });
-    var show_inspector = function () {
-        if(obj.data.path) {
-            Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
+        var change_root = function () {
+            window.form_panel.change_root(obj.data.path);
         };
-    };
-    var change_root = function () {
-        Ext.getCmp('sidebar_root_id').setValue(obj.data.path);
-        obj.refresh_map();
-    };
-    var menu = Ext.create('Ext.menu.Menu', {
-        width: 140,
-        items: [
-            pin_down,
-            {
-                text: 'Put map root here',
-                handler: change_root,
-            },
-            {
-                text: 'Device info',
-                handler: show_inspector,
-            }
-        ]
-    });
+        var menu = Ext.create('Ext.menu.Menu', {
+            width: 140,
+            items: [
+                pin_down,
+                {
+                    text: 'Put map root here',
+                    handler: change_root,
+                },
+                {
+                    text: 'Device info',
+                    handler: show_inspector,
+                }
+            ]
+        });
 
-    obj.show = function (data, x, y, refresh_map) {
-        obj.data = data;
-        obj.x = x;
-        obj.y = y;
-        obj.refresh_map = refresh_map;
-        pin_down.setChecked(data.fixed & 1);
-        menu.showAt([x, y]);
-    };
-    return obj;
+        return (function (data, x, y, refresh_map) {
+            obj.data = data;
+            obj.x = x;
+            obj.y = y;
+            obj.refresh_map = refresh_map;
+            pin_down.setChecked(data.fixed & 1);
+            menu.showAt([x, y]);
+        });
+    })();
+
 })();
