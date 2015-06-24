@@ -6,6 +6,20 @@
 		"Launch": "auto",
 		"ImageID": "",
 		"Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run -c\"",
+		"ConfigFiles": {
+		    "/opt/zenoss/etc/zenmapper.conf": {
+			"Filename": "/opt/zenoss/etc/zenmapper.conf",
+			"Owner": "zenoss:zenoss",
+			"Permissions": "664"
+		    }
+		},
+		"LogConfigs": [{
+			"filters": [
+			    "pythondaemon"
+			],
+			"path": "/opt/zenoss/log/zenmapper.log",
+			"type": "zenmapper"
+		}],
 		"Instances": {
 		   "min": 1
 		}, 
@@ -19,6 +33,9 @@
 			    "Script": "pgrep -fu zenoss zenmapper.py > /dev/null",
 			    "Interval": 5.0
 			}
-		}
+		},
+		"Tags": [
+		    "daemon"
+		]
 	}
 }
