@@ -1,5 +1,5 @@
 {
-	"servicePath": "/hub",
+	"servicePath": "/",
 	"serviceDefinition": {
 		"Description": "Updates network map connections",
 		"Name": "zenmapper",
@@ -10,7 +10,7 @@
 		    "/opt/zenoss/etc/zenmapper.conf": {
 			"Filename": "/opt/zenoss/etc/zenmapper.conf",
 			"Owner": "zenoss:zenoss",
-			"Permissions": "664"
+			"Permissions": "0664"
 		    }
 		},
 		"LogConfigs": [{
@@ -27,6 +27,13 @@
 			"Name": "mariadb",
 			"Application": "zodb_.*",
 			"Purpose": "import"
+		},
+		{
+		    "Name": "memcached",
+		    "Application": "memcached",
+		    "PortNumber": 11211,
+		    "Protocol": "tcp",
+		    "Purpose": "import"
 		}],
 		"HealthChecks": {
 			"running": {
@@ -35,7 +42,8 @@
 			}
 		},
 		"Tags": [
-		    "daemon"
+			"daemon",
+			"ZenPacks.zenoss.Layer2"
 		]
 	}
 }
