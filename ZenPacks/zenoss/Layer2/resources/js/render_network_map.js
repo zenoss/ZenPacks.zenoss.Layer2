@@ -10,7 +10,7 @@
 "use strict";
 
 (function(){
-    window.form_panel = {}; 
+    window.form_panel = {};
 
     var show_error = Zenoss.flares.Manager.error;
 
@@ -284,44 +284,76 @@
 
         on_hash_change(Ext.History.getToken());
     };
-
     var show_context_menu = (function () {
         var obj = {};
-        var pin_down = Ext.create('Ext.menu.CheckItem', {
-            text: 'Pin down',
-            handler: function() {
-                obj.data.fixed = this.checked;
-            }
-        });
-        var show_inspector = function () {
-            if(obj.data.path) {
-                Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
-            };
-        };
-        var change_root = function () {
-            window.form_panel.change_root(obj.data.path);
-        };
-        var menu = Ext.create('Ext.menu.Menu', {
-            width: 140,
-            items: [
-                pin_down,
-                {
-                    text: 'Put map root here',
-                    handler: change_root,
-                },
-                {
-                    text: 'Device info',
-                    handler: show_inspector,
-                }
-            ]
-        });
-
         return (function (data, x, y, refresh_map) {
+            var is_device = ((data.path) &&
+                (data.path.indexOf('/zport/dmd/Devices/') == 0)
+            );
+            var navigatable = ((data.path) && (data.path.indexOf('/') == 0));
+
+            var pin_down = Ext.create('Ext.menu.CheckItem', {
+                text: 'Pin down',
+                handler: function() {
+                    obj.data.fixed = this.checked;
+                }
+            });
+            var show_inspector = function () {
+                if((obj.data.path) && (obj.data.path.indexOf('/zport/dmd/Devices/') == 0)) {
+                    Zenoss.inspector.show(obj.data.path, obj.x, obj.y);
+                };
+            };
+
+            var get_tooltip_listeners = function (text) {
+                return {
+                    render: function(c) {
+                        Ext.create('Ext.tip.ToolTip', {
+                            target: c.getEl(),
+                            html: text
+                        })
+                    }
+                };
+            };
+
+            var device_info = Ext.create('Ext.menu.Item', {
+                text: 'Device info',
+                handler: show_inspector,
+                listeners: get_tooltip_listeners(is_device ?
+                    'Show device info' :
+                    'Will not display device info because this is not a device'
+                )
+            });
+            var change_root_menu = Ext.create('Ext.menu.Item', {
+                text: 'Put map root here',
+                handler: function () {
+                    window.form_panel.change_root(obj.data.path);
+                },
+                listeners: get_tooltip_listeners(navigatable ?
+                    'Rebuild network map starting from this node' :
+                    'Currently it is impossible to navigate to this node'
+                )
+            });
+
+            var menu = Ext.create('Ext.menu.Menu', {
+                width: 140,
+                items: [
+                    pin_down,
+                    change_root_menu,
+                    device_info
+                ]
+            });
+
             obj.data = data;
             obj.x = x;
             obj.y = y;
             obj.refresh_map = refresh_map;
+
             pin_down.setChecked(data.fixed & 1);
+
+            device_info.setDisabled(!is_device);
+
+            change_root_menu.setDisabled(!navigatable);
+
             menu.showAt([x, y]);
         });
     })();
