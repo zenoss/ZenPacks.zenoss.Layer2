@@ -53,9 +53,7 @@ class TestUpdateCatalog(BaseTestCase):
         self.assertEquals(len(self.cat.search()), 0)
 
     def test_pair(self):
-        self.topology('''
-            a b
-        ''')
+        self.topology('a b')
         self.zenmapper.main_loop()
         self.assertIn(router('b'), self.cat.get_connected(router('a')))
 

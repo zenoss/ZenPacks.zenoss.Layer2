@@ -83,11 +83,7 @@ class ZenMapper(CyclingDaemon):
             log.info('Updating catalog')
             cat = CatalogAPI(self.dmd.zport)
             for entity in self.get_devices_list():
-                # try:
-                #     log.info('Checking %s', entity.id)
                 cat.add_node(entity)
-                # except TypeError:
-                #     log.info('Could not adapt %s. Ignoring.', entity.id)
         commit()
 
 if __name__ == '__main__':
