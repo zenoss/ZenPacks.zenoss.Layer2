@@ -217,7 +217,7 @@
                 fieldLabel: 'Depth',
                 name: 'depth',
                 xtype: 'numberfield',
-                value: 2,
+                value: 3,
                 maxValue: 10,
                 minValue: 1
             }, {

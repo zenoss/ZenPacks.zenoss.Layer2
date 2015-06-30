@@ -75,24 +75,36 @@ class CatalogAPI(BaseCatalogAPI):
         ):
             yield c
 
-    def get_connected(self, entity_id, layers=None):
+    def get_connected(self, entity_id, layers=None, depth=None):
         ''' Return set of all connected nodes '''
         visited = set()
 
-        def visit(node):
+        def visit(node, depth):
+            if depth is not None and depth < 0:
+                return
             if node in visited:
                 return
             visited.add(node)
-            for n in self.get_directly_connected(node, layers):
-                visit(n)
-        visit(entity_id)
+
+            if depth is not None:
+                depth -= 1
+            for n in self.get_two_way_connected(node, layers):
+                visit(n, depth)
+
+        visit(entity_id, depth)
 
         return visited
 
-    def get_status(self, node):
+    def get_obj(self, id):
+        ''' Returns object from dmd for some node id or None '''
         try:
             node = self.zport.dmd.getObjByPath(node)
         except (NotFound, KeyError) as e:
+            return None
+
+    def get_status(self, node):
+        node = self.get_obj(node)
+        if node is None:
             return True
         return IConnectionsProvider(node).get_status()
 

@@ -16,7 +16,7 @@ import Globals
 
 from Products.ZenUtils.Utils import unused
 
-from .macs_catalog import CatalogAPI
+from .connections_catalog import CatalogAPI
 
 unused(Globals)
 
@@ -32,18 +32,13 @@ class DeviceLinkProvider(object):
         links = set()
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
-        try:
-            upstream = cat.get_upstream_devices(self.device.id)
-        except IndexError:  # device id was not found
-            upstream = []
-        try:
-            client = cat.get_client_devices(self.device.id)
-        except IndexError:  # device id was not found
-            client = []
-
-        for obj in chain(upstream, client):
-            if obj.getDeviceClassName().startswith('/Network'):
+        for id in cat.get_connected(
+            entity_id=self.device.getPrimaryUrlPath(),
+            layers=['layer2'],
+            depth=3
+        ):
+            if id.startswith('/zport/dmd/Devices/Network/'):
                 links.add('Switch: <a href="{}">{}</a>'.format(
-                    obj.getPrimaryUrlPath(), obj.titleOrId()
+                    id, id.split('/')[-1]
                 ))
         return ['<br />'] + list(links)
