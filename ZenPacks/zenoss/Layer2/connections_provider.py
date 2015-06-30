@@ -9,13 +9,46 @@
 
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
-from Acquisition import ImplicitAcquisitionWrapper
 
-from Products.ZenModel.ZenModelRM import ZenModelRM
 from Products.Zuul.catalog.interfaces import IGloballyIndexed
 from Products.Zuul.catalog.interfaces import IIndexableWrapper
 
-from .macs_catalog import InterfaceConnections
+
+class InterfaceConnections(object):
+    implements(IIndexableWrapper)
+    adapts(IGloballyIndexed)
+
+    def __init__(self, interface):
+        self.interface = interface
+
+    def getPhysicalPath(self):
+        return self.interface.getPhysicalPath()
+
+    @property
+    def id(self):
+        return self.interface.id
+
+    @property
+    def device(self):
+        return self.interface.device().id
+
+    @property
+    def macaddress(self):
+        return getattr(self.interface, 'macaddress', '').upper()
+
+    @property
+    def clientmacs(self):
+        return [
+            x.upper()
+            for x in getattr(self.interface, 'clientmacs', [])
+            if x
+        ]
+
+    @property
+    def layers(self):
+        res = ['layer2']
+        res.extend(get_vlans(self.interface))
+        return res
 
 
 def check_connection(connection):
@@ -146,3 +179,12 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
                 continue
             yield Connection(self.context, (dev, ), ['layer3', ])
             yield Connection(dev, (self.context, ), ['layer3', ])
+
+
+def get_vlans(iface):
+    if not hasattr(iface, 'vlans'):
+        return []
+    if callable(iface.vlans):
+        return ['vlan{}'.format(vlan.vlan_id) for vlan in iface.vlans()]
+    else:
+        return iface.vlans

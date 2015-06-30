@@ -10,56 +10,9 @@
 import logging
 log = logging.getLogger('zen.Layer2')
 
-from zope.interface import implements
-from zope.component import adapts, getUtility
-
-from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
-from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
-from Products.Zuul.catalog.global_catalog import GlobalCatalog
-from Products.Zuul.catalog.global_catalog import GlobalCatalogFactory
-from Products.Zuul.catalog.interfaces import IGlobalCatalogFactory
-from Products.Zuul.catalog.interfaces import IGloballyIndexed
-from Products.Zuul.catalog.interfaces import IIndexableWrapper
-from Products.ZCatalog.interfaces import ICatalogBrain
-
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
-
-class InterfaceConnections(object):
-    implements(IIndexableWrapper)
-    adapts(IGloballyIndexed)
-
-    def __init__(self, interface):
-        self.interface = interface
-
-    def getPhysicalPath(self):
-        return self.interface.getPhysicalPath()
-
-    @property
-    def id(self):
-        return self.interface.id
-
-    @property
-    def device(self):
-        return self.interface.device().id
-
-    @property
-    def macaddress(self):
-        return getattr(self.interface, 'macaddress', '').upper()
-
-    @property
-    def clientmacs(self):
-        return [
-            x.upper()
-            for x in getattr(self.interface, 'clientmacs', [])
-            if x
-        ]
-
-    @property
-    def layers(self):
-        res = ['layer2']
-        res.extend(get_vlans(self.interface))
-        return res
+from .connections_provider import InterfaceConnections, get_vlans
 
 
 class CatalogAPI(BaseCatalogAPI):
@@ -254,12 +207,3 @@ def csl(sequence):
 
 def unique(l):
     return list(set(i for i in l if isinstance(i, basestring)))
-
-
-def get_vlans(iface):
-    if not hasattr(iface, 'vlans'):
-        return []
-    if callable(iface.vlans):
-        return ['vlan{}'.format(vlan.vlan_id) for vlan in iface.vlans()]
-    else:
-        return iface.vlans
