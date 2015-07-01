@@ -34,7 +34,9 @@ class InterfaceConnections(object):
 
     @property
     def macaddress(self):
-        return getattr(self.interface, 'macaddress', '').upper()
+        return (
+            getattr(self.interface, 'macaddress', '') or ''
+        ).upper().strip()
 
     @property
     def clientmacs(self):
@@ -153,7 +155,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
         for interface in self.context.os.interfaces():
             ic = InterfaceConnections(interface)
             layers = ic.layers
-            mac = ic.macaddress.strip()
+            mac = ic.macaddress
             if not mac:
                 continue
             yield Connection(self.context, (mac, ), layers)

@@ -38,7 +38,13 @@ class CatalogAPI(BaseCatalogAPI):
         connection = self.validate_connection(connection)
 
         self.catalog.catalog_object(connection, uid=connection.hash)
-        log.debug('%s added to %s' % (connection, self.name))
+        log.debug(
+            'Connection from %s to %s on layers %s added to %s',
+            connection.entity_id,
+            ', '.join(connection.connected_to),
+            ', '.join(connection.layers),
+            self.name
+        )
 
     def remove_connection(self, connection):
         self.catalog.uncatalog_object(connection.hash)
