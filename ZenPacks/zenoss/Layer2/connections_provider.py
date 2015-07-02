@@ -147,6 +147,14 @@ class BaseConnectionsProvider(object):
         return '<ConnectionsProvider for: %s>' % self.context
 
 
+class MACObject(object):
+    def __init__(self, context):
+        self.context = context
+
+    def getPrimaryUrlPath(self):
+        return "!" + self.context.getPrimaryUrlPath()
+
+
 class DeviceConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
         return self.context.getStatus() == 0
@@ -159,6 +167,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
             if not mac or mac == "00:00:00:00:00:00":
                 continue
             yield Connection(self.context, (mac, ), layers)
+            yield Connection(MACObject(interface), (mac, ), layers)
             yield Connection(mac, (self.context, ), layers)
             for cl in ic.clientmacs:
                 if cl.strip():

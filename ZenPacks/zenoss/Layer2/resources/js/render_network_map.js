@@ -110,7 +110,7 @@
             if(data.path.indexOf('/zport/dmd/Devices/') == 0) {
                 window.location.href = data.path;
             } else {
-                show_error(data.path + ' is not a device.')
+                show_error(data.path + ' has no additional info attached.')
             };
         };
     };
