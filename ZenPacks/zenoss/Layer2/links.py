@@ -32,12 +32,13 @@ class DeviceLinkProvider(object):
         links = set()
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
+        this_id = self.device.getPrimaryUrlPath()
         for id in cat.get_connected(
-            entity_id=self.device.getPrimaryUrlPath(),
+            entity_id=this_id,
             layers=['layer2'],
             depth=3
         ):
-            if id.startswith('/zport/dmd/Devices/Network/'):
+            if id.startswith('/zport/dmd/Devices/Network/') and id != this_id:
                 links.add('Switch: <a href="{}">{}</a>'.format(
                     id, id.split('/')[-1]
                 ))
