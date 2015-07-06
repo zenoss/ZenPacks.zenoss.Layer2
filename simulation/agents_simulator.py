@@ -24,7 +24,7 @@ def main():
         if dump is a first argument
         else start simulation.
     '''
-    network = Network(binary_tree_topology(deepness=2))
+    network = Network(binary_tree_topology(deepness=14))
     if len(sys.argv) > 1 and sys.argv[1] == 'dump':
         print network.get_batchdump()
         return
@@ -36,8 +36,8 @@ def main():
 
 def simulate(agents, port=161):
     def start():
-        for ip, oids in agents.iteritems():
-            print '%s:%s' % (ip, port)
+        for n, (ip, oids) in enumerate(agents.iteritems()):
+            print '%s) %s:%s' % (n, ip, port)
             p = udp.Port(
                 port,
                 agentprotocol.AgentProtocol(

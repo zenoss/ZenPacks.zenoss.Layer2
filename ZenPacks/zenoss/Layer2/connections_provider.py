@@ -54,14 +54,17 @@ class InterfaceConnections(object):
 
 
 def check_connection(connection):
-    assert isinstance(connection.entity_id, str), 'entity_id should be string'
+    assert isinstance(connection.entity_id, basestring), 'entity_id should be string'
     assert connection.entity_id, 'entity_id should be not empty'
 
     def tuple_of_str(v, name):
         assert isinstance(v, tuple), '%s should be tuple' % name
         assert v, '%s should be not empty' % name
         for e in v:
-            assert isinstance(e, str), '%s should contain only strings' % name
+            assert (
+                isinstance(e, basestring),
+                '%s should contain only strings' % name
+            )
 
     tuple_of_str(connection.connected_to, 'connected_to')
     tuple_of_str(connection.layers, 'layers')
