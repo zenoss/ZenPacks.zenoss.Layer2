@@ -142,6 +142,3 @@ class CatalogAPI(BaseCatalogAPI):
 
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)
-
-    def clear(self):
-        map(self.catalog.uncatalog_object, map(connection_hash, self.search()))

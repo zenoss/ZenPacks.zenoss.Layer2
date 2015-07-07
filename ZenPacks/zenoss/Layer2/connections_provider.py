@@ -53,15 +53,19 @@ class InterfaceConnections(object):
         return res
 
 
+def assert_str(obj, msg):
+    assert isinstance(obj, basestring), msg
+
+
 def check_connection(connection):
-    assert isinstance(connection.entity_id, basestring), 'entity_id should be string'
+    assert_str(connection.entity_id, 'entity_id should be string')
     assert connection.entity_id, 'entity_id should be not empty'
 
     def tuple_of_str(v, name):
         assert isinstance(v, tuple), '%s should be tuple' % name
         assert v, '%s should be not empty' % name
         for e in v:
-            assert isinstance(e, basestring), '%s should contain only strings' % name
+            assert_str(e, '%s should contain only strings' % name)
 
     tuple_of_str(connection.connected_to, 'connected_to')
     tuple_of_str(connection.layers, 'layers')
@@ -179,7 +183,6 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 if net is None or net.netmask == 32:
                     continue
 
-                net = net.getNetworkName()
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
 

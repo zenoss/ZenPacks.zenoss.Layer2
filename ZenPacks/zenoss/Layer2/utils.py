@@ -72,6 +72,9 @@ class BaseCatalogAPI(object):
         self.zport._delObject(self.name)
         del self._catalog
 
+    def clear(self):
+        self.catalog._catalog.clear()
+
     def search(self, **query):
         return self.catalog.search(query)
 

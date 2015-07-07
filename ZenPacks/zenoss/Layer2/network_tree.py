@@ -173,7 +173,9 @@ class NodeAdapter(object):
 
     @property
     def id(self):
-        if hasattr(self.node, 'id'):
+        if hasattr(self.node, 'getNetworkName'):
+            return self.node.getNetworkName()
+        elif hasattr(self.node, 'id'):
             return self.node.id
         else:
             return self.node
@@ -193,7 +195,9 @@ class NodeAdapter(object):
             return self.node
 
     def titleOrId(self):
-        if hasattr(self.node, 'titleOrId'):
+        if hasattr(self.node, 'getNetworkName'):
+            return self.node.getNetworkName()
+        elif hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
         else:
             title = self.id
