@@ -196,7 +196,10 @@ class NodeAdapter(object):
         if hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
         else:
-            return self.id
+            title = self.id
+            if title.startswith('/zport/dmd/'):
+                title = title.split('/')[-1]
+            return title
 
     def getIconPath(self):
         if hasattr(self.node, 'getIconPath'):

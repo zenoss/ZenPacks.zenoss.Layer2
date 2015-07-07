@@ -61,10 +61,7 @@ def check_connection(connection):
         assert isinstance(v, tuple), '%s should be tuple' % name
         assert v, '%s should be not empty' % name
         for e in v:
-            assert (
-                isinstance(e, basestring),
-                '%s should contain only strings' % name
-            )
+            assert isinstance(e, basestring), '%s should contain only strings' % name
 
     tuple_of_str(connection.connected_to, 'connected_to')
     tuple_of_str(connection.layers, 'layers')
@@ -181,6 +178,8 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 net = ip.network()
                 if net is None or net.netmask == 32:
                     continue
+
+                net = net.getNetworkName()
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
 
@@ -191,8 +190,9 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             dev = ip.device()
             if not dev:
                 continue
-            yield Connection(self.context, (dev, ), ['layer3', ])
-            yield Connection(dev, (self.context, ), ['layer3', ])
+            net = self.context.getNetworkName()
+            yield Connection(net, (dev, ), ['layer3', ])
+            yield Connection(dev, (net, ), ['layer3', ])
 
 
 def get_vlans(iface):

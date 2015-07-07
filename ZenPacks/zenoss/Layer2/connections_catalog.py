@@ -75,11 +75,10 @@ class CatalogAPI(BaseCatalogAPI):
             yield b.entity_id
 
     def get_two_way_connected(self, entity_id, layers=None):
-        for c in chain(
+        return set(chain(
             self.get_directly_connected(entity_id, layers),
             self.get_reverse_connected(entity_id, layers)
-        ):
-            yield c
+        ))
 
     def get_connected(self, entity_id, layers=None, depth=None):
         ''' Return set of all connected nodes '''

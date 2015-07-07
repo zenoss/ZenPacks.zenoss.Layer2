@@ -11,15 +11,13 @@ def main():
         dump - dumps connections catalog content
         load - loads connections from file to catalog
         clear - clears catalog
-        help - displays this message
     '''
     action = raw_input('action > ')
     {
         'dump': dump,
         'load': load,
         'clear': clear,
-        'help': help,
-    }.get(action, help)()
+    }[action]()
 
 
 def clear():
@@ -49,7 +47,6 @@ def load():
     with open(filename) as f:
         cat = CatalogAPI(zport)
         for connection in json.load(f):
-            print connection
             cat.add_connection(Connection(**connection))
     commit()
 
