@@ -193,7 +193,7 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             dev = ip.device()
             if not dev:
                 continue
-            net = self.context.getNetworkName()
+            net = self.context
             yield Connection(net, (dev, ), ['layer3', ])
             yield Connection(dev, (net, ), ['layer3', ])
 
