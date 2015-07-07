@@ -183,6 +183,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.1.0
+* Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603) 
+
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
 * Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)
