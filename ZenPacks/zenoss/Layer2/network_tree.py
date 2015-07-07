@@ -78,7 +78,7 @@ def get_connections(rootnode, depth=1, layers=None):
         nodes.append(dict(
             name=n.titleOrId(),
             image=n.getIconPath(),
-            path=n.get_path(),
+            path=n.get_link(),
             color=n.getColor(),
             highlight=n.id == rootnode.id,
             important=n.important,
@@ -116,16 +116,41 @@ def get_connections(rootnode, depth=1, layers=None):
             return
         visited.add(a.id)
 
+        # leafs of current node in graph
+        related = list(get_related(a))
+
+        # some of leaf may contain a component (usualy IpInterface) uid
+        # prefixed with asterix (!)
+        for node in related:
+            if this_is_link(node):
+                a.link = node[1:]
+                break
+
         add_node(a)
 
-        for node in get_related(a):
+        for node in related:
+            if this_is_link(node):
+                continue
+
             b = adapt_node(node)
+
+            # need to check for uid in leafs before adding node to graph
+            # as next time it will be skipped due to optimization
+            for node_b in get_related(b):
+                if this_is_link(node_b):
+                    b.link = node_b[1:]
+                    break
+
             add_node(b)
             add_link(a, b, 'gray')
             get_connections(node, depth - 1)
 
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
+
+    def this_is_link(node):
+        if isinstance(node, str) and node[0] == "!":
+            return node[1:]
 
     add_node(adapt_node(rootnode))
     get_connections(rootnode, depth)
@@ -156,6 +181,14 @@ class NodeAdapter(object):
     def get_path(self):
         if hasattr(self.node, 'getPrimaryUrlPath'):
             return self.node.getPrimaryUrlPath()
+        else:
+            return self.node
+
+    def get_link(self):
+        if hasattr(self.node, 'getPrimaryUrlPath'):
+            return self.node.getPrimaryUrlPath()
+        elif hasattr(self, 'link'):
+            return self.link
         else:
             return self.node
 
