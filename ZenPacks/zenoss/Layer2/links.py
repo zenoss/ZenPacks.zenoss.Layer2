@@ -36,7 +36,8 @@ class DeviceLinkProvider(object):
         for id in cat.get_connected(
             entity_id=this_id,
             layers=['layer2'],
-            depth=3
+            method=cat.get_two_way_connected,
+            depth=3,
         ):
             if id.startswith('/zport/dmd/Devices/Network/') and id != this_id:
                 links.add('Switch: <a href="{}">{}</a>'.format(

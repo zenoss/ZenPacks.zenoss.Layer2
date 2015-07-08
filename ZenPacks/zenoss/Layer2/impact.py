@@ -13,7 +13,10 @@ from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 from ZenPacks.zenoss.Impact.impactd.relations import ImpactEdge
 
-from .macs_catalog import CatalogAPI
+from .connections_catalog import CatalogAPI
+
+import logging
+log = logging.getLogger('zen.Layer2')
 
 
 RP = 'ZenPacks.zenoss.Layer2'
@@ -27,6 +30,8 @@ def guid(obj):
 
 
 def edge(source, target):
+    assert isinstance(source, basestring)
+    assert isinstance(target, basestring)
     return ImpactEdge(source, target, RP)
 
 
@@ -52,20 +57,42 @@ class BaseRelationsProvider(object):
         return self._guid
 
 
+class ImpactCatalogAPI(CatalogAPI):
+
+    def get3layer2(self, entity_id, method):
+        for id in self.get_connected(
+            entity_id=entity_id,
+            layers=['layer2'],
+            method=method,
+            depth=3
+        ):
+            if id == entity_id or id.startswith('!'):
+                continue
+            obj = self.get_obj(id)
+            if obj:
+                yield obj
+
+    def impacts(self, entity_id):
+        for obj in self.get3layer2(entity_id, self.get_directly_connected):
+            yield obj
+
+    def impacted_by(self, entity_id):
+        for obj in self.get3layer2(entity_id, self.get_reverse_connected):
+            yield obj
+
+
 class DeviceRelationsProvider(BaseRelationsProvider):
-    '''
-    Adds upstream router(s) as dependency to device on impact graph
-    '''
+    ''' Adds upstream router(s) as dependency to device on impact graph '''
     def getEdges(self):
-        cat = CatalogAPI(self._object.zport)
+        cat = ImpactCatalogAPI(self._object.zport)
         try:
-            for brain in cat.get_upstream_devices_only_for_client(
-                self._object.id
-            ):
-                router = brain.getObject()
-                yield edge(guid(router), self.guid())
-            for brain in cat.get_only_client_devices(self._object.id):
-                router = brain.getObject()
-                yield edge(self.guid(), guid(router))
-        except IndexError:
-            pass  # Not to worry, there is no such device in catalog.
+            this_id = self._object.getPrimaryUrlPath()
+
+            for obj in cat.impacts(this_id):
+                yield edge(self.guid(), guid(obj))
+
+            for obj in cat.impacted_by(this_id):
+                yield edge(guid(obj), self.guid())
+
+        except Exception as e:
+            log.exception(e)
