@@ -30,7 +30,7 @@
         var res = {
             'layers': '',
             'root_id': '',
-            'depth': 2
+            'depth': 3
         };
         if (hash) {
             var a = hash.split('&');

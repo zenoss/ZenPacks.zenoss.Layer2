@@ -181,7 +181,9 @@ class NodeAdapter(object):
             return self.node
 
     def get_path(self):
-        if hasattr(self.node, 'getPrimaryUrlPath'):
+        if hasattr(self.node, 'macaddress'):
+            return self.node.macaddress
+        elif hasattr(self.node, 'getPrimaryUrlPath'):
             return self.node.getPrimaryUrlPath()
         else:
             return self.node
@@ -195,7 +197,9 @@ class NodeAdapter(object):
             return self.node
 
     def titleOrId(self):
-        if hasattr(self.node, 'getNetworkName'):
+        if hasattr(self.node, 'macaddress'):
+            return self.node.macaddress
+        elif hasattr(self.node, 'getNetworkName'):
             return self.node.getNetworkName()
         elif hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
