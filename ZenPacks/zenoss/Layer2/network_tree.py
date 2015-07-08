@@ -173,7 +173,9 @@ class NodeAdapter(object):
 
     @property
     def id(self):
-        if hasattr(self.node, 'getNetworkName'):
+        if hasattr(self.node, 'macaddress'):
+            return self.node.id
+        elif hasattr(self.node, 'getNetworkName'):
             return self.node.getNetworkName()
         elif hasattr(self.node, 'id'):
             return self.node.id
@@ -210,7 +212,9 @@ class NodeAdapter(object):
             return title
 
     def getIconPath(self):
-        if hasattr(self.node, 'getIconPath'):
+        if hasattr(self.node, 'macaddress'):
+            return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
+        elif hasattr(self.node, 'getIconPath'):
             return self.node.getIconPath()
         else:
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
