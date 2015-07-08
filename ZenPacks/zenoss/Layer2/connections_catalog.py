@@ -80,7 +80,7 @@ class CatalogAPI(BaseCatalogAPI):
             self.get_reverse_connected(entity_id, layers)
         ))
 
-    def get_connected(self, entity_id, layers=None, depth=None):
+    def get_connected(self, entity_id, method, layers=None, depth=None):
         ''' Return set of all connected nodes '''
         visited = set()
 
@@ -93,7 +93,7 @@ class CatalogAPI(BaseCatalogAPI):
 
             if depth is not None:
                 depth -= 1
-            for n in self.get_two_way_connected(node, layers):
+            for n in method(node, layers):
                 visit(n, depth)
 
         visit(entity_id, depth)
@@ -103,7 +103,7 @@ class CatalogAPI(BaseCatalogAPI):
     def get_obj(self, id):
         ''' Returns object from dmd for some node id or None '''
         try:
-            node = self.zport.dmd.getObjByPath(node)
+            return self.zport.dmd.getObjByPath(id)
         except (NotFound, KeyError) as e:
             return None
 

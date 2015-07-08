@@ -185,6 +185,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 ;1.1.0
 * Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603) 
+* Make Impact use new connections catalog instead of macs catalog (ZEN-18636)
 
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
