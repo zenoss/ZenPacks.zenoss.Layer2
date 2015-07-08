@@ -1,5 +1,8 @@
 test:
 	runtests ZenPacks.zenoss.Layer2 -v;
+
+testall:
+	runtests ZenPacks.zenoss.Layer2 -v;
 	cd simulation && make test;
 
 pep8:
