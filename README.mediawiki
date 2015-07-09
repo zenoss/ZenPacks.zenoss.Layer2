@@ -35,12 +35,14 @@ To determine connectivity of device to zenoss instance, this zenpack needs to kn
 == Network map ==
 [[File:Network map.png|thumb|320px|Network map]]
 
-To inspect interconnections between devices, you could use a network map page which is accessed by "Infrastructure" -> "Network Map" menu. It shows connections between devices, interfaces, networks and other entities, and also status of the device (Color of the event with the highest severity for that device.
+To inspect interconnections between devices it is possible to use a network map page which is accessed by "Infrastructure" -> "Network Map" tab or "Network Map" menu item of the opened device. It shows connections between devices, interfaces, networks and other entities. In addition, it shows device status (Color of the event with the highest severity for that device).
 
-To display a network map you should fill the form on the left side of network map. Fill "Device ID" field with name of the device starting from which the map will be explored. Then set the depth of the map (how many hops to do when exploring the map). Also, you could select network layers which you want to show on the map, if you not select any, all of them will be displayed. To apply the selection and update (or show) the map on the screen, press "Apply" button at the bottom of the form.
+To display a network map the form on the left side of network map should be filled. "Device ID" field with name or ID of the device starting from which the map will be explored. The depth of the map means how many hops to do when exploring the map. Also, it is possible to select network layers which should be visible on the map. By default all of them will be displayed. To apply changes or create new network map, press "Apply" button at the bottom of the form.
+
+Right mouse click above node opens context menu with options available. 'Pin down' option allows to unpin chosen node.
+Detailed information about device is available by clicking on 'Device Info' option from context menu. To draw network map in scope of another node please choose 'Put map root here' option from context menu. It is possible to open device or device component by clicking on corresponding target of network map.
 
 Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be bringed back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
-
 
 == zenmapper daemon ==
 To update catalog with connections for network map, is used zenmapper daemon. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
