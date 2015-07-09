@@ -1,13 +1,271 @@
+'''
+    Script for checking forwarding table information over SNMP.
+    (Calls snmpwalk, so check if it is in path)
+
+    Usage:
+
+    python bridge_snmp.py -c <community_string> <host>
+
+    By default creates cache of walks in snmpwalk_cache.json file.
+'''
 from collections import defaultdict
+import json
 from pprint import pprint
 from subprocess import check_output
 import sys
 
-from tabulate import tabulate
+from texttable import Texttable
 
-from ZenPacks.zenoss.Layer2 import bridge_mib
 
-TEST = False
+def main():
+
+    client = SnmpClient(sys.argv[1:], cache='snmpwalk_cache.json')
+    name = client.get(sysDescr)
+
+    ifindex = {}
+    for pi in client.get_table({
+        dot1dBasePort: 'Port',
+        dot1dBasePortIfIndex: 'Interface',
+    }).values():
+        ifindex[pi['Port']] = pi['Interface']
+
+    interfaces = {}
+
+    for interface in client.get_table({
+        ifIndex: 'Index',
+        ifDescr: 'Description',
+        ifType: 'Type',
+        ifPhysAddress: 'MAC',
+    }).values():
+        interfaces[interface['Index']] = dict(
+            Description=interface['Description'],
+            Type=interface['Type'],
+            MAC=interface['MAC'],
+            Clientmacs=[],
+        )
+
+    for fwd_entry in client.get_table({
+        dot1dTpFdbAddress: 'MAC',
+        dot1dTpFdbPort: 'Port',
+        dot1dTpFdbStatus: 'Status',
+    }, {
+        dot1dTpFdbStatus: lambda x: ForwardingEntryStatus.names.get(x, x),
+    }).values():
+        try:
+            i = interfaces[ifindex[fwd_entry['Port']]]
+            i['Clientmacs'].append(
+                '%s (%s)' % (fwd_entry['MAC'], fwd_entry['Status'])
+            )
+        except KeyError:
+            pass
+
+    print format_table(
+        interfaces.values(),
+        ['Description', 'Type', 'MAC', 'Clientmacs'],
+        [30, 20, 20, 100],
+    )
+
+
+# Define class for dictionary with autovivification
+Tree = lambda: defaultdict(Tree)
+
+
+def printtree(tree, tab=''):
+    for k, v in tree.iteritems():
+        print tab, k, ':',
+        if isinstance(v, defaultdict):
+            print
+            printtree(v, tab + '\t')
+        else:
+            print v
+
+
+class SnmpClient(object):
+    def __init__(self, arguments, cache=None):
+        self.command = ['snmpwalk', '-v2c', '-On'] + arguments
+        self.cache = cache
+
+    def check_output(self, args):
+        command = ' '.join(args)
+        output = None
+        cache = {}
+        if self.cache:
+            try:  # to read cache and find output there
+                with open(self.cache) as f:
+                    cache = json.load(f)
+            except Exception as e:
+                print e
+            output = cache.get(command)
+
+        if output:
+            print 'Got %s result from cache' % command
+        else:
+            print 'Executing:', command
+            output = check_output(args).splitlines()
+
+            # store output in cache
+            cache[command] = output
+            with open(self.cache, 'w') as f:
+                json.dump(cache, f, indent=2)
+
+        return output
+
+    def walk(self, oid):
+        args = self.command + [oid]
+
+        res = {}
+        for line in self.check_output(args):
+            try:
+                k, v = line.split(' = ')
+                res[k] = v
+            except ValueError:  # were not able to split, continuation
+                res[k] += '\n' + line
+        return res
+
+    def get(self, oid):
+        res = self.walk(oid)
+        return parse_value(res['.' + oid])
+
+    def get_table(self, fields, fields_parsers={}):
+        walk = {}
+        for field in fields:
+            walk.update(self.walk(field))
+
+        prefix_length = len(fields.keys()[0])
+        table = Tree()
+        for k, v in walk.iteritems():
+            prefix, key = k[1:prefix_length + 1], k[prefix_length + 1:]
+            if prefix in fields:
+                table[key][fields[prefix]] = \
+                    fields_parsers.get(prefix, lambda x: x)(parse_value(v))
+
+        return table
+
+
+def join_if_list(v):
+    if isinstance(v, list):
+        return ', '.join(v)
+    return v
+
+
+def format_table(table, titles, widths):
+    res = [titles]
+    for row in table:
+        res.append([join_if_list(row[title]) for title in titles])
+
+    table = Texttable()
+    table.set_cols_dtype(['t'] * len(titles))
+    table.set_cols_width(widths)
+    table.add_rows(res)
+    return table.draw()
+
+
+def parse_value(v):
+    try:
+        t, v = v.split(':', 1)
+    except ValueError:
+        return v
+    if t == 'INTEGER':
+        try:
+            return int(v)
+        except ValueError:
+            return v
+    elif t == 'Hex-STRING':
+        return ':'.join(v.strip().split())
+    else:
+        return v
+
+
+# ftp://ftp.cisco.com/pub/mibs/v1/BRIDGE-MIB.my
+dot1dTpFdbTable = '1.3.6.1.2.1.17.4.3'
+#     "A table that contains information about unicast
+#     entries for which the bridge has forwarding and/or
+#     filtering information. This information is used
+#     by the transparent bridging function in
+#     determining how to propagate a received frame."
+
+dot1dTpFdbEntry = dot1dTpFdbTable + '.1'
+#     "Information about a specific unicast MAC address
+#     for which the bridge has some forwarding and/or
+#     filtering information."
+
+dot1dTpFdbAddress = dot1dTpFdbEntry + '.1'
+#     "A unicast MAC address for which the bridge has
+#     forwarding and/or filtering information."
+
+dot1dTpFdbPort = dot1dTpFdbEntry + '.2'
+#     "Either the value '0', or the port number of the
+#     port on which a frame having a source address
+#     equal to the value of the corresponding instance
+#     of dot1dTpFdbAddress has been seen. A value of
+#     '0' indicates that the port number has not been
+#     learned but that the bridge does have some
+#     forwarding/filtering information about this
+#     address (e.g. in the dot1dStaticTable).
+#     Implementors are encouraged to assign the port
+#     value to this object whenever it is learned even
+#     for addresses for which the corresponding value of
+#     dot1dTpFdbStatus is not learned(3)."
+
+dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
+# 	The status of this entry. The meanings of the values are:
+#   one of the attributes of ForwardingEntryStatus class
+
+
+class ForwardingEntryStatus(object):
+    other = 1    # none of the following. This would
+                 # include the case where some other
+                 # MIB object (not the corresponding
+                 # instance of dot1dTpFdbPort, nor an
+                 # entry in the dot1dStaticTable) is
+                 # being used to determine if and how
+                 # frames addressed to the value of
+                 # the corresponding instance of
+                 # dot1dTpFdbAddress are being
+                 # forwarded.
+
+    invalid = 2  # this entry is not longer valid
+                 # (e.g., it was learned but has since
+                 # aged-out), but has not yet been
+                 # flushed from the table.
+
+    learned = 3  # the value of the corresponding
+                 # instance of dot1dTpFdbPort was
+                 # learned, and is being used.
+
+    self = 4     # the value of the corresponding
+                 # instance of dot1dTpFdbAddress
+                 # represents one of the bridge's
+                 # addresses. The corresponding
+                 # instance of dot1dTpFdbPort
+                 # indicates which of the bridge's
+                 # ports has this address.
+
+    mgmt = 5     # the value of the corresponding
+                 # instance of dot1dTpFdbAddress is
+                 # also the value of an existing
+                 # instance of dot1dStaticAddress.
+
+
+ForwardingEntryStatus.names = dict(
+    (k, v)
+    for v, k in ForwardingEntryStatus.__dict__.iteritems()
+    if k in range(1, 6)
+)
+
+
+dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
+#     "A list of information for each port of the
+#     bridge."
+
+dot1dBasePort = dot1dBasePortEntry + '.1'
+#  	"The port number of the port for which this entry
+#     contains bridge management information."
+
+dot1dBasePortIfIndex = dot1dBasePortEntry + '.2'
+#     "The value of the instance of the ifIndex object,
+#     defined in MIB-II, for the interface corresponding
+#     to this port."
 
 ifEntry = '1.3.6.1.2.1.2.2.1'
 # An entry containing management information applicable to a
@@ -27,7 +285,7 @@ ifDescr = ifEntry + '.2'
 # manufacturer, the product name and the version of the
 # interface hardware/software."
 
-ifType = ifEntry + '.3' # just type
+ifType = ifEntry + '.3'  # just type
 
 ifPhysAddress = ifEntry + '.6'
 # The interface's address at its protocol sub-layer. For
@@ -40,155 +298,6 @@ ifPhysAddress = ifEntry + '.6'
 
 sysDescr = '1.3.6.1.2.1.1.1.0'
 
-def main():
-
-    client = SnmpClient(sys.argv[1:])
-    print client.get(sysDescr)
-
-    print client.get_table(
-        {
-            ifIndex: 'Index',
-            ifDescr: 'Description',
-            ifType: 'Type',
-            ifPhysAddress: 'MAC',
-        }
-    )
-
-    print client.get_table(
-        {
-            bridge_mib.dot1dTpFdbAddress: 'MAC',
-            bridge_mib.dot1dTpFdbPort: 'Port',
-            bridge_mib.dot1dTpFdbStatus: 'Status',
-        },
-        {
-            bridge_mib.dot1dTpFdbStatus: lambda x: bridge_mib.ForwardingEntryStatus.names[x],
-        }
-    )
-    print client.get_table(
-        walk,
-        {
-            bridge_mib.dot1dBasePort: 'Port',
-            bridge_mib.dot1dBasePortIfIndex: 'Interface',
-        }
-    )
-
-
-
-
-# Define class for dictionary with autovivification
-Tree = lambda: defaultdict(Tree)
-
-def printtree(tree, tab=''):
-    for k, v in tree.iteritems():
-        print tab, k, ':',
-        if isinstance(v, defaultdict):
-            print
-            printtree(v, tab + '\t')
-        else:
-            print v
-
-bridge_mib.ForwardingEntryStatus.names = dict(
-    (k, v)
-    for v, k in bridge_mib.ForwardingEntryStatus.__dict__.iteritems()
-    if k in range(1, 6)
-)
-
-
-def parse_value(v):
-    # Hex-STRING: 08 CC 68 44 02 12
-    t, v = v.split(':', 1)
-    if t == 'INTEGER':
-        return int(v)
-    elif t == 'Hex-STRING':
-        return ':'.join(v.strip().split())
-    else:
-        return v
-
-
-class SnmpClient(object):
-    def __init__(self, arguments):
-        self.command = ['snmpwalk', '-v2c', '-On'] + arguments
-
-    def walk(self, oid):
-        if TEST:
-            return TEST_WALKS[oid]
-        args = self.command + [oid]
-        print 'Executing:', ' '.join(args)
-        res = {}
-        for line in check_output(args).splitlines():
-            try:
-                k, v = line.split(' = ')
-                res[k] = v
-            except ValueError: # were not able to split, continuation
-                res[k] += '\n' + line
-        return res
-
-    def get(self, oid):
-        res = self.walk(oid)
-        return parse_value(res['.' + oid])
-
-    def get_table(self, fields, fields_parsers={}):
-        walk = {}
-        for field in fields:
-            walk.update(self.walk(field))
-
-        return format_table(walk, fields, fields_parsers)
-
-
-def format_table(walk_res, fields, fields_parsers={}):
-    prefix_length = len(fields.keys()[0])
-    table = Tree()
-    for k, v in walk_res.iteritems():
-        prefix, key = k[1:prefix_length + 1], k[prefix_length + 1:]
-        if prefix in fields:
-            table[key][fields[prefix]] = fields_parsers.get(prefix, lambda x: x)(parse_value(v))
-
-    res = []
-    titles = fields.values()
-    for row in table.values():
-        res.append([row[title] for title in titles])
-
-    return tabulate(res, titles)
-
-
-TEST_WALKS = {
-    bridge_mib.dot1dTpFdbEntry: {
- '.1.3.6.1.2.1.17.4.3.1.1.0.208.184.12.3.71': 'Hex-STRING: 00 D0 B8 0C 03 47 ',
- '.1.3.6.1.2.1.17.4.3.1.1.0.34.86.52.191.20': 'Hex-STRING: 00 22 56 34 BF 14 ',
- '.1.3.6.1.2.1.17.4.3.1.1.212.133.100.68.36.112': 'Hex-STRING: D4 85 64 44 24 70 ',
- '.1.3.6.1.2.1.17.4.3.1.1.8.204.104.67.229.115': 'Hex-STRING: 08 CC 68 43 E5 73 ',
- '.1.3.6.1.2.1.17.4.3.1.1.8.204.104.67.236.72': 'Hex-STRING: 08 CC 68 43 EC 48 ',
- '.1.3.6.1.2.1.17.4.3.1.1.8.204.104.68.1.9': 'Hex-STRING: 08 CC 68 44 01 09 ',
- '.1.3.6.1.2.1.17.4.3.1.1.8.204.104.68.2.18': 'Hex-STRING: 08 CC 68 44 02 12 ',
- '.1.3.6.1.2.1.17.4.3.1.2.0.208.184.12.3.71': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.0.34.86.52.191.20': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.212.133.100.68.36.112': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.8.204.104.67.229.115': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.8.204.104.67.236.72': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.8.204.104.68.1.9': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.2.8.204.104.68.2.18': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.4.3.1.3.0.208.184.12.3.71': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.0.34.86.52.191.20': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.212.133.100.68.36.112': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.8.204.104.67.229.115': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.8.204.104.67.236.72': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.8.204.104.68.1.9': 'INTEGER: 3',
- '.1.3.6.1.2.1.17.4.3.1.3.8.204.104.68.2.18': 'INTEGER: 3'
-    },
-    bridge_mib.dot1dBasePortEntry : {
- '.1.3.6.1.2.1.17.1.4.1.1.1': 'INTEGER: 1',
- '.1.3.6.1.2.1.17.1.4.1.1.2': 'INTEGER: 2',
- '.1.3.6.1.2.1.17.1.4.1.2.1': 'INTEGER: 10101',
- '.1.3.6.1.2.1.17.1.4.1.2.2': 'INTEGER: 10102',
- '.1.3.6.1.2.1.17.1.4.1.3.1': 'OID: .0.0',
- '.1.3.6.1.2.1.17.1.4.1.3.2': 'OID: .0.0',
- '.1.3.6.1.2.1.17.1.4.1.4.1': 'Counter32: 0',
- '.1.3.6.1.2.1.17.1.4.1.4.2': 'Counter32: 0',
- '.1.3.6.1.2.1.17.1.4.1.5.1': 'Counter32: 0',
- '.1.3.6.1.2.1.17.1.4.1.5.2': 'Counter32: 0'
-    }
-}
 
 if __name__ == '__main__':
     main()
-
