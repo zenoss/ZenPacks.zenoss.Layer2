@@ -22,10 +22,6 @@
     text-decoration: underline;
 }
 
-rect {
-    fill: none;
-    stroke: black;
-}
 
 #controls_panel {
     position: absolute;
