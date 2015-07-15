@@ -56,9 +56,11 @@ class ZenPack(ZenPackBase):
         with open("/proc/net/route") as fh:
             for line in fh:
                 fields = line.strip().split()
+                # Checks gateway value and flag if record actual
                 if fields[1] != '00000000' or not int(fields[3], 16) & 2:
                     continue
 
+                # Converts packed value into IP address
                 val = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
                 if not dmd.Devices.zZenossGateway:
                     log.info("Setting zZenossGateway value to {}".format(val))
