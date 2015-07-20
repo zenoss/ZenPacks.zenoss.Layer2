@@ -27,6 +27,9 @@ class TestDataSourcePlugin(BaseTestCase):
         self.plugin.component = sentinel.component
         self.config = Mock(datasources=[Mock(eventClass=sentinel.eventClass)])
 
+        import logging
+        logging.disable(logging.CRITICAL)
+
     def test_onSuccess(self):
         res = dict(
             values={
