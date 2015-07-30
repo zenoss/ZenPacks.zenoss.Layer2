@@ -87,6 +87,10 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.0.3
+* Remove macs_catalog when removing the ZenPack. (ZEN-17967)
+* Replace Layer2Info template with ClientMACs modeler plugin.
+
 ;1.0.2
 * Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)
 * Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)
