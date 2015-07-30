@@ -8,6 +8,8 @@
 #
 ######################################################################
 
+"""DEPRECATED - Replaced by zenoss.snmp.ClientMACs modeler plugin."""
+
 from logging import getLogger
 log = getLogger('zen.Layer2Plugins')
 
