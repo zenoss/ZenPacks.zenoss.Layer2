@@ -8,13 +8,7 @@
 #
 ######################################################################
 
-
-'''
-Layer2InfoPlugin only does modelling of client MAC addresses, for interfaces.
-It is implemented as monitoring plugin, not as modeler plugin because there is
-no way to tell one modeler to run after another, and we need to run this code
-after interfaces are modeled.
-'''
+"""DEPRECATED - Replaced by zenoss.snmp.ClientMACs modeler plugin."""
 
 from logging import getLogger
 log = getLogger('zen.Layer2Plugins')

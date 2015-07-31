@@ -65,3 +65,10 @@ class ZenPack(ZenPackBase):
                 if not dmd.Devices.zZenossGateway:
                     log.info("Setting zZenossGateway value to {}".format(val))
                     dmd.Devices.setZenProperty('zZenossGateway', val)
+
+    def remove(self, app, leaveObjects=False):
+        super(ZenPack, self).remove(app, leaveObjects)
+        try:
+            app.zport._delObject('macs_catalog')
+        except AttributeError:
+            pass # already deleted
