@@ -16,14 +16,17 @@ from pprint import pprint
 from subprocess import check_output
 import sys
 
-from texttable import Texttable
 
+try:
+    from texttable import Texttable
+except ImportError:
+    Texttable = None
 
 def main():
 
     action = sys.argv[1]
 
-    client = SnmpClient(sys.argv[2:]) #cache='snmpwalk_cache.json')
+    client = SnmpClient(sys.argv[2:]) #, cache='snmpwalk_cache.json')
 
     dict(
         view=view,
@@ -181,11 +184,15 @@ def format_table(table, titles, widths):
     for row in table:
         res.append([join_if_list(row[title]) for title in titles])
 
-    table = Texttable()
-    table.set_cols_dtype(['t'] * len(titles))
-    table.set_cols_width(widths)
-    table.add_rows(res)
-    return table.draw()
+    if Texttable:
+        table = Texttable()
+        table.set_cols_dtype(['t'] * len(titles))
+        table.set_cols_width(widths)
+        table.add_rows(res)
+        return table.draw()
+    else:
+        res = ['\t'.join(l) for l in res]
+        return '\n'.join(res)
 
 
 def parse_value(v):
