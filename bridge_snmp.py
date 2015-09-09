@@ -4,7 +4,9 @@
 
     Usage:
 
-    python bridge_snmp.py -c <community_string> <host>
+    python bridge_snmp.py view -c <community_string> <host>
+
+    python bridge_snmp.py clientmacs -c <community_string> <host>
 
     By default creates cache of walks in snmpwalk_cache.json file.
 '''
@@ -19,8 +21,31 @@ from texttable import Texttable
 
 def main():
 
-    client = SnmpClient(sys.argv[1:], cache='snmpwalk_cache.json')
+    action = sys.argv[1]
+
+    client = SnmpClient(sys.argv[2:]) #cache='snmpwalk_cache.json')
+
+    dict(
+        view=view,
+        clientmacs=clientmacs
+    )[action](client)
+
+def clientmacs(client):
+    aging_time = client.get(dot1dTpAgingTime)
+
+    for fwd_entry in client.get_table({
+        dot1dTpFdbAddress: 'MAC',
+        dot1dTpFdbStatus: 'Status',
+    }, {
+        dot1dTpFdbStatus: lambda x: ForwardingEntryStatus.names.get(x, x),
+    }).values():
+        print fwd_entry['MAC'], fwd_entry['Status']
+
+    print 'Aging time: %ss' % aging_time
+
+def view(client):
     name = client.get(sysDescr)
+    aging_time = client.get(dot1dTpAgingTime)
 
     ifindex = {}
     for pi in client.get_table({
@@ -59,6 +84,8 @@ def main():
         except KeyError:
             pass
 
+    print name
+    print 'Aging time: %ss' % aging_time
     print format_table(
         interfaces.values(),
         ['Description', 'Type', 'MAC', 'Clientmacs'],
@@ -103,10 +130,11 @@ class SnmpClient(object):
             print 'Executing:', command
             output = check_output(args).splitlines()
 
-            # store output in cache
-            cache[command] = output
-            with open(self.cache, 'w') as f:
-                json.dump(cache, f, indent=2)
+            if self.cache:
+                # store output in cache
+                cache[command] = output
+                with open(self.cache, 'w') as f:
+                    json.dump(cache, f, indent=2)
 
         return output
 
@@ -297,7 +325,7 @@ ifPhysAddress = ifEntry + '.6'
 # an octet string of zero length.
 
 sysDescr = '1.3.6.1.2.1.1.1.0'
-
+dot1dTpAgingTime = '1.3.6.1.2.1.17.4.2.0'
 
 if __name__ == '__main__':
     main()
