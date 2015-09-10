@@ -26,16 +26,15 @@ def main():
 
     action = sys.argv[1]
 
-    client = SnmpClient(sys.argv[2:]) #, cache='snmpwalk_cache.json')
+    client = SnmpClient(sys.argv[2:], cache='snmpwalk_cache.json')
 
     dict(
         view=view,
-        clientmacs=clientmacs
+        clientmacs=clientmacs,
+        vlan_clientmacs=vlan_clientmacs
     )[action](client)
 
 def clientmacs(client):
-    aging_time = client.get(dot1dTpAgingTime)
-
     for fwd_entry in client.get_table({
         dot1dTpFdbAddress: 'MAC',
         dot1dTpFdbStatus: 'Status',
@@ -44,6 +43,17 @@ def clientmacs(client):
     }).values():
         print fwd_entry['MAC'], fwd_entry['Status']
 
+
+def vlan_clientmacs(client):
+    for vlan_index in client.get_table({
+        vtpVlanName: 'Vlan'
+    }).keys():
+        vlan = int(vlan_index[3:])
+        print 'Vlan:', vlan
+        client.set_vlan_index(vlan)
+        clientmacs(client)
+
+    aging_time = client.get(dot1dTpAgingTime)
     print 'Aging time: %ss' % aging_time
 
 def view(client):
@@ -113,6 +123,7 @@ def printtree(tree, tab=''):
 class SnmpClient(object):
     def __init__(self, arguments, cache=None):
         self.command = ['snmpwalk', '-v2c', '-On'] + arguments
+        print self.command
         self.cache = cache
 
     def check_output(self, args):
@@ -140,6 +151,19 @@ class SnmpClient(object):
                     json.dump(cache, f, indent=2)
 
         return output
+
+    def set_vlan_index(self, index):
+        ''' Change command so community string is vlan indexed '''
+        community_string_pos = self.command.index('-c') + 1
+        try:
+            community_string = self.command[community_string_pos]
+        except IndexError:
+            raise ValueError('There were no community string after -c')
+
+        community_string_and_vlan = community_string.split('@')
+
+        community_string = '{}@{}'.format(community_string_and_vlan[0], index)
+        self.command[community_string_pos] = community_string
 
     def walk(self, oid):
         args = self.command + [oid]
@@ -333,6 +357,7 @@ ifPhysAddress = ifEntry + '.6'
 
 sysDescr = '1.3.6.1.2.1.1.1.0'
 dot1dTpAgingTime = '1.3.6.1.2.1.17.4.2.0'
+vtpVlanName = '1.3.6.1.4.1.9.9.46.1.3.1.1.4'
 
 if __name__ == '__main__':
     main()
