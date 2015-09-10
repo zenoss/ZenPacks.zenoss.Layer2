@@ -137,7 +137,6 @@ class ClientMACs(PythonPlugin):
 
         for community in state.snmp_communities():
             snmp_client = state.snmp_client(community=community)
-
             try:
                 yield drive(snmp_client.doRun)
             except Exception:
@@ -150,7 +149,6 @@ class ClientMACs(PythonPlugin):
                         {x.name: x.mapdata(y) for x, y in tabledata.items()})
             finally:
                 snmp_client.stop()
-
         returnValue((state, results))
 
     def process(self, device, results, log):
@@ -228,10 +226,11 @@ class ClientMACsState(object):
     def snmp_communities(self):
         """Generate SNMP community strings."""
         for vlan in self.vlans():
+            community = self.device.zSnmpCommunity.split('@')[0]
             if vlan:
-                yield '{}@{}'.format(self.device.zSnmpCommunity, vlan)
+                yield '{}@{}'.format(community, vlan)
             else:
-                yield self.device.zSnmpCommunity
+                yield community
 
     def snmp_client(self, community='public'):
         """Return an SnmpClient instance."""
