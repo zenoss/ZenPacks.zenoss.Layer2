@@ -48,7 +48,7 @@ setup(
     # with the binary egg.
     package_data={
         '': ['*.txt'],
-        },
+    },
 
     # Indicate dependencies on other python modules or ZenPacks.  This line
     # is modified by zenoss when the ZenPack edit page is submitted.  Zenoss

@@ -10,26 +10,32 @@
 import urllib
 import logging
 from collections import defaultdict
-log = logging.getLogger('zen.Layer2')
 
 import Globals
 
+from zope.i18n.negotiator import negotiator
+
 from Products.ZenModel.Device import Device
-from Products.ZenUtils.Utils import unused
+from Products.ZenModel.IpInterface import IpInterface
+from Products.ZenRelations.RelSchema import ToOne, ToManyCont
+from Products.ZenUI3.navigation import getSelectedNames
+from Products.ZenUI3.tooltips.tooltips import PageLevelHelp, TooltipCatalog
 from Products.ZenUtils.Utils import edgesToXML
 from Products.ZenUtils.Utils import monkeypatch
+from Products.ZenUtils.Utils import unused
 from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
-from Products.ZenModel.IpInterface import IpInterface
-from Products.Zuul.interfaces.component import IIpInterfaceInfo
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
-from Products.ZenRelations.RelSchema import ToOne, ToManyCont
+from Products.Zuul.interfaces.component import IIpInterfaceInfo
+
 
 from .macs_catalog import CatalogAPI as MACsCatalogAPI
 from .connections_catalog import CatalogAPI
 from .network_tree import get_connections_json, serialize
 
 unused(Globals)
+
+log = logging.getLogger('zen.Layer2')
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -211,11 +217,6 @@ and also move nodes using mouse drag. Nodes that are moved become fixed.</p>
 <a href="https://github.com/zenoss/ZenPacks.zenoss.Layer2#Network_map">
 Also,see documentation.</a></p>
 '''
-
-
-from zope.i18n.negotiator import negotiator
-from Products.ZenUI3.navigation import getSelectedNames
-from Products.ZenUI3.tooltips.tooltips import PageLevelHelp, TooltipCatalog
 
 
 class NetworkMapHelp(PageLevelHelp):

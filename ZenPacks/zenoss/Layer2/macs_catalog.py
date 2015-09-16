@@ -8,11 +8,12 @@
 ##############################################################################
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 
 from .connections_provider import InterfaceConnections, get_vlans
+
+log = logging.getLogger('zen.Layer2')
 
 
 class CatalogAPI(BaseCatalogAPI):

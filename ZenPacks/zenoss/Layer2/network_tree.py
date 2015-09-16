@@ -12,7 +12,6 @@ from functools import partial
 from itertools import chain
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 from zExceptions import NotFound
 
@@ -23,6 +22,8 @@ from Products.Zuul.catalog.global_catalog import IIndexableWrapper
 
 from .connections_catalog import CatalogAPI
 from .edge_contraction import contract_edges
+
+log = logging.getLogger('zen.Layer2')
 
 
 def get_connections_json(data_root, root_id, depth=1, layers=None):
@@ -243,8 +244,8 @@ class NodeAdapter(object):
             return False
         from Products.ZenModel.IpNetwork import IpNetwork
         if (
-            hasattr(self.node, 'aq_base')
-            and isinstance(self.node.aq_base, IpNetwork)
+            hasattr(self.node, 'aq_base') and
+            isinstance(self.node.aq_base, IpNetwork)
         ):
             return False
         return True

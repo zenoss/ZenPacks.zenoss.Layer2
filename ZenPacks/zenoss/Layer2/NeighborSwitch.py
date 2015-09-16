@@ -55,8 +55,8 @@ class NeighborSwitch(DeviceComponent, ManagedEntity):
             'name': 'Template',
             'action': 'objTemplates',
             'permissions': (ZEN_CHANGE_DEVICE,),
-            },),
-        },)
+        },),
+    },)
 
     def device(self):
         return self.switch()

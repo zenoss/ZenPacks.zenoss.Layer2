@@ -12,7 +12,6 @@ executed at startup time in all Zope clients.
 """
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 import socket
 import struct
@@ -26,6 +25,8 @@ from Products.ZenRelations.zPropertyCategory import setzPropertyCategory
 import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
+
+log = logging.getLogger('zen.Layer2')
 
 
 setzPropertyCategory('zZenossGateway', 'Misc')
@@ -71,4 +72,4 @@ class ZenPack(ZenPackBase):
         try:
             app.zport._delObject('macs_catalog')
         except AttributeError:
-            pass # already deleted
+            pass  # already deleted

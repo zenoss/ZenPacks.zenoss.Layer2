@@ -29,11 +29,12 @@ after all. It just had to be a PythonPlugin instead of an SnmpPlugin.
 """
 
 import logging
-LOG = logging.getLogger('zen.Layer2')
 
 from Products.ZenModel.migrate.Migrate import Version
 from Products.ZenModel.ZenPack import ZenPackMigration
 
+
+LOG = logging.getLogger('zen.Layer2')
 TEMPLATES_ZPROPERTY = 'zDeviceTemplates'
 MODELER_ZPROPERTY = 'zCollectorPlugins'
 
@@ -92,7 +93,7 @@ def replace(obj):
         TEMPLATES_ZPROPERTY, [
             t for t in obj.zDeviceTemplates
             if t != LAYER2INFO_TEMPLATE
-            ])
+        ])
 
     zCollectorPlugins = list(obj.zCollectorPlugins)
     if CLIENTMACS_PLUGIN not in zCollectorPlugins:

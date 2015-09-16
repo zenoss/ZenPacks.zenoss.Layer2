@@ -42,7 +42,7 @@ class L2SuppressEventsPlugin(object):
         """
         if not evtproxy.agent == "zenping":
             return
-        if not "DOWN" in evtproxy.summary:
+        if "DOWN" not in evtproxy.summary:
             return
 
         dev = get_device(dmd, evtproxy.device)

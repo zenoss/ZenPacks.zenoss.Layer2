@@ -11,8 +11,6 @@
 """DEPRECATED - Replaced by zenoss.snmp.ClientMACs modeler plugin."""
 
 from logging import getLogger
-log = getLogger('zen.Layer2Plugins')
-
 import re
 
 from twisted.internet import defer
@@ -29,6 +27,8 @@ from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource \
     import PythonDataSourcePlugin
 
 from .utils import asmac
+
+log = getLogger('zen.Layer2Plugins')
 
 PLUGIN_NAME = "Layer2Info"
 
@@ -78,38 +78,43 @@ dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
 
 
 class ForwardingEntryStatus(object):
-    other = 1    # none of the following. This would
-                 # include the case where some other
-                 # MIB object (not the corresponding
-                 # instance of dot1dTpFdbPort, nor an
-                 # entry in the dot1dStaticTable) is
-                 # being used to determine if and how
-                 # frames addressed to the value of
-                 # the corresponding instance of
-                 # dot1dTpFdbAddress are being
-                 # forwarded.
+    other = 1
+    # none of the following. This would
+    # include the case where some other
+    # MIB object (not the corresponding
+    # instance of dot1dTpFdbPort, nor an
+    # entry in the dot1dStaticTable) is
+    # being used to determine if and how
+    # frames addressed to the value of
+    # the corresponding instance of
+    # dot1dTpFdbAddress are being
+    # forwarded.
 
-    invalid = 2  # this entry is not longer valid
-                 # (e.g., it was learned but has since
-                 # aged-out), but has not yet been
-                 # flushed from the table.
+    invalid = 2
+    # this entry is not longer valid
+    # (e.g., it was learned but has since
+    # aged-out), but has not yet been
+    # flushed from the table.
 
-    learned = 3  # the value of the corresponding
-                 # instance of dot1dTpFdbPort was
-                 # learned, and is being used.
+    learned = 3
+    # the value of the corresponding
+    # instance of dot1dTpFdbPort was
+    # learned, and is being used.
 
-    self = 4     # the value of the corresponding
-                 # instance of dot1dTpFdbAddress
-                 # represents one of the bridge's
-                 # addresses. The corresponding
-                 # instance of dot1dTpFdbPort
-                 # indicates which of the bridge's
-                 # ports has this address.
+    self = 4
+    # the value of the corresponding
+    # instance of dot1dTpFdbAddress
+    # represents one of the bridge's
+    # addresses. The corresponding
+    # instance of dot1dTpFdbPort
+    # indicates which of the bridge's
+    # ports has this address.
 
-    mgmt = 5     # the value of the corresponding
-                 # instance of dot1dTpFdbAddress is
-                 # also the value of an existing
-                 # instance of dot1dStaticAddress.
+    mgmt = 5
+    # the value of the corresponding
+    # instance of dot1dTpFdbAddress is
+    # also the value of an existing
+    # instance of dot1dStaticAddress.
 
 
 dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
@@ -282,9 +287,9 @@ class Layer2InfoPlugin(PythonDataSourcePlugin):
             mac = item.get('dot1dTpFdbAddress')
             forwarding_status = item.get('dot1dTpFdbStatus')
             if (
-                mac
-                and (forwarding_status == ForwardingEntryStatus.learned)
-                and (interface['baseport'] == item.get('dot1dTpFdbPort'))
+                mac and
+                (forwarding_status == ForwardingEntryStatus.learned) and
+                (interface['baseport'] == item.get('dot1dTpFdbPort'))
             ):
                 interface['clientmacs'].append(asmac(mac))
 
