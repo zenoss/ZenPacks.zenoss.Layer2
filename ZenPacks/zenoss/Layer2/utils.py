@@ -8,11 +8,12 @@
 ##############################################################################
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
 from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
 from Products.Zuul.catalog.global_catalog import GlobalCatalog
+
+log = logging.getLogger('zen.Layer2')
 
 
 def asmac(val):

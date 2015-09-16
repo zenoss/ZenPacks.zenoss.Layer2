@@ -9,7 +9,6 @@
 
 from itertools import chain
 import logging
-log = logging.getLogger('zen.Layer2')
 
 
 from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
@@ -17,6 +16,8 @@ from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
 from zExceptions import NotFound
 from .connections_provider import IConnection, IConnectionsProvider
 from .connections_provider import connection_hash
+
+log = logging.getLogger('zen.Layer2')
 
 
 class CatalogAPI(BaseCatalogAPI):

@@ -10,7 +10,7 @@ STYLE_TAG_SRC_TEMPLATE = "<link rel='stylesheet' type='text/css' href='%s' />\n"
 class StyleSrcBundleViewlet(ViewletBase):
     implements(IJavaScriptBundleViewlet)
 
-    #space delimited string of src paths
+    # space delimited string of src paths
     paths = ''
     template = STYLE_TAG_SRC_TEMPLATE
 

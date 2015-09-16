@@ -22,6 +22,7 @@ try:
 except ImportError:
     Texttable = None
 
+
 def main():
 
     action = sys.argv[1]
@@ -33,6 +34,7 @@ def main():
         clientmacs=clientmacs,
         vlan_clientmacs=vlan_clientmacs
     )[action](client)
+
 
 def clientmacs(client):
     for fwd_entry in client.get_table({
@@ -55,6 +57,7 @@ def vlan_clientmacs(client):
 
     aging_time = client.get(dot1dTpAgingTime)
     print 'Aging time: %ss' % aging_time
+
 
 def view(client):
     name = client.get(sysDescr)
@@ -107,7 +110,8 @@ def view(client):
 
 
 # Define class for dictionary with autovivification
-Tree = lambda: defaultdict(Tree)
+def Tree():
+    return defaultdict(Tree)
 
 
 def printtree(tree, tab=''):
@@ -272,38 +276,43 @@ dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
 
 
 class ForwardingEntryStatus(object):
-    other = 1    # none of the following. This would
-                 # include the case where some other
-                 # MIB object (not the corresponding
-                 # instance of dot1dTpFdbPort, nor an
-                 # entry in the dot1dStaticTable) is
-                 # being used to determine if and how
-                 # frames addressed to the value of
-                 # the corresponding instance of
-                 # dot1dTpFdbAddress are being
-                 # forwarded.
+    other = 1
+    # none of the following. This would
+    # include the case where some other
+    # MIB object (not the corresponding
+    # instance of dot1dTpFdbPort, nor an
+    # entry in the dot1dStaticTable) is
+    # being used to determine if and how
+    # frames addressed to the value of
+    # the corresponding instance of
+    # dot1dTpFdbAddress are being
+    # forwarded.
 
-    invalid = 2  # this entry is not longer valid
-                 # (e.g., it was learned but has since
-                 # aged-out), but has not yet been
-                 # flushed from the table.
+    invalid = 2
+    # this entry is not longer valid
+    # (e.g., it was learned but has since
+    # aged-out), but has not yet been
+    # flushed from the table.
 
-    learned = 3  # the value of the corresponding
-                 # instance of dot1dTpFdbPort was
-                 # learned, and is being used.
+    learned = 3
+    # the value of the corresponding
+    # instance of dot1dTpFdbPort was
+    # learned, and is being used.
 
-    self = 4     # the value of the corresponding
-                 # instance of dot1dTpFdbAddress
-                 # represents one of the bridge's
-                 # addresses. The corresponding
-                 # instance of dot1dTpFdbPort
-                 # indicates which of the bridge's
-                 # ports has this address.
+    self = 4
+    # the value of the corresponding
+    # instance of dot1dTpFdbAddress
+    # represents one of the bridge's
+    # addresses. The corresponding
+    # instance of dot1dTpFdbPort
+    # indicates which of the bridge's
+    # ports has this address.
 
-    mgmt = 5     # the value of the corresponding
-                 # instance of dot1dTpFdbAddress is
-                 # also the value of an existing
-                 # instance of dot1dStaticAddress.
+    mgmt = 5
+    # the value of the corresponding
+    # instance of dot1dTpFdbAddress is
+    # also the value of an existing
+    # instance of dot1dStaticAddress.
 
 
 ForwardingEntryStatus.names = dict(

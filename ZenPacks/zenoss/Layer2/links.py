@@ -10,15 +10,15 @@
 from itertools import chain
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 import Globals
-
 from Products.ZenUtils.Utils import unused
 
 from .connections_catalog import CatalogAPI
 
 unused(Globals)
+
+log = logging.getLogger('zen.Layer2')
 
 
 class DeviceLinkProvider(object):

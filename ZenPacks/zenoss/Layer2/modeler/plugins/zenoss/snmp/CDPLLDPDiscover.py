@@ -9,7 +9,7 @@
 ######################################################################
 
 
-__doc__ = """CDP and LLDP
+"""CDP and LLDP
 
 Gather neighbor switches information of Cisco Discovery Protocol and
 Link Layer Discovery Protocol from SNMP, and create DMD interface objects
@@ -116,7 +116,7 @@ def _extract_cdp_lldp_maps(tabledata):
             'ip_address': ip_address,
             'native_vlan': data.get('cdpCacheNativeVLAN', ''),
             'location': data.get('cdpCachePhysLocation', ''),
-            }
+        }
 
     # LLDP data
     for idx, data in tabledata.get("lldpRemEntry", {}).items():
@@ -130,8 +130,8 @@ def _extract_cdp_lldp_maps(tabledata):
             'title': title,
             'description': data.get('lldpRemSysDesc', ''),
             'device_port': (
-                data.get('lldpRemPortDesc', '')
-                or data.get('lldpRemPortId', '')
+                data.get('lldpRemPortDesc', '') or
+                data.get('lldpRemPortId', '')
             ),
         }
     return oms.values()

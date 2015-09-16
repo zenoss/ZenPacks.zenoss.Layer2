@@ -10,11 +10,12 @@
 import sys
 
 from twisted.internet import pollreactor
-pollreactor.install()  # to use more than 1024 sockets
 from twisted.internet import reactor, udp
 from twistedsnmp import agent, agentprotocol, bisectoidstore
 
 from bridge_oids import Network, binary_tree_topology
+
+pollreactor.install()  # to use more than 1024 sockets
 
 
 def main():

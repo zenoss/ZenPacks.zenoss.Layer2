@@ -113,13 +113,13 @@ class ClientMACs(PythonPlugin):
         'get_ifinfo_for_layer2',
         'getHWManufacturerName',
         'macs_indexed',
-        )
+    )
 
     deviceProperties = (
         PythonPlugin.deviceProperties +
         SnmpPlugin.deviceProperties +
         localDeviceProperties
-        )
+    )
 
     @inlineCallbacks
     def collect(self, device, log):
@@ -170,7 +170,7 @@ class ClientMACs(PythonPlugin):
                     'id': iface_id,
                     'clientmacs': list(set(data['clientmacs'])),
                     'baseport': data['baseport'],
-                    }))
+                }))
 
         if not state.macs_indexed and state.iftable:
             reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
@@ -262,8 +262,10 @@ class ClientMACsState(object):
 
                     for item in dot1dTpFdbTable.values():
                         mac = item.get('dot1dTpFdbAddress')
-                        learned = item.get('dot1dTpFdbStatus') == ForwardingEntryStatus.learned
-                        matched_baseport = iface['baseport'] == item.get('dot1dTpFdbPort')
+                        learned = item.get('dot1dTpFdbStatus') \
+                            == ForwardingEntryStatus.learned
+                        matched_baseport = iface['baseport'] \
+                            == item.get('dot1dTpFdbPort')
 
                         if mac and learned and matched_baseport:
                             iface['clientmacs'].append(asmac(mac))
@@ -289,12 +291,12 @@ class ClientMACsSnmpPlugin(SnmpPlugin):
                 '.1': 'dot1dTpFdbAddress',
                 '.2': 'dot1dTpFdbPort',
                 '.3': 'dot1dTpFdbStatus',
-                }),
+            }),
 
         # Ports to Interfaces
         GetTableMap(
             'dot1dBasePortEntry', dot1dBasePortEntry, {
                 '.1': 'dot1dBasePort',
                 '.2': 'dot1dBasePortIfIndex',
-                }),
-        )
+            }),
+    )

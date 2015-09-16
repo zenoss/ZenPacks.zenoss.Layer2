@@ -9,7 +9,6 @@
 
 from itertools import chain
 import logging
-log = logging.getLogger('zen.ZenMapper')
 
 import Globals
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
@@ -17,6 +16,8 @@ from transaction import commit
 
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
+
+log = logging.getLogger('zen.ZenMapper')
 
 
 def main():
