@@ -49,7 +49,8 @@ def get_ifinfo_for_layer2(self):
             res[interface.id] = {
                 "ifindex": interface.ifindex,
                 "clientmacs": [],
-                "baseport": 0
+                "baseport": 0,
+                "vlan_id": getattr(interface, 'vlan_id', None),
             }
     return res
 
