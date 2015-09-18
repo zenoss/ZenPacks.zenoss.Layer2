@@ -62,5 +62,3 @@ You could also automatically model all the devices from simulator, by running in
 And then, while previous command is still running, somewhere in other terminal run:
 
     zenbatchload /tmp/network.dump
-
-
