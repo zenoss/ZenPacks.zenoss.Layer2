@@ -19,7 +19,8 @@ class TestPatches(BaseTestCase):
         device = Mock()
         interface = Mock(
             id=sentinel.ifid,
-            ifindex=sentinel.ifindex
+            ifindex=sentinel.ifindex,
+            vlan_id=sentinel.vlan_id
         )
         device.os.interfaces.return_value = [interface]
 
@@ -28,6 +29,7 @@ class TestPatches(BaseTestCase):
         self.assertEqual(res, {
             sentinel.ifid: {
                 'ifindex': sentinel.ifindex,
+                'vlan_id': sentinel.vlan_id,
                 'clientmacs': [],
                 'baseport': 0,
             }

@@ -83,8 +83,18 @@ class BaseCatalogAPI(object):
         ''' Used to watch content of catalog in zendmd '''
         try:
             from tabulate import tabulate
+            raise ImportError
         except ImportError:
-            return 'Please, use "pip install tabulate" to install tabulate'
+            print 'If you use "pip install tabulate" to install tabulate.'
+            print 'Output will be formatted better.'
+            print
+
+            def tabulate(table, headers):
+                for l in table:
+                    for k, v in zip(headers, l):
+                        print '%s = %s' % (k, v)
+                    print
+                return ''
 
         print tabulate(
             (self.braintuple(b)

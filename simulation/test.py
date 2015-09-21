@@ -28,15 +28,14 @@ class TestUtils(unittest.TestCase):
     def test_int2id(self):
         self.assertEquals(asip(int2id(0, 4)), '0.0.0.0')
 
+
 class TestParser(unittest.TestCase):
     def test_mac_hex(self):
-        lines = [
-            '.1 '
-            '= Hex-STRING: 00 00 0C 07 AC 74 '
-        ]
+        lines = ['.1 = Hex-STRING: 00 00 0C 07 AC 74 ']
         self.assertEquals(
             len(parse_snmpwalklines(lines)['.1']), 6
         )
+
     def test_two_line_hex(self):
         lines = [
             '.1.3.6.1.4.1.9.9.683.1.5.0 = Hex-STRING: '
@@ -45,10 +44,16 @@ class TestParser(unittest.TestCase):
             '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
         ]
         self.assertEquals(
-             parse_snmpwalklines(lines),
-             {'.1.3.6.1.4.1.9.9.683.1.5.0': '\x00' * 32}
+            parse_snmpwalklines(lines),
+            {'.1.3.6.1.4.1.9.9.683.1.5.0': '\x00' * 32}
         )
 
+    def test_mac_string(self):
+        lines = ['.1 = STRING: 8:1f:f3:1b:4f:1']
+        self.assertEquals(
+            parse_snmpwalklines(lines),
+            {'.1': '\x08\x1f\xf3\x1b\x4f\x01'}
+        )
 
 
 if __name__ == '__main__':

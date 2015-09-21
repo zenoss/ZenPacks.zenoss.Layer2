@@ -18,7 +18,6 @@ from twistedsnmp import agent, agentprotocol, bisectoidstore
 from bridge_oids import Network, binary_tree_topology
 
 
-
 def main():
     '''
         Create network topology, and then
@@ -52,7 +51,7 @@ def simulate(agents, port=161):
                     community=None,  # accept all communities
                 ),
                 ip,
-                8192, # maxPacketSize
+                8192,  # maxPacketSize
                 reactor
             )
             p.startListening()

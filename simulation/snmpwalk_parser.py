@@ -50,7 +50,7 @@ def main():
 
 
 HELP = '''
-firs argument - dump or serve 
+firs argument - dump or serve
 
 Pass filename or '-' for stdin as a second argument
 
@@ -137,6 +137,16 @@ def sanitize_dotted(string):
     return re.sub(r'[^ \.\da-fA-F]', '1', string)
 
 
+mac_regex = re.compile(r'^([0-9A-F]{1,2}[:-]){5}([0-9A-F]{1,2})$', re.I)
+
+
+def encode_mac(s):
+    if mac_regex.match(s):
+        return ''.join(chr(int(x, base=16)) for x in re.split('[:-]', s))
+    else:
+        return s
+
+
 def fix_snmp_datatypes():
     '''
         twistedsnmp has a bug that causes it to fail to properly convert
@@ -191,7 +201,7 @@ def convert_oid_value(type_, value):
         return v2c.ObjectIdentifier(value[0])
 
     elif type_ == 'STRING':
-        return '\n'.join(value)
+        return encode_mac('\n'.join(value))
 
     elif type_ == 'Timeticks':
         return v2c.TimeTicks(int(value[0]))
