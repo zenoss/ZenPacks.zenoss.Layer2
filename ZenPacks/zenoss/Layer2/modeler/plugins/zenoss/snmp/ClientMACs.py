@@ -212,10 +212,13 @@ class ClientMACsState(object):
         if self.is_cisco:
             # TODO: find a better way to get a list of vlans
             # not parsing from interface ids
-            for ifid in self.iftable:
-                if 'vlan' in ifid.lower():
+            for ifid, info in self.iftable.iteritems():
+                vlan_id = info.get('vlan_id')
+
+                if not vlan_id and 'vlan' in ifid.lower():
                     vlan_id = ifid.lower().replace('vlan', '')
 
+                if vlan_id:
                     # https://jira.zenoss.com/browse/ZEN-16951
                     # vlan_id should be integer, not any string
                     try:
