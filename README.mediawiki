@@ -49,7 +49,9 @@ Detailed information about device is available by clicking on 'Device Info' opti
 Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be brought back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
 
 == zenmapper daemon ==
-To update catalog with connections for network map, is used zenmapper daemon. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
+To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
+
+zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. When it is used on environment with remote collectors there is no need to run it on collectors (so it could be removed from <code>/opt/zenoss/etc/daemons.txt</code>, when desired). When it runs on remote collector it just does nothing, because there is no devices modeled.
 
 == Writing your own connection provider ==
 Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.
