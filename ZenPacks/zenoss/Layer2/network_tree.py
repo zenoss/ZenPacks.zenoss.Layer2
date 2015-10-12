@@ -48,8 +48,10 @@ def get_connections_json(data_root, root_id, depth=1, layers=None):
 
 def serialize(*args, **kwargs):
     '''
-        If the only positional argument is Exception - serialize it, else
-        serialize dictionary of passed keyword arguments
+        If there is at least one positional argument
+            and it is is Exception - serialize it's message
+            else serialize that first argument.
+        If there is only keyword arguments - serialize them as dict.
     '''
     if args:
         if isinstance(args[0], Exception):
@@ -57,6 +59,7 @@ def serialize(*args, **kwargs):
         elif isinstance(args[0], basestring):
             msg = args[0]
         else:
+            print json.dumps(args[0], indent=2)
             return json.dumps(args[0], indent=2)
         return serialize(error=msg)
     else:
@@ -68,7 +71,7 @@ def get_connections(rootnode, depth=1, layers=None):
     cat = CatalogAPI(zport)
 
     nodes = []
-    links = []
+    links = {}
     nodenums = {}
 
     def add_node(n):
@@ -92,15 +95,18 @@ def get_connections(rootnode, depth=1, layers=None):
         t = nodenums[b.id]
 
         key = tuple(sorted([s, t]))
-        if key in added_links:
-            return
-        added_links.add(key)
+        if key in links:
+            if s == links[key]['source']:
+                return
+            else:
+                links[key]['directed'] = False
 
-        links.append(dict(
+        links[key] = dict(
             source=s,
             target=t,
+            directed=True,
             color=color,
-        ))
+        )
 
     adapt_node = partial(NodeAdapter, dmd=zport.dmd)
 
@@ -157,7 +163,7 @@ def get_connections(rootnode, depth=1, layers=None):
     get_connections(rootnode, depth)
 
     return dict(
-        links=links,
+        links=links.values(),
         nodes=nodes,
     )
 

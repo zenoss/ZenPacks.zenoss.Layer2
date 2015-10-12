@@ -50,6 +50,21 @@
                 .attr("height", height)
                 .call(zoom);
 
+
+            // http://bl.ocks.org/d3noob/5141278
+            svg.append("svg:defs").selectAll("marker")
+                .data(["end"])      // Different link/path types can be defined here
+              .enter().append("svg:marker")    // This section adds in the arrows
+                .attr("id", String)
+                .attr("refX", 31)
+                .attr("refY", 5)
+                .attr("markerWidth", 31)
+                .attr("markerHeight", 10)
+                .attr("orient", "auto")
+              .append("svg:path")
+                .attr("d", "M0,0L10,5L0,10L0,0");
+
+
             drawing_space = svg.append('g'),
                 bottom_layer = drawing_space.append('g'),
                 top_layer = drawing_space.append('g');
@@ -110,6 +125,12 @@
 
             // append
             link.enter().append("line")
+                .attr("marker-end", function(d) {
+                    if(d.directed) 
+                        return "url(#end)"
+                    else
+                        return "none"
+                })
                 .attr("class", "link");
 
             // update
@@ -164,9 +185,7 @@
                     if(d.highlight) return 'highlighted ' + d.color;
                     return d.color;
                 })
-                .attr('r', function(d) {
-                    if(d.highlight) return 25; else return 21;
-                });
+                .attr('r', 21);
 
             node.select('image')
                 .attr("xlink:href", function(d) { return d.image; });

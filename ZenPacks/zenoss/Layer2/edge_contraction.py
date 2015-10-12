@@ -21,11 +21,6 @@ def contract_edges(nodes, links):
 
         For details see docstrings of tests in .tests.test_edge_contraction
     '''
-    if False:
-        from pprint import pprint
-        pprint(nodes)
-        pprint(links)
-
     nodes = dict(enumerate(nodes))
     links = dict(enumerate(links))
 
