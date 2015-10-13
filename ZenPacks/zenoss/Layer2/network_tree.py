@@ -59,7 +59,6 @@ def serialize(*args, **kwargs):
         elif isinstance(args[0], basestring):
             msg = args[0]
         else:
-            print json.dumps(args[0], indent=2)
             return json.dumps(args[0], indent=2)
         return serialize(error=msg)
     else:
@@ -97,9 +96,10 @@ def get_connections(rootnode, depth=1, layers=None):
         key = tuple(sorted([s, t]))
         if key in links:
             if s == links[key]['source']:
-                return
+                return  # already added
             else:
                 links[key]['directed'] = False
+                return
 
         links[key] = dict(
             source=s,
@@ -124,7 +124,9 @@ def get_connections(rootnode, depth=1, layers=None):
         visited.add(a.id)
 
         # leafs of current node in graph
-        related = list(get_related(a))
+        impacted = set(get_impacted(a))
+        impactors = set(get_impactors(a))
+        related = impacted | impactors
 
         # some of leaf may contain a component (usualy IpInterface) uid
         # prefixed with asterix (!)
@@ -149,11 +151,20 @@ def get_connections(rootnode, depth=1, layers=None):
                     break
 
             add_node(b)
-            add_link(a, b, 'gray')
+            if node in impacted:
+                add_link(a, b, 'gray')
+            if node in impactors:
+                add_link(b, a, 'gray')
             get_connections(node, depth - 1)
 
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
+
+    def get_impacted(node):
+        return cat.get_directly_connected(node.get_path(), layers)
+
+    def get_impactors(node):
+        return cat.get_reverse_connected(node.get_path(), layers)
 
     def this_is_link(node):
         if isinstance(node, str) and node[0] == "!":
