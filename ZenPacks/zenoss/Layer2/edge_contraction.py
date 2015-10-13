@@ -123,9 +123,9 @@ class EdgeContractor(object):
     def join_pair(self, i, j):
         ''' Merge node j onto i and update references
 
-                x - i - j - y 
+                x - i - j - y
             will become:
-                x - i - y 
+                x - i - y
 
         '''
 
