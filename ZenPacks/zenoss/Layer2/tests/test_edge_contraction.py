@@ -29,12 +29,13 @@ class TestEdgeContraction(BaseTestCase):
             {'name': 4, 'important': True},
         ]
         links = [
-            {'source': 0, 'target': 1},
-            {'source': 1, 'target': 2},
-            {'source': 2, 'target': 3},
-            {'source': 3, 'target': 4},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 1, 'target': 2, 'directed': False},
+            {'source': 2, 'target': 3, 'directed': False},
+            {'source': 3, 'target': 4, 'directed': False},
         ]
-        self.assertEqual(contract_edges(nodes, links), dict(
+        res = contract_edges(nodes, links)
+        self.assertEqual(res, dict(
             nodes=[
                 {'name': 0, 'important': True},
                 {'name': 1},
@@ -42,9 +43,9 @@ class TestEdgeContraction(BaseTestCase):
                 {'name': 4, 'important': True},
             ],
             links=[
-                {'source': 0, 'target': 1},
-                {'source': 1, 'target': 2},
-                {'source': 2, 'target': 3},
+                {'source': 0, 'target': 1, 'directed': False},
+                {'source': 1, 'target': 2, 'directed': False},
+                {'source': 2, 'target': 3, 'directed': False},
             ]
         ))
 
@@ -60,10 +61,11 @@ class TestEdgeContraction(BaseTestCase):
             {'name': 2},
         ]
         links = [
-            {'source': 0, 'target': 1},
-            {'source': 0, 'target': 2},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 0, 'target': 2, 'directed': False},
         ]
-        self.assertEqual(contract_edges(nodes, links), dict(
+        res = contract_edges(nodes, links)
+        self.assertEqual(res, dict(
             links=[],
             nodes=[
                 {'name': 0, 'important': True},
@@ -81,8 +83,8 @@ class TestEdgeContraction(BaseTestCase):
             {'name': 2},
         ]
         links = [
-            {'source': 0, 'target': 1},
-            {'source': 0, 'target': 2},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 0, 'target': 2, 'directed': False},
         ]
         self.assertEqual(contract_edges(nodes, links), dict(
             links=[],
@@ -101,10 +103,11 @@ class TestEdgeContraction(BaseTestCase):
             {'name': 2},
         ]
         links = [
-            {'source': 0, 'target': 1},
-            {'source': 1, 'target': 2},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 1, 'target': 2, 'directed': False},
         ]
-        self.assertEqual(contract_edges(nodes, links), dict(
+        res = contract_edges(nodes, links)
+        self.assertEqual(res, dict(
             links=[],
             nodes=[
                 {'name': 0, 'important': True},
@@ -120,7 +123,7 @@ class TestEdgeContraction(BaseTestCase):
             ]
         ))
 
-    def test_branch(self):
+    def test_branch2(self):
         ''' test based on real data '''
         nodes = [{
             'color': 'severity_debug',
@@ -142,8 +145,8 @@ class TestEdgeContraction(BaseTestCase):
             'name': '70:77:78:65:67:6C'
         }]
         links = [
-            {'color': 'gray', 'source': 0, 'target': 1},
-            {'color': 'gray', 'source': 0, 'target': 2}
+            {'color': 'gray', 'source': 0, 'target': 1, 'directed': False},
+            {'color': 'gray', 'source': 0, 'target': 2, 'directed': False}
         ]
         self.assertEqual(contract_edges(nodes, links), dict(
             links=[],
@@ -171,16 +174,16 @@ class TestEdgeContraction(BaseTestCase):
             {'name': 3, 'important': True},
         ]
         links = [
-            {'source': 0, 'target': 1},
-            {'source': 0, 'target': 2},
-            {'source': 1, 'target': 3},
-            {'source': 2, 'target': 3},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 0, 'target': 2, 'directed': False},
+            {'source': 1, 'target': 3, 'directed': False},
+            {'source': 2, 'target': 3, 'directed': False},
         ]
         res = contract_edges(nodes, links)
 
         self.assertEqual(res['links'], [
-            {'source': 0, 'target': 1},
-            {'source': 1, 'target': 2},
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 1, 'target': 2, 'directed': False},
         ])
         self.assertIn(
             {'name': 0, 'important': True},

@@ -171,8 +171,8 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
             if not mac or mac == "00:00:00:00:00:00":
                 continue
             yield Connection(self.context, (mac, ), layers)
-            yield Connection(MACObject(interface), (mac, ), layers)
             yield Connection(mac, (self.context, ), layers)
+            yield Connection(MACObject(interface), (mac, ), layers)
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)

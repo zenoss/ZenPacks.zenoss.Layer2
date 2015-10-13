@@ -48,8 +48,10 @@ def get_connections_json(data_root, root_id, depth=1, layers=None):
 
 def serialize(*args, **kwargs):
     '''
-        If the only positional argument is Exception - serialize it, else
-        serialize dictionary of passed keyword arguments
+        If there is at least one positional argument
+            and it is is Exception - serialize it's message
+            else serialize that first argument.
+        If there is only keyword arguments - serialize them as dict.
     '''
     if args:
         if isinstance(args[0], Exception):
@@ -68,7 +70,7 @@ def get_connections(rootnode, depth=1, layers=None):
     cat = CatalogAPI(zport)
 
     nodes = []
-    links = []
+    links = {}
     nodenums = {}
 
     def add_node(n):
@@ -92,15 +94,19 @@ def get_connections(rootnode, depth=1, layers=None):
         t = nodenums[b.id]
 
         key = tuple(sorted([s, t]))
-        if key in added_links:
-            return
-        added_links.add(key)
+        if key in links:
+            if s == links[key]['source']:
+                return  # already added
+            else:
+                links[key]['directed'] = False
+                return
 
-        links.append(dict(
+        links[key] = dict(
             source=s,
             target=t,
+            directed=True,
             color=color,
-        ))
+        )
 
     adapt_node = partial(NodeAdapter, dmd=zport.dmd)
 
@@ -118,7 +124,9 @@ def get_connections(rootnode, depth=1, layers=None):
         visited.add(a.id)
 
         # leafs of current node in graph
-        related = list(get_related(a))
+        impacted = set(get_impacted(a))
+        impactors = set(get_impactors(a))
+        related = impacted | impactors
 
         # some of leaf may contain a component (usualy IpInterface) uid
         # prefixed with asterix (!)
@@ -143,11 +151,20 @@ def get_connections(rootnode, depth=1, layers=None):
                     break
 
             add_node(b)
-            add_link(a, b, 'gray')
+            if node in impacted:
+                add_link(a, b, 'gray')
+            if node in impactors:
+                add_link(b, a, 'gray')
             get_connections(node, depth - 1)
 
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
+
+    def get_impacted(node):
+        return cat.get_directly_connected(node.get_path(), layers)
+
+    def get_impactors(node):
+        return cat.get_reverse_connected(node.get_path(), layers)
 
     def this_is_link(node):
         if isinstance(node, str) and node[0] == "!":
@@ -157,7 +174,7 @@ def get_connections(rootnode, depth=1, layers=None):
     get_connections(rootnode, depth)
 
     return dict(
-        links=links,
+        links=links.values(),
         nodes=nodes,
     )
 
