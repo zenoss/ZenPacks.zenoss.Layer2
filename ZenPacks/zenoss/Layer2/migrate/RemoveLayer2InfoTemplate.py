@@ -20,7 +20,7 @@ from Products.ZenModel.migrate.Migrate import Version
 from Products.ZenModel.ZenPack import ZenPackMigration
 
 
-LOG = logging.getLogger('zen.Layer2')
+log = logging.getLogger('zen.Layer2')
 TEMPLATES_ZPROPERTY = 'zDeviceTemplates'
 MODELER_ZPROPERTY = 'zCollectorPlugins'
 
@@ -28,11 +28,10 @@ LAYER2INFO_TEMPLATE = 'Layer2Info'
 CLIENTMACS_PLUGIN = 'zenoss.snmp.ClientMACs'
 
 
-class ReplaceLayer2InfoTemplate(ZenPackMigration):
-
-    """Migrations required to replace Layer2Info monitoring template."""
+class RemoveLayer2InfoTemplate(ZenPackMigration):
 
     version = Version(1, 1, 0)
 
     def migrate(self, pack):
-        dmd.Devices.rrdTemplates._delObject('Layer2Info')
+        log.info('Removing Layer2Info template')
+        pack.dmd.Devices.rrdTemplates._delObject('Layer2Info')
