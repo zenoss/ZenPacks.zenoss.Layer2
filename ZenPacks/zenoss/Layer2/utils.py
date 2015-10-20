@@ -83,7 +83,6 @@ class BaseCatalogAPI(object):
         ''' Used to watch content of catalog in zendmd '''
         try:
             from tabulate import tabulate
-            raise ImportError
         except ImportError:
             print 'If you use "pip install tabulate" to install tabulate.'
             print 'Output will be formatted better.'
