@@ -30,6 +30,8 @@ from Products.Zuul.interfaces.component import IIpInterfaceInfo
 
 
 from .macs_catalog import CatalogAPI as MACsCatalogAPI
+# TODO: replace it with connections_catalog completely
+
 from .connections_catalog import CatalogAPI
 from .network_tree import get_connections_json, serialize
 
@@ -108,6 +110,9 @@ def unindex_object(self):
 
     catapi = MACsCatalogAPI(self.zport)
     catapi.remove_device(self)
+
+    cat = CatalogAPI(self.zport)
+    cat.remove_node(self)
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
