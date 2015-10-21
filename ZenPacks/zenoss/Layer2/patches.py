@@ -29,9 +29,6 @@ from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 
 
-from .macs_catalog import CatalogAPI as MACsCatalogAPI
-# TODO: replace it with connections_catalog completely
-
 from .connections_catalog import CatalogAPI
 from .network_tree import get_connections_json, serialize
 
@@ -93,23 +90,18 @@ def get_clients_links(self):
     ''' Returns page of links to client devices '''
     return format_macs(
         self._object.clientmacs,
-        MACsCatalogAPI(self._object.zport).get_device_by_mac
+        CatalogAPI(self._object.zport).get_device_by_mac
     )
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
-    catapi = MACsCatalogAPI(self.zport)
-    catapi.add_device(self)
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def unindex_object(self):
     original(self)
-
-    catapi = MACsCatalogAPI(self.zport)
-    catapi.remove_device(self)
 
     cat = CatalogAPI(self.zport)
     cat.remove_node(self)

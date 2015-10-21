@@ -14,8 +14,8 @@ import logging
 from Products.ZenModel.migrate.Migrate import Version
 from Products.ZenModel.ZenPack import ZenPackMigration
 
-
 log = logging.getLogger('zen.Layer2')
+
 
 class RemoveLayer2InfoTemplate(ZenPackMigration):
 
@@ -23,4 +23,6 @@ class RemoveLayer2InfoTemplate(ZenPackMigration):
 
     def migrate(self, pack):
         log.info('Removing Layer2Info template')
-        pack.dmd.Devices.rrdTemplates._delObject('Layer2Info', suppress_events=True)
+        pack.dmd.Devices.rrdTemplates._delObject(
+            'Layer2Info', suppress_events=True
+        )

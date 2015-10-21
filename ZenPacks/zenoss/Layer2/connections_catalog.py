@@ -143,3 +143,9 @@ class CatalogAPI(BaseCatalogAPI):
 
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)
+
+    def get_device_by_mac(self, mac):
+        for brain in self.search(entity_id=mac):
+            for c in brain.connected_to:
+                if c.startswith('/zport/dmd/Devices/'):
+                    return self.get_obj(c)
