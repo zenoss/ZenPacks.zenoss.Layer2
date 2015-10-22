@@ -45,12 +45,7 @@ class TestUpdateCatalog(BaseTestCase):
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
 
     def topology(self, topology):
-        # import pudb; pudb.set_trace()
         create_topology(topology, self.dmd, update_catalog=False)
-
-    def test_empty_if_mapper_not_runned(self):
-        self.topology('a b')
-        self.assertEquals(len(self.cat.search()), 0)
 
     def test_pair(self):
         self.topology('a b')

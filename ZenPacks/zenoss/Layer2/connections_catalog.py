@@ -10,12 +10,15 @@
 from itertools import chain
 import logging
 
-
-from ZenPacks.zenoss.Layer2.utils import BaseCatalogAPI
-
+from transaction import commit
 from zExceptions import NotFound
+from zope.event import notify
+
+from Products.Zuul.catalog.events import IndexingEvent
+
 from .connections_provider import IConnection, IConnectionsProvider
 from .connections_provider import connection_hash
+from .utils import BaseCatalogAPI
 
 log = logging.getLogger('zen.Layer2')
 
@@ -51,8 +54,18 @@ class CatalogAPI(BaseCatalogAPI):
         self.catalog.uncatalog_object(connection.hash)
         log.debug('%s removed from %s' % (connection, self.name))
 
-    def add_node(self, node):
+    def add_node(self, node, reindex=False):
         map(self.add_connection, IConnectionsProvider(node).get_connections())
+
+        if not reindex:
+            return  # ok, we are already done
+
+        commit()
+        log.info('Triggering reindex for %s', node)
+        notify(IndexingEvent(node))
+        if hasattr(node, 'getDeviceComponent'):
+            for component in node.getDeviceComponents():
+                notify(IndexingEvent(component))
 
     def remove_node(self, node):
         map(
@@ -143,3 +156,9 @@ class CatalogAPI(BaseCatalogAPI):
 
     def get_existing_layers(self):
         return set(layer for i in self.search() for layer in i.layers)
+
+    def get_device_by_mac(self, mac):
+        for brain in self.search(entity_id=mac):
+            for c in brain.connected_to:
+                if c.startswith('/zport/dmd/Devices/'):
+                    return self.get_obj(c)
