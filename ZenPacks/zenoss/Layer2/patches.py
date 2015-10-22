@@ -98,6 +98,9 @@ def get_clients_links(self):
 def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
 
+    cat = CatalogAPI(self.zport)
+    cat.add_node(self, reindex=True)
+
 
 @monkeypatch('Products.ZenModel.Device.Device')
 def unindex_object(self):
