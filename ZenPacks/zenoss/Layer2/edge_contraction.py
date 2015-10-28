@@ -170,6 +170,18 @@ class EdgeContractor(object):
             if remaining <= 1:
                 del self.nodes[i]
 
+        for i, k in self.nodes.items():
+            try:
+                if (
+                    k['inbound'] == k['outbound']
+                    and len(k['inbound']) == 1
+                    and not k['important']
+                ):
+                    self.del_link(k['inbound'][0])
+                    del self.nodes[i]
+            except KeyError:
+                continue
+
     def remove_duplicates(self):
         ''' Remove unimportant nodes which
             connect things other nodes already connect
@@ -220,6 +232,8 @@ class EdgeContractor(object):
         new_links = []
         already_linked = set()
         for l in self.links.values():
+            # if l['source'] not in map_names: continue
+            # if l['target'] not in map_names: continue
             s = map_names[l['source']]
             t = map_names[l['target']]
             if (s, t) not in already_linked:

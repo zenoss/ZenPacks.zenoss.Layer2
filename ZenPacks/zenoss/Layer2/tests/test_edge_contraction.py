@@ -195,6 +195,64 @@ class TestEdgeContraction(BaseTestCase):
         )
         self.assertEqual(len(res['nodes']), 3)
 
+    def test_excessive_node(self):
+        '''
+        '''
+        nodes = [
+            {'name': 0, 'important': True},
+            {'name': 1},
+            {'name': 2},
+            {'name': 3, 'important': True},
+        ]
+        links = [
+            {'source': 0, 'target': 1, 'directed': False},
+            {'source': 0, 'target': 2, 'directed': False},
+            {'source': 1, 'target': 3, 'directed': False},
+            {'source': 2, 'target': 3, 'directed': False},
+        ]
+        nodes = [
+            {
+                'important': True,
+                'name': '-switch.zenoss.loc',
+                'highlight': True,
+                'color': 'severity_info',
+                'path': '/zport/dmd/Devices/Network/Cisco/devices/10.10.10.10',
+                'image': '/zport/dmd/img/icons/noicon.png'
+            },
+            {
+                'important': False,
+                'name': '2C:36:F8:7B:65:21',
+                'highlight': False,
+                'color': 'severity_none',
+                'path': '/zport/dmd/Cisco/devices/10.10.10.10/os/in/GE0_33',
+                'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
+            },
+            {
+                'important': False,
+                'name': '08:00:1B:00:7A:D6',
+                'highlight': False,
+                'color': 'severity_none',
+                'path': '08:00:1B:00:7A:D6',
+                'image': '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
+            }
+        ]
+        links = [
+            {'color': 'gray', 'directed': False, 'target': 1, 'source': 0},
+            {'color': 'gray', 'directed': True, 'target': 2, 'source': 1}
+        ]
+        res = contract_edges(nodes, links)
+        self.assertEqual(res, dict(
+            links=[],
+            nodes=[{
+                'color': 'severity_info',
+                'highlight': True,
+                'image': '/zport/dmd/img/icons/noicon.png',
+                'important': True,
+                'name': '-switch.zenoss.loc',
+                'path': '/zport/dmd/Devices/Network/Cisco/devices/10.10.10.10'
+            }]
+        ))
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite
