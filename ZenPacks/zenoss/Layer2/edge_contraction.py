@@ -232,8 +232,6 @@ class EdgeContractor(object):
         new_links = []
         already_linked = set()
         for l in self.links.values():
-            # if l['source'] not in map_names: continue
-            # if l['target'] not in map_names: continue
             s = map_names[l['source']]
             t = map_names[l['target']]
             if (s, t) not in already_linked:
