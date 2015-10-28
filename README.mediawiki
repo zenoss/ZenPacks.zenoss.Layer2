@@ -253,6 +253,9 @@ device, for example by changing some field on overview and saving it. Or
 modeling device again.
 
 
+=== Limitations ===
+Because the order of modelers executions is undefined, sometimes <code>zenoss.snmp.ClientMACs</code> plugin runs before interfaces are modeled by some other modeler plugin (<code>cisco.snmp.Interfaces</code> or <code>zenoss.snmp.InterfaceMap</code>). Because possible fixes of this issue currently are to complex it remains as a limitation. Possible workaround if such thing happens - wait for next modeling or just model device again manually.
+
 === More information ===
 If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics)
 users should contact [https://support.zenoss.com Zenoss Customer Support].
