@@ -153,10 +153,19 @@ This ZenPack has the following requirements.
 
 == Service Impact ==
 
-When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.
+When combined with the Zenoss Service Dynamics product, this ZenPack adds
+built-in service impact capability based on Layer 2 data. The following service
+impact relationships are automatically added. These will be included in any
+services that contain one or more of the explicitly mentioned entities.
 
 ;Service Impact Relationships
 * Device impacted by upstream switch device.
+
+Note: when you have up-to-date (higher than 1.2) DynamicView ZenPack installed,
+it will add impact relationships from device to interfaces of that device.
+As impact only shows nodes directly added to dynamic service, or nodes that
+impact nodes already shown, they will not be shown on impact diagram unless
+added directly.
 
 == Troubleshooting ==
 
