@@ -114,6 +114,29 @@ class CatalogAPI(BaseCatalogAPI):
 
         return visited
 
+    def get_bfs_connected(self, entity_id, method, depth, layers=None):
+        ''' Return only set of nodes connected on depht distance using BFS '''
+
+        queue = [entity_id]
+        distances = {
+            entity_id: 0
+        }
+        while queue:
+            next = queue.pop(0)
+            distance = distances[next]
+            if distance >= depth:
+                break
+            for n in method(next, layers):
+                if n in distances:
+                    if distances[n] > distance + 1:
+                        distances[n] = distance + 1
+                else:
+                    queue.append(n)
+                    distances[n] = distance + 1
+
+        for k, v in distances.iteritems():
+            if v == depth:
+                yield k
 
     def get_obj(self, id):
         ''' Returns object from dmd for some node id or None '''

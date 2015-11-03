@@ -63,7 +63,7 @@ class ImpactCatalogAPI(CatalogAPI):
 
     def getNlayer2(self, entity_id, method, N):
         ''' Yield objects that are N hops (forward or backward) from given '''
-        for id in self.get_connected(
+        for id in self.get_bfs_connected(
             entity_id=entity_id,
             layers=['layer2'],
             method=method,
@@ -76,11 +76,15 @@ class ImpactCatalogAPI(CatalogAPI):
                 yield obj
 
     def impacts(self, entity_id, depth):
-        for obj in self.getNlayer2(entity_id, self.get_directly_connected, depth):
+        for obj in self.getNlayer2(
+            entity_id, self.get_directly_connected, depth
+        ):
             yield obj
 
     def impacted_by(self, entity_id, depth):
-        for obj in self.getNlayer2(entity_id, self.get_reverse_connected, depth):
+        for obj in self.getNlayer2(
+            entity_id, self.get_reverse_connected, depth
+        ):
             yield obj
 
 
@@ -97,11 +101,14 @@ class DeviceRelationsProvider(BaseRelationsProvider):
             for obj in cat.impacted_by(this_id, 3):
                 yield edge(guid(obj), self.guid())
 
-            # Yield interfaces 
-            for obj in cat.impacted_by(this_id, 2):
-                if isinstance(obj.aq_base, IpInterface):
-                    print obj, '->', self._object
-                    yield edge(guid(obj), self.guid())
+            if self._object.getPrimaryUrlPath().startswith(
+                '/zport/dmd/Devices/Network/'
+            ):
+                # Yield interfaces
+                for obj in cat.impacted_by(this_id, 2):
+                    if isinstance(obj.aq_base, IpInterface):
+                        print obj, '->', self._object
+                        yield edge(guid(obj), self.guid())
 
         except Exception as e:
             log.exception(e)

@@ -173,6 +173,22 @@ class TestCheckWorkingPath(BaseTestCase):
             self.cat.check_working_path(router('a'), router('d'))
         )
 
+    def test_get_bsf_connected(self):
+        self.topology('''
+            a b
+            b c
+            b d
+            c d
+        ''')
+        self.assertItemsEqual(
+            self.cat.get_bfs_connected(
+                router('a'),
+                self.cat.get_directly_connected,
+                6
+            ),
+            [router('c'), router('d')]
+        )
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite
