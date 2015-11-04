@@ -107,7 +107,8 @@
         if(right) {
             show_context_menu(data, x, y, refresh_map);
         } else {
-            if(data.path.indexOf('/zport/dmd/Devices/') == 0) {
+            if((data.path.indexOf('/zport/dmd/Devices/') == 0) || 
+                (data.path.indexOf('/zport/dmd/Networks/') == 0)) {
                 window.location.href = data.path;
             } else {
                 show_error(data.path + ' has no additional info attached.')
