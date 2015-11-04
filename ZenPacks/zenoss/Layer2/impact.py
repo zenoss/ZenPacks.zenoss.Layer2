@@ -107,7 +107,6 @@ class DeviceRelationsProvider(BaseRelationsProvider):
                 # Yield interfaces
                 for obj in cat.impacted_by(this_id, 2):
                     if isinstance(obj.aq_base, IpInterface):
-                        print obj, '->', self._object
                         yield edge(guid(obj), self.guid())
 
         except Exception as e:
@@ -125,7 +124,6 @@ class InterfaceRelationsProvider(BaseRelationsProvider):
 
             for obj in cat.impacts(node_id, 2):
                 if isinstance(obj.aq_base, Device):
-                    print self._object, '->', obj
                     yield edge(self.guid(), guid(obj))
 
         except Exception as e:
