@@ -7,6 +7,8 @@
 #
 ##############################################################################
 
+from Products.ZenModel.IpInterface import IpInterface
+from Products.ZenModel.Device import Device
 from Products.ZenRelations.ToManyRelationship import ToManyRelationshipBase
 from Products.ZenRelations.ToOneRelationship import ToOneRelationship
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
@@ -59,25 +61,30 @@ class BaseRelationsProvider(object):
 
 class ImpactCatalogAPI(CatalogAPI):
 
-    def get3layer2(self, entity_id, method):
-        for id in self.get_connected(
+    def getNlayer2(self, entity_id, method, N):
+        ''' Yield objects that are N hops (forward or backward) from given '''
+        for id in self.get_bfs_connected(
             entity_id=entity_id,
             layers=['layer2'],
             method=method,
-            depth=3
+            depth=N
         ):
             if id == entity_id or id.startswith('!'):
                 continue
-            obj = self.get_obj(id)
+            obj = self.get_link(id) or self.get_obj(id)
             if obj:
                 yield obj
 
-    def impacts(self, entity_id):
-        for obj in self.get3layer2(entity_id, self.get_directly_connected):
+    def impacts(self, entity_id, depth):
+        for obj in self.getNlayer2(
+            entity_id, self.get_directly_connected, depth
+        ):
             yield obj
 
-    def impacted_by(self, entity_id):
-        for obj in self.get3layer2(entity_id, self.get_reverse_connected):
+    def impacted_by(self, entity_id, depth):
+        for obj in self.getNlayer2(
+            entity_id, self.get_reverse_connected, depth
+        ):
             yield obj
 
 
@@ -88,11 +95,36 @@ class DeviceRelationsProvider(BaseRelationsProvider):
         try:
             this_id = self._object.getPrimaryUrlPath()
 
-            for obj in cat.impacts(this_id):
+            for obj in cat.impacts(this_id, 3):
                 yield edge(self.guid(), guid(obj))
 
-            for obj in cat.impacted_by(this_id):
+            for obj in cat.impacted_by(this_id, 3):
                 yield edge(guid(obj), self.guid())
+
+            if self._object.getPrimaryUrlPath().startswith(
+                '/zport/dmd/Devices/Network/'
+            ):
+                # Yield interfaces
+                for obj in cat.impacted_by(this_id, 2):
+                    if isinstance(obj.aq_base, IpInterface):
+                        yield edge(guid(obj), self.guid())
+
+        except Exception as e:
+            log.exception(e)
+
+
+class InterfaceRelationsProvider(BaseRelationsProvider):
+    ''' Adds client devices as dependencies for interfaces '''
+
+    def getEdges(self):
+        cat = ImpactCatalogAPI(self._object.zport)
+        try:
+            this_id = self._object.getPrimaryUrlPath()
+            node_id = cat.get_node_by_link(this_id)
+
+            for obj in cat.impacts(node_id, 2):
+                if isinstance(obj.aq_base, Device):
+                    yield edge(self.guid(), guid(obj))
 
         except Exception as e:
             log.exception(e)
