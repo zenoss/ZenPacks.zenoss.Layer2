@@ -114,12 +114,48 @@ class CatalogAPI(BaseCatalogAPI):
 
         return visited
 
+    def get_bfs_connected(self, entity_id, method, depth, layers=None):
+        ''' Return only set of nodes connected on depht distance using BFS '''
+
+        queue = [entity_id]
+        distances = {
+            entity_id: 0
+        }
+        while queue:
+            next = queue.pop(0)
+            distance = distances[next]
+            if distance >= depth:
+                break
+            for n in method(next, layers):
+                if n in distances:
+                    if distances[n] > distance + 1:
+                        distances[n] = distance + 1
+                else:
+                    queue.append(n)
+                    distances[n] = distance + 1
+
+        for k, v in distances.iteritems():
+            if v == depth:
+                yield k
+
     def get_obj(self, id):
         ''' Returns object from dmd for some node id or None '''
         try:
             return self.zport.dmd.getObjByPath(id)
         except (NotFound, KeyError) as e:
             return None
+
+    def get_link(self, id):
+        ''' Get link attached to node '''
+        for brain in self.search(connected_to=id):
+            eid = brain.entity_id
+            if eid.startswith('!'):
+                return self.get_obj(eid[1:])
+
+    def get_node_by_link(self, link):
+        ''' Get node by it's attached link '''
+        for brain in self.search(entity_id='!' + link):
+            return brain.connected_to[0]
 
     def get_status(self, node):
         node = self.get_obj(node)

@@ -21,6 +21,11 @@
             for="Products.ZenModel.Device.Device"
             factory=".impact.DeviceRelationsProvider"
             />
+        <subscriber
+            provides="ZenPacks.zenoss.Impact.impactd.interfaces.IRelationshipDataProvider"
+            for="Products.ZenModel.IpInterface.IpInterface"
+            factory=".impact.InterfaceRelationsProvider"
+            />
     </configure>
 
     <!-- Device Links -->
