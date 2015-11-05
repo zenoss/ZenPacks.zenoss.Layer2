@@ -188,6 +188,9 @@ Zenoss.nav.appendTo('Component', [{
                     data.insertChild(i,config[i]);
                 }
             }
+            else {
+                Ext.getCmp('macs_panel').getEl().mask(_t('No Client MACs') , 'x-mask-msg-noicon');
+            }
         });
     }
 }]);
