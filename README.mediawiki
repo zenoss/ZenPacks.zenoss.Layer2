@@ -301,7 +301,6 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603)
 * Make Impact use new connections catalog instead of macs catalog (ZEN-18636)
 * Fix Broken link for Subnet node in Network map (ZEN-20749)
-* Fix Put 'UID of device or component' text above textbox in Network Map (ZEN-20770)
 
 ;1.0.3
 * Remove macs_catalog when removing the ZenPack. (ZEN-17967)
