@@ -143,7 +143,7 @@ Device._relations += (
 def getJSONEdges(self, root_id='', depth='2', layers=None):
     ''' Get JSON representation of network nodes '''
     if not root_id:
-        return serialize("You should set a device or component name")
+        return serialize("Set the UID of device or component")
     root_id = urllib.unquote(root_id)
     try:
         if layers:

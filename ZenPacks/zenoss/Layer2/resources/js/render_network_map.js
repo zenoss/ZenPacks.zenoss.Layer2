@@ -192,6 +192,11 @@
         },
         items: [
             {
+                id: 'sidebar_root_id_lable',
+                name: 'root_id_lable',
+                value: 'UID of device or component',
+                xtype: 'displayfield'
+            }, {
                 id: 'sidebar_root_id',
                 fieldLabel: 'Device ID',
                 name: 'root_id',
