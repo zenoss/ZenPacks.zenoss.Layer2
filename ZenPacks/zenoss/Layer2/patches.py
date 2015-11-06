@@ -118,7 +118,10 @@ def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
 
     cat = CatalogAPI(self.zport)
-    cat.add_node(self, reindex=True)
+    try:
+        cat.add_node(self, reindex=True)
+    except TypeError as e:
+        log.error(e)
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
