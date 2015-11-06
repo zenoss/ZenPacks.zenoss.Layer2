@@ -161,7 +161,7 @@ services that contain one or more of the explicitly mentioned entities.
 ;Service Impact Relationships
 * Device impacted by upstream switch device.
 
-Note: when you have up-to-date (higher than 1.2) DynamicView ZenPack installed,
+Note: when you have up-to-date (higher than 1.2.1.2) DynamicView ZenPack installed,
 it will add impact relationships from device to interfaces of that device.
 As impact only shows nodes directly added to dynamic service, or nodes that
 impact nodes already shown, they will not be shown on impact diagram unless
@@ -227,17 +227,17 @@ some interface of one device should be equal to client MAC address of some
 interface of other device. You could check if client MAC addresses for
 interface are modeled by looking at it's "Clients MAC addresses" display.
 It there are none, check that <code>zenoss.snmp.ClientMACs</code> modeler
-plugin is bound to device, and remodel device. 
+plugin is bound to device, and remodel device.
 
 It is also possible that there are no MAC address required to discover
-connection in forwarding table. To check that, you could run debug utility 
+connection in forwarding table. To check that, you could run debug utility
 [https://github.com/zenoss/ZenPacks.zenoss.Layer2/blob/develop/bridge_snmp.py bridge_snmp.py]:
 
 <syntaxhighlight lang=bash>
     python bridge_snmp.py clientmacs -c <community_string> <host>
 </syntaxhighlight>
 
-and see if your client mac address is visible at switch at all. 
+and see if your client mac address is visible at switch at all.
 
 Records in forwarding table are aged pretty fast, by default in 5 minutes. So,
 when there were no network activity on connection for more than 5 minutes,
@@ -254,7 +254,7 @@ SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
 This ZenPack also adds impact relation for layer2 connections. Switches impact
 devices connected to them. But this will work only when such connection is
 present on network map (see two previous sections for guide on troubleshooting
-that). 
+that).
 
 If there is connection on network map, but still, no impact relation, than,
 probably impact relations were not rebuilt. You could do that by indexing
