@@ -137,37 +137,35 @@ Zenoss.nav.appendTo('Component', [{
                     children: []
                 },
                 viewConfig: {
-                    plugins: {
-                        ptype: 'treeviewdragdrop'
-                    }
+                    enableTextSelection: true,
                 },
                 tbar: [{
                     text: 'Expand All',
                     scope: 'treepanel',
                     handler: function(){
-                                var me = Ext.getCmp('macs_panel'),
-                                toolbar = me.down('toolbar');
+                        var me = Ext.getCmp('macs_panel'),
+                            toolbar = me.down('toolbar');
 
-                                me.getEl().mask('Expanding tree...');
-                                toolbar.disable();
+                        me.getEl().mask('Expanding tree...');
+                        toolbar.disable();
 
-                                me.expandAll(function() {
-                                    me.getEl().unmask();
-                                    toolbar.enable();
-                                });
-                            }
-                    },{
+                        me.expandAll(function() {
+                            me.getEl().unmask();
+                            toolbar.enable();
+                        });
+                    }
+                },{
                     text: 'Collapse All',
                     scope: this,
-                    handler: function(){
-                                var me = Ext.getCmp('macs_panel')
-                                var toolbar = me.down('toolbar');
+                    handler: function() {
+                        var me = Ext.getCmp('macs_panel');
+                        var toolbar = me.down('toolbar');
 
-                                toolbar.disable();
-                                me.collapseAll(function() {
-                                    toolbar.enable();
-                                });
-                            }
+                        toolbar.disable();
+                        me.collapseAll(function() {
+                            toolbar.enable();
+                        });
+                    }
                 }]
             };
 
@@ -185,7 +183,7 @@ Zenoss.nav.appendTo('Component', [{
             if (config){
                 target.layout.activeItem.getDockedItems()[0].show();
                 for (i in config){
-                    data.insertChild(i,config[i]);
+                    data.insertChild(i, config[i]);
                 }
             }
             else {
