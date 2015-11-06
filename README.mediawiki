@@ -263,15 +263,14 @@ modeling device again.
 
 
 === Limitations ===
-Sometimes there are no client MACS data on interfaces modelled after the first
-modeler run. It happens because <code>zenoss.snmp.ClientMACs</code> plugin
-runs before interfaces are modeled by some other modeler plugin
-(for example <code>cisco.snmp.Interfaces</code> or
-<code>zenoss.snmp.InterfaceMap</code>), so there is no entities to save this
-attribute on. Currently it is not possible to define order of modeler execution,
-so this remains a limitation.
+There are no client MACs data on interfaces modeled for the first time.
+This happens because <code>zenoss.snmp.ClientMACs</code> plugin runs before
+interfaces are modeled by another network modeler plugin (for example
+<code>cisco.snmp.Interfaces</code> or <code>zenoss.snmp.InterfaceMap</code>),
+so there is no entities to save this attribute on. Currently it is not possible
+to define order of modeler execution, so this remains a limitation.
 
-Possible workaround if it happens - wait for next modeling or just model device again manually.
+Possible workaround is to wait for next model cycle or just model the device again manually.
 
 === More information ===
 If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics)
