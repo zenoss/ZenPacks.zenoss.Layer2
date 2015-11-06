@@ -61,28 +61,47 @@ def format_macs(macs, get_device_by_mac):
     if not macs:
         return ""
 
-    links = defaultdict(lambda: defaultdict(list))
+    links = defaultdict(lambda: defaultdict(dict))
 
     for mac in macs:
         device = get_device_by_mac(mac)
-        if device:
-            link = '<a href="{}">{}</a>'.format(
-                device.getPrimaryUrlPath(), device.titleOrId())
-            links[link][mac[:8]].append(mac)
-        else:
-            links["Other"][mac[:8]].append(mac)
 
+        if device:
+            template = '<a href="{}">{}</a>'
+            link = template.format(device.getPrimaryUrlPath(),
+                                   device.titleOrId())
+            links[link]['macs'].setdefault(mac[:8], []).append(mac)
+            vs_instance = device.device()
+            if vs_instance.meta_type == 'vSphereEndpoint':
+                links[link]['vsphere'] =\
+                    template.format(vs_instance.getPrimaryUrlPath(),
+                                    vs_instance.titleOrId())
+        else:
+            links["Other"]['macs'].setdefault(mac[:8], []).append(mac)
     # Formats result to use in ExtJS tree view
     result = []
     for group, columns in links.iteritems():
         children = (
             {'text': i, 'leaf': True}
-            for k in columns.values() for i in k
+            for k in columns['macs'].values() for i in k
         )
-        result.append({"text": group,
-                       "cls": "folder",
-                       "expanded": False,
-                       "children": sorted(children)})
+        res = {"text": group,
+               "cls": "folder",
+               "expanded": False,
+               "children": sorted(children)}
+        vsphere = columns.get('vsphere')
+        if vsphere:
+            vspheres = [i['text'] for i in result]
+            if vsphere in vspheres:
+                index = vspheres.index(vsphere)
+                result[index]["children"].append(res)
+            else:
+                result.append({"text": vsphere,
+                               "cls": "folder",
+                               "expanded": True,
+                               "children": [res]})
+        else:
+            result.append(res)
     return result
 
 
@@ -99,7 +118,10 @@ def index_object(self, idxs=None, noips=False):
     original(self, idxs, noips)
 
     cat = CatalogAPI(self.zport)
-    cat.add_node(self, reindex=True)
+    try:
+        cat.add_node(self, reindex=True)
+    except TypeError as e:
+        log.error(e)
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
