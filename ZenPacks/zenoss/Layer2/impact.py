@@ -88,6 +88,10 @@ class ImpactCatalogAPI(CatalogAPI):
             yield obj
 
 
+def is_switch(obj):
+    return obj.getPrimaryUrlPath().startswith('/zport/dmd/Devices/Network/')
+
+
 class DeviceRelationsProvider(BaseRelationsProvider):
     ''' Adds upstream router(s) as dependency to device on impact graph '''
     def getEdges(self):
@@ -95,36 +99,13 @@ class DeviceRelationsProvider(BaseRelationsProvider):
         try:
             this_id = self._object.getPrimaryUrlPath()
 
-            for obj in cat.impacts(this_id, 3):
-                yield edge(self.guid(), guid(obj))
-
-            for obj in cat.impacted_by(this_id, 3):
-                yield edge(guid(obj), self.guid())
-
-            if self._object.getPrimaryUrlPath().startswith(
-                '/zport/dmd/Devices/Network/'
-            ):
-                # Yield interfaces
-                for obj in cat.impacted_by(this_id, 2):
-                    if isinstance(obj.aq_base, IpInterface):
-                        yield edge(guid(obj), self.guid())
-
-        except Exception as e:
-            log.exception(e)
-
-
-class InterfaceRelationsProvider(BaseRelationsProvider):
-    ''' Adds client devices as dependencies for interfaces '''
-
-    def getEdges(self):
-        cat = ImpactCatalogAPI(self._object.zport)
-        try:
-            this_id = self._object.getPrimaryUrlPath()
-            node_id = cat.get_node_by_link(this_id)
-
-            for obj in cat.impacts(node_id, 2):
-                if isinstance(obj.aq_base, Device):
+            if is_switch(self._object):
+                for obj in cat.impacts(this_id, 3):
                     yield edge(self.guid(), guid(obj))
+            else:
+                for obj in cat.impacted_by(this_id, 3):
+                    if is_switch(obj):
+                        yield edge(guid(obj), self.guid())
 
         except Exception as e:
             log.exception(e)
