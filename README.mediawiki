@@ -51,7 +51,7 @@ Map could be zoomed using mouse wheel, and panned using mouse. If it disappears 
 == zenmapper daemon ==
 To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
 
-zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. When it is used on environment with remote collectors there is no need to run it on collectors (so it could be removed from <code>/opt/zenoss/etc/daemons.txt</code>, when desired). When it runs on remote collector it just does nothing, because there is no devices modeled.
+zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.
 
 == Writing your own connection provider ==
 Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.
