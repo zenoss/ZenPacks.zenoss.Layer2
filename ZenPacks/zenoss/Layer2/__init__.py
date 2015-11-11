@@ -13,6 +13,7 @@ executed at startup time in all Zope clients.
 
 import logging
 
+import os.path
 import socket
 import struct
 
@@ -54,6 +55,13 @@ class ZenPack(ZenPackBase):
         Try to determine zZenossGateway value from /proc/net/route information
         """
 
+        if os.path.exists('/.dockerinit'):
+            log.warning(
+                'We are inside docker container. '
+                'Please set zZenossGateway manually.'
+            )
+            return
+
         with open("/proc/net/route") as fh:
             for line in fh:
                 fields = line.strip().split()
@@ -66,6 +74,11 @@ class ZenPack(ZenPackBase):
                 if not dmd.Devices.zZenossGateway:
                     log.info("Setting zZenossGateway value to {}".format(val))
                     dmd.Devices.setZenProperty('zZenossGateway', val)
+                else:
+                    log.info(
+                        "zZenossGateway already has value %s",
+                        dmd.Devices.zZenossGateway
+                    )
 
     def remove(self, app, leaveObjects=False):
         super(ZenPack, self).remove(app, leaveObjects)
