@@ -103,23 +103,30 @@
         return res;
     }
 
+    var navigate_node = function(data, blank) {
+        if(
+            (data.path.indexOf('/zport/dmd/Devices/') == 0) ||
+            (data.path.indexOf('/zport/dmd/Networks/') == 0)
+        ) {
+            window.open(data.path, blank);
+        } else {
+            if(data.path.indexOf('/zport/dmd/IPv6Networks/') == 0) {
+                window.open(
+                    '/zport/dmd/networks#ipv6networks:' +
+                    data.path.replace(/\//g, '.'),
+                    blank
+                );
+            } else {
+                show_error(data.path + ' has no additional info attached.');
+            };
+        };
+    };
+
     var click_node = function(data, right, x, y) {
         if(right) {
             show_context_menu(data, x, y, refresh_map);
         } else {
-            if(
-                (data.path.indexOf('/zport/dmd/Devices/') == 0) ||
-                (data.path.indexOf('/zport/dmd/Networks/') == 0)
-            ) {
-                window.location.href = data.path;
-            } else {
-                if(data.path.indexOf('/zport/dmd/IPv6Networks/') == 0) {
-                    window.location.href = '/zport/dmd/networks#ipv6networks:' +
-                        data.path.replace(/\//g, '.');
-                } else {
-                    show_error(data.path + ' has no additional info attached.');
-                };
-            };
+            navigate_node(data);
         };
     };
 
@@ -346,13 +353,20 @@
                     'Currently it is impossible to navigate to this node'
                 )
             });
+            var open_in_new_tab = Ext.create('Ext.menu.Item', {
+                text: 'Open node in new tab',
+                handler: function () {
+                    navigate_node(obj.data, '_blank');
+                },
+            });
 
             var menu = Ext.create('Ext.menu.Menu', {
                 width: 140,
                 items: [
                     pin_down,
                     change_root_menu,
-                    device_info
+                    device_info,
+                    open_in_new_tab,
                 ]
             });
 
