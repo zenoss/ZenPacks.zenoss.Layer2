@@ -161,11 +161,6 @@ services that contain one or more of the explicitly mentioned entities.
 ;Service Impact Relationships
 * Device impacted by upstream switch device.
 
-Note: when you have up-to-date (higher than 1.2.1.2) DynamicView ZenPack installed,
-it will add impact relationships from device to interfaces of that device.
-As impact only shows nodes directly added to dynamic service, or nodes that
-impact nodes already shown, they will not be shown on impact diagram unless
-added directly.
 
 == Troubleshooting ==
 
