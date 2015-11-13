@@ -10,6 +10,7 @@
 import json
 from functools import partial
 from itertools import chain
+import re
 
 import logging
 
@@ -220,7 +221,14 @@ class NodeAdapter(object):
         if hasattr(self.node, 'macaddress'):
             return self.node.macaddress
         elif hasattr(self.node, 'getNetworkName'):
-            return self.node.getNetworkName()
+            network_name = self.node.getNetworkName()
+            if '...' in network_name:
+                return re.sub(
+                    '::+', '::',
+                    network_name.replace('.', ':')
+                )
+            return network_name
+
         elif hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
         else:
