@@ -82,12 +82,14 @@ def parse_topology(text):
     return (x.strip().split() for x in text.splitlines() if x.strip())
 
 
-def get_device(id, dmd):
+def get_device(id, dmd, organizer='/Network/Router/Cisco'):
     ''' Find device if exists, or return new '''
     d = dmd.Devices.findDevice(id)
     if d:
         return d
-    return dmd.Devices.Network.Router.Cisco.createInstance(id)
+
+    dc = dmd.Devices.createOrganizer(organizer)
+    return dc.createInstance(id)
 
 
 def connect(d1, d2, dmd, layers=None, update_catalog=True):

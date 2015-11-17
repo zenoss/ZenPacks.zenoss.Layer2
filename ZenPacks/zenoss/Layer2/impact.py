@@ -91,7 +91,6 @@ class ImpactCatalogAPI(CatalogAPI):
 def is_switch(obj):
     return obj.getPrimaryUrlPath().startswith('/zport/dmd/Devices/Network/')
 
-
 class DeviceRelationsProvider(BaseRelationsProvider):
     ''' Adds upstream router(s) as dependency to device on impact graph '''
     def getEdges(self):
@@ -101,10 +100,12 @@ class DeviceRelationsProvider(BaseRelationsProvider):
 
             if is_switch(self._object):
                 for obj in cat.impacts(this_id, 3):
+                    if is_switch(obj):
+                        continue
                     yield edge(self.guid(), guid(obj))
             else:
                 for obj in cat.impacted_by(this_id, 3):
-                    if is_switch(obj):
+                    if is_switch(obj) and isinstance(obj, Device):
                         yield edge(guid(obj), self.guid())
 
         except Exception as e:
