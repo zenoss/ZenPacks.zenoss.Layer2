@@ -91,6 +91,7 @@ class ImpactCatalogAPI(CatalogAPI):
 def is_switch(obj):
     return obj.getPrimaryUrlPath().startswith('/zport/dmd/Devices/Network/')
 
+
 class DeviceRelationsProvider(BaseRelationsProvider):
     ''' Adds upstream router(s) as dependency to device on impact graph '''
     def getEdges(self):
