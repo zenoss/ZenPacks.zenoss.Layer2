@@ -129,7 +129,12 @@ def unindex_object(self):
     original(self)
 
     cat = CatalogAPI(self.zport)
-    cat.remove_node(self)
+    try:
+        cat.remove_node(self)
+    except TypeError:
+        pass  # if we are not able to adapt node,
+        # we most probably were not able to adapt it
+        # when adding it to catalog, so no need to remove
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
