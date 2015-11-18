@@ -74,6 +74,18 @@ def get_connections(rootnode, depth=1, layers=None):
     links = {}
     nodenums = {}
 
+    # VLAN -> VLAN, Layer2 (search by vlan,
+    # but include also vlan unaware sections of network)
+    # Layer2 -> Layer2      (no search by vlans)
+    # VLAN, Layer2 -> Layer2 (no search by vlans)
+    if layers:
+        layers = layers[:] # copy so we not mutate function argument
+        if 'layer2' in layers:
+            layers = [l for l in layers if not l.startswith('vlan')]
+        else:
+            if any((l.startswith('vlan') for l in layers)):
+                layers.append('layer2')
+
     def add_node(n):
         if n.id in nodenums:
             return
@@ -162,7 +174,15 @@ def get_connections(rootnode, depth=1, layers=None):
         return cat.get_two_way_connected(node.get_path(), layers)
 
     def get_impacted(node):
-        return cat.get_directly_connected(node.get_path(), layers)
+        q = dict(entity_id=node.get_path())
+        if layers:
+            q['layers'] = layers
+        for b in cat.search(**q):
+            if any((l.startswith('vlan') for l in b.layers)): # has vlans 
+                if all((l not in layers for l in b.layers if l.startswith('vlan'))):
+                    continue # we need at least one vlan to be in query to use that connection
+            for c in b.connected_to:
+                yield c
 
     def get_impactors(node):
         return cat.get_reverse_connected(node.get_path(), layers)
