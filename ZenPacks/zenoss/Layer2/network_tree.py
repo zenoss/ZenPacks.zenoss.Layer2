@@ -74,6 +74,18 @@ def get_connections(rootnode, depth=1, layers=None):
     links = {}
     nodenums = {}
 
+    # VLAN -> VLAN, Layer2 (search by vlan,
+    # but include also vlan unaware sections of network)
+    # Layer2 -> Layer2      (no search by vlans)
+    # VLAN, Layer2 -> Layer2 (no search by vlans)
+    if layers:
+        layers = layers[:]  # copy so we not mutate function argument
+        if 'layer2' in layers:
+            layers = [l for l in layers if not l.startswith('vlan')]
+        else:
+            if any((l.startswith('vlan') for l in layers)):
+                layers.append('layer2')
+
     def add_node(n):
         if n.id in nodenums:
             return
@@ -161,11 +173,38 @@ def get_connections(rootnode, depth=1, layers=None):
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
 
+    def connection_not_in_this_vlans(edge, filter_layers):
+        return (
+            # check that we filter by vlans at all
+            any((l.startswith('vlan') for l in filter_layers))
+            # and check that this edge is vlan-aware (has some vlans)
+            and any((l.startswith('vlan') for l in edge.layers))
+            # all of the vlans of edge are not vlans we are interested in
+            and all((
+                l not in filter_layers
+                for l in edge.layers
+                if l.startswith('vlan')
+            ))
+        )
+
     def get_impacted(node):
-        return cat.get_directly_connected(node.get_path(), layers)
+        q = dict(entity_id=node.get_path())
+        if layers:
+            q['layers'] = layers
+        for b in cat.search(**q):
+            if connection_not_in_this_vlans(b, layers):
+                continue
+            for c in b.connected_to:
+                yield c
 
     def get_impactors(node):
-        return cat.get_reverse_connected(node.get_path(), layers)
+        q = dict(connected_to=node.get_path())
+        if layers:
+            q['layers'] = layers
+        for b in cat.search(**q):
+            if connection_not_in_this_vlans(b, layers):
+                continue
+            yield b.entity_id
 
     def this_is_link(node):
         if isinstance(node, str) and node[0] == "!":
