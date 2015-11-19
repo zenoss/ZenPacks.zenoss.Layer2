@@ -14,8 +14,8 @@ from mock import Mock, sentinel, MagicMock
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.network_tree import get_connections_json, serialize
-
+from .create_fake_devices import get_device, add_interface, random_mac
+from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize
 
 class TestSerialize(BaseTestCase):
 
@@ -29,9 +29,27 @@ class TestSerialize(BaseTestCase):
             error='test'
         ))
 
+class TestGetConnections(BaseTestCase):
+    def test_get_vlan_connections_with_unaware_node(self):
+        a = get_device('a', self.dmd)
+        mac_a = random_mac()
+        mac_b = random_mac()
+        b = get_device('b', self.dmd)
+
+        # make a look like a switch
+        add_interface(a, macaddress=mac_a, clientmacs=[mac_b], layers=['layer2', 'vlan1'])
+
+        # make b look like a server
+        add_interface(b, macaddress=mac_b, clientmacs=[], layers=['layer2'])
+
+        res = get_connections(a, depth=3, layers=['vlan1'])
+        print res
+
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
     suite.addTest(makeSuite(TestSerialize))
+    suite.addTest(makeSuite(TestGetConnections))
     return suite
