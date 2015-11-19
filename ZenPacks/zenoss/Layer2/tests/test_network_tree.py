@@ -17,9 +17,10 @@ from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
 from .create_fake_devices import get_device, add_interface, random_mac
 
-import ZenPacks.zenoss.Layer2 
+import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+
 
 class TestSerialize(BaseTestCase):
 
@@ -33,6 +34,7 @@ class TestSerialize(BaseTestCase):
             error='test'
         ))
 
+
 class TestGetConnections(BaseTestCase):
     def afterSetUp(self):
         super(TestGetConnections, self).afterSetUp()
@@ -45,7 +47,10 @@ class TestGetConnections(BaseTestCase):
         b = get_device('b', self.dmd)
 
         # make a look like a switch
-        add_interface(a, macaddress=mac_a, clientmacs=[mac_b], layers=['layer2', 'vlan1'])
+        add_interface(
+            a, macaddress=mac_a, clientmacs=[mac_b],
+            layers=['layer2', 'vlan1']
+        )
 
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], layers=['layer2'])
@@ -56,10 +61,12 @@ class TestGetConnections(BaseTestCase):
 
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
 
-        # import pudb; pudb.set_trace()
         res = get_connections(a, depth=3, layers=['vlan1'])
-        print res
-
+        self.assertItemsEqual(res['links'], [
+            {'color': 'gray', 'directed': False, 'source': 0, 'target': 1},
+            {'color': 'gray', 'directed': True, 'source': 1, 'target': 2},
+            {'color': 'gray', 'directed': False, 'source': 2, 'target': 3}
+        ])
 
 
 def test_suite():

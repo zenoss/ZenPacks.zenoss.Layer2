@@ -79,7 +79,7 @@ def get_connections(rootnode, depth=1, layers=None):
     # Layer2 -> Layer2      (no search by vlans)
     # VLAN, Layer2 -> Layer2 (no search by vlans)
     if layers:
-        layers = layers[:] # copy so we not mutate function argument
+        layers = layers[:]  # copy so we not mutate function argument
         if 'layer2' in layers:
             layers = [l for l in layers if not l.startswith('vlan')]
         else:
@@ -175,10 +175,16 @@ def get_connections(rootnode, depth=1, layers=None):
 
     def connection_not_in_this_vlans(edge, filter_layers):
         return (
-            any((l.startswith('vlan') for l in filter_layers)) # we filter by vlans
-            and any((l.startswith('vlan') for l in edge.layers)) # edge has vlans at all
-            and all((l not in filter_layers for l in edge.layers if l.startswith('vlan')))
+            # check that we filter by vlans at all
+            any((l.startswith('vlan') for l in filter_layers))
+            # and check that this edge is vlan-aware (has some vlans)
+            and any((l.startswith('vlan') for l in edge.layers))
             # all of the vlans of edge are not vlans we are interested in
+            and all((
+                l not in filter_layers
+                for l in edge.layers
+                if l.startswith('vlan')
+            ))
         )
 
     def get_impacted(node):
