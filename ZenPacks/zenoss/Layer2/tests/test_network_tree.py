@@ -12,10 +12,14 @@ from __future__ import unicode_literals
 import json
 from mock import Mock, sentinel, MagicMock
 
+from Products.Five import zcml
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
 from .create_fake_devices import get_device, add_interface, random_mac
+
+import ZenPacks.zenoss.Layer2 
 from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize
+from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 
 class TestSerialize(BaseTestCase):
 
@@ -30,6 +34,10 @@ class TestSerialize(BaseTestCase):
         ))
 
 class TestGetConnections(BaseTestCase):
+    def afterSetUp(self):
+        super(TestGetConnections, self).afterSetUp()
+        zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+
     def test_get_vlan_connections_with_unaware_node(self):
         a = get_device('a', self.dmd)
         mac_a = random_mac()
@@ -42,6 +50,13 @@ class TestGetConnections(BaseTestCase):
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], layers=['layer2'])
 
+        catapi = CatalogAPI(self.dmd.zport)
+        catapi.add_node(a)
+        catapi.add_node(b)
+
+        zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+
+        # import pudb; pudb.set_trace()
         res = get_connections(a, depth=3, layers=['vlan1'])
         print res
 

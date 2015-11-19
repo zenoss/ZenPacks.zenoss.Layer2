@@ -186,7 +186,7 @@ def get_connections(rootnode, depth=1, layers=None):
         if layers:
             q['layers'] = layers
         for b in cat.search(**q):
-            if connection_not_in_this_vlans(b):
+            if connection_not_in_this_vlans(b, layers):
                 continue
             for c in b.connected_to:
                 yield c
@@ -196,7 +196,7 @@ def get_connections(rootnode, depth=1, layers=None):
         if layers:
             q['layers'] = layers
         for b in cat.search(**q):
-            if connection_not_in_this_vlans(b):
+            if connection_not_in_this_vlans(b, layers):
                 continue
             yield b.entity_id
 
