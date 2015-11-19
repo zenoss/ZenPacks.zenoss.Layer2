@@ -173,19 +173,32 @@ def get_connections(rootnode, depth=1, layers=None):
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
 
+    def connection_not_in_this_vlans(edge, filter_layers):
+        return (
+            any((l.startswith('vlan') for l in filter_layers)) # we filter by vlans
+            and any((l.startswith('vlan') for l in edge.layers)) # edge has vlans at all
+            and all((l not in filter_layers for l in edge.layers if l.startswith('vlan')))
+            # all of the vlans of edge are not vlans we are interested in
+        )
+
     def get_impacted(node):
         q = dict(entity_id=node.get_path())
         if layers:
             q['layers'] = layers
         for b in cat.search(**q):
-            if any((l.startswith('vlan') for l in b.layers)): # has vlans 
-                if all((l not in layers for l in b.layers if l.startswith('vlan'))):
-                    continue # we need at least one vlan to be in query to use that connection
+            if connection_not_in_this_vlans(b):
+                continue
             for c in b.connected_to:
                 yield c
 
     def get_impactors(node):
-        return cat.get_reverse_connected(node.get_path(), layers)
+        q = dict(connected_to=node.get_path())
+        if layers:
+            q['layers'] = layers
+        for b in self.search(**q):
+            if connection_not_in_this_vlans(b):
+                continue
+            yield b.entity_id
 
     def this_is_link(node):
         if isinstance(node, str) and node[0] == "!":
