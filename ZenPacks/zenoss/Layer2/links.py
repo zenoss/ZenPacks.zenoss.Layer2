@@ -10,15 +10,15 @@
 from itertools import chain
 
 import logging
-log = logging.getLogger('zen.Layer2')
 
 import Globals
-
 from Products.ZenUtils.Utils import unused
 
-from .macs_catalog import CatalogAPI
+from .connections_catalog import CatalogAPI
 
 unused(Globals)
+
+log = logging.getLogger('zen.Layer2')
 
 
 class DeviceLinkProvider(object):
@@ -32,19 +32,15 @@ class DeviceLinkProvider(object):
         links = set()
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
-        try:
-            upstream = cat.get_upstream_devices(self.device.id)
-        except IndexError: # device id was not found
-            upstream = []
-        try:
-            client = cat.get_client_devices(self.device.id)
-        except IndexError: # device id was not found
-            client = []
-
-        for brain in chain(upstream, client):
-            obj = brain.getObject()
-            if obj.getDeviceClassName().startswith('/Network'):
+        this_id = self.device.getPrimaryUrlPath()
+        for id in cat.get_connected(
+            entity_id=this_id,
+            layers=['layer2'],
+            method=cat.get_two_way_connected,
+            depth=3,
+        ):
+            if id.startswith('/zport/dmd/Devices/Network/') and id != this_id:
                 links.add('Switch: <a href="{}">{}</a>'.format(
-                    obj.getPrimaryUrlPath(), obj.titleOrId()
+                    id, id.split('/')[-1]
                 ))
-        return list(links)
+        return ['<br />'] + list(links)

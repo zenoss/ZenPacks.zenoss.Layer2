@@ -15,6 +15,7 @@ from Products.ZenEvents import ZenEventClasses
 
 from zenoss.protocols.protobufs.zep_pb2 import STATUS_SUPPRESSED
 
+
 class TestSuppressEventsPlugin(BaseTestCase):
     def setUp(self):
         import ZenPacks.zenoss.Layer2.zeplugins as zeplugins
@@ -32,25 +33,21 @@ class TestSuppressEventsPlugin(BaseTestCase):
     def apply(self):
         self.apply_plugin(self.evtproxy, self.dmd)
 
-    def mock_catalog(self, *objects):
-        brains = [
-            Mock(getObject=Mock(return_value=obj))
-            for obj in objects
-        ]
-        self.CatalogAPI.return_value.get_upstream_devices.return_value = brains
+    def mock_catalog(self, val):
+        self.CatalogAPI.return_value.check_working_path.return_value = val
 
     def is_suppressed(self):
         return self.evtproxy.eventState == STATUS_SUPPRESSED
 
     def test_upstream_up(self):
-        self.mock_catalog(Mock(getStatus=Mock(return_value=0)))
+        self.mock_catalog(True)
 
         self.apply()
 
         self.assertFalse(self.is_suppressed())
 
     def test_suppresses(self):
-        self.mock_catalog(Mock(getStatus=Mock(return_value=1)))
+        self.mock_catalog(False)
 
         self.apply()
 

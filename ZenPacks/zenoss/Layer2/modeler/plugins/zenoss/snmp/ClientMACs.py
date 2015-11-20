@@ -113,13 +113,13 @@ class ClientMACs(PythonPlugin):
         'get_ifinfo_for_layer2',
         'getHWManufacturerName',
         'macs_indexed',
-        )
+    )
 
     deviceProperties = (
         PythonPlugin.deviceProperties +
         SnmpPlugin.deviceProperties +
         localDeviceProperties
-        )
+    )
 
     @inlineCallbacks
     def collect(self, device, log):
@@ -137,7 +137,6 @@ class ClientMACs(PythonPlugin):
 
         for community in state.snmp_communities():
             snmp_client = state.snmp_client(community=community)
-
             try:
                 yield drive(snmp_client.doRun)
             except Exception:
@@ -150,7 +149,6 @@ class ClientMACs(PythonPlugin):
                         {x.name: x.mapdata(y) for x, y in tabledata.items()})
             finally:
                 snmp_client.stop()
-
         returnValue((state, results))
 
     def process(self, device, results, log):
@@ -172,7 +170,7 @@ class ClientMACs(PythonPlugin):
                     'id': iface_id,
                     'clientmacs': list(set(data['clientmacs'])),
                     'baseport': data['baseport'],
-                    }))
+                }))
 
         if not state.macs_indexed and state.iftable:
             reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
@@ -214,10 +212,13 @@ class ClientMACsState(object):
         if self.is_cisco:
             # TODO: find a better way to get a list of vlans
             # not parsing from interface ids
-            for ifid in self.iftable:
-                if 'vlan' in ifid.lower():
+            for ifid, info in self.iftable.iteritems():
+                vlan_id = info.get('vlan_id')
+
+                if not vlan_id and 'vlan' in ifid.lower():
                     vlan_id = ifid.lower().replace('vlan', '')
 
+                if vlan_id:
                     # https://jira.zenoss.com/browse/ZEN-16951
                     # vlan_id should be integer, not any string
                     try:
@@ -228,10 +229,11 @@ class ClientMACsState(object):
     def snmp_communities(self):
         """Generate SNMP community strings."""
         for vlan in self.vlans():
+            community = self.device.zSnmpCommunity.split('@')[0]
             if vlan:
-                yield '{}@{}'.format(self.device.zSnmpCommunity, vlan)
+                yield '{}@{}'.format(community, vlan)
             else:
-                yield self.device.zSnmpCommunity
+                yield community
 
     def snmp_client(self, community='public'):
         """Return an SnmpClient instance."""
@@ -263,8 +265,10 @@ class ClientMACsState(object):
 
                     for item in dot1dTpFdbTable.values():
                         mac = item.get('dot1dTpFdbAddress')
-                        learned = item.get('dot1dTpFdbStatus') == ForwardingEntryStatus.learned
-                        matched_baseport = iface['baseport'] == item.get('dot1dTpFdbPort')
+                        learned = item.get('dot1dTpFdbStatus') \
+                            == ForwardingEntryStatus.learned
+                        matched_baseport = iface['baseport'] \
+                            == item.get('dot1dTpFdbPort')
 
                         if mac and learned and matched_baseport:
                             iface['clientmacs'].append(asmac(mac))
@@ -290,12 +294,12 @@ class ClientMACsSnmpPlugin(SnmpPlugin):
                 '.1': 'dot1dTpFdbAddress',
                 '.2': 'dot1dTpFdbPort',
                 '.3': 'dot1dTpFdbStatus',
-                }),
+            }),
 
         # Ports to Interfaces
         GetTableMap(
             'dot1dBasePortEntry', dot1dBasePortEntry, {
                 '.1': 'dot1dBasePort',
                 '.2': 'dot1dBasePortIfIndex',
-                }),
-        )
+            }),
+    )

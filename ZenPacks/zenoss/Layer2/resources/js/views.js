@@ -110,6 +110,12 @@ Zenoss.nav.appendTo('Component', [{
     filterNav: function(navpanel) {
          switch (navpanel.refOwner.componentType) {
             case 'IpInterface': return true;
+
+            case 'CiscoEthernetInterface': return true;
+            case 'CiscoInterface': return true;
+            case 'CiscoPortChannel': return true;
+            case 'CiscoVLAN': return true;
+
             default: return false;
          }
     },
@@ -118,20 +124,98 @@ Zenoss.nav.appendTo('Component', [{
             cardid = 'macs_panel',
             macs = {
                 id: cardid,
-                xtype: 'panel',
+                xtype: 'treepanel',
                 viewName: 'macs',
                 showToolbar: false,
-                bodyStyle: 'margin: 10px;'
+                autoScroll: true,
+                rootVisible: false,
+                useArrows: true,
+                bodyStyle: 'padding: 10px;',
+                root: {
+                    text: "Root node",
+                    expanded: true,
+                    children: []
+                },
+                viewConfig: {
+                    enableTextSelection: true,
+                },
+                tbar: [{
+                    text: 'Expand All',
+                    scope: 'treepanel',
+                    handler: function(){
+                        var me = Ext.getCmp('macs_panel'),
+                            toolbar = me.down('toolbar');
+
+                        me.getEl().mask('Expanding tree...');
+                        toolbar.disable();
+
+                        me.expandAll(function() {
+                            me.getEl().unmask();
+                            toolbar.enable();
+                        });
+                    }
+                },{
+                    text: 'Collapse All',
+                    scope: this,
+                    handler: function() {
+                        var me = Ext.getCmp('macs_panel');
+                        var toolbar = me.down('toolbar');
+
+                        toolbar.disable();
+                        me.collapseAll(function() {
+                            toolbar.enable();
+                        });
+                    }
+                }]
             };
+
         if (!Ext.get('macs_panel')) {
             target.add(macs);
         }
-
+        Ext.getCmp('macs_panel').getDockedItems()[0].hide();
         get_clientmacs(uid, function(config){
             target.layout.setActiveItem(cardid);
-            target.layout.activeItem.body.update(config);
+            data = target.layout.activeItem.getRootNode();
+
+            if (data.childNodes){
+                data.removeAll();
+            }
+            if (config){
+                target.layout.activeItem.getDockedItems()[0].show();
+                for (i in config){
+                    data.insertChild(i, config[i]);
+                }
+            }
+            else {
+                Ext.getCmp('macs_panel').getEl().mask(_t('No Client MACs') , 'x-mask-msg-noicon');
+            }
         });
     }
 }]);
+
+/* Panel Override */
+Ext.onReady(function(){
+    /* Hide Software component for all /Network devices, ZEN-17697 */
+    DEVICE_ELEMENTS = "subselecttreepaneldeviceDetailNav"
+     Ext.ComponentMgr.onAvailable(DEVICE_ELEMENTS, function(){
+        var DEVICE_PANEL = Ext.getCmp(DEVICE_ELEMENTS);
+        DEVICE_PANEL.on('afterrender', function() {
+            var device_class = Zenoss.env.PARENT_CONTEXT;
+            var tree = Ext.getCmp(DEVICE_PANEL.items.items[0].id);
+            var items = tree.store.data.items;
+
+            if (device_class.indexOf('/zport/dmd/Devices/Network/') == 0) {
+                for (i in items){
+                    if (items[i].data.id.match(/software*/)){
+                        try {
+                            tree.store.remove(items[i]);
+                            tree.store.sync();
+                        } catch(err){}
+                    }
+                }
+            }
+        });
+    });
+});
 
 })();

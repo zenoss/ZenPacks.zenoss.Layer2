@@ -32,59 +32,276 @@ The forwarding table information gathered by the ''zenoss.snmp.ClientMACs'' mode
 
 If Zenoss has modeled the forwarding tables of a server's upstream switches, and those switches fail resulting in the server becoming unreachable, the server failure events will be suppressed while the root cause failures of the switches will be shown.
 
+To determine connectivity of device to zenoss instance, this ZenPack needs to know where on the network map zenoss instance is located. It is described on Configuration properties of devices class in <code>zZenossGateway</code> zproperty. At ZenPack installation it populated with value
+found in ''/proc/net/route''. If required, you may manually put there id of the zenoss device, or device to which it is connected.
+
+
+== Network map ==
+[[File:Network map.png|thumb|320px|Network map]]
+
+To inspect interconnections between devices it is possible to use a network map page which is accessed by "Infrastructure" -> "Network Map" tab or "Network Map" menu item of the opened device. It shows connections between devices, interfaces, networks and other entities. In addition, it shows device status (Color of the event with the highest severity for that device).
+
+To display a network map the form on the left side of network map should be filled. "Device ID" field with name or ID of the device starting from which the map will be explored. The depth of the map means how many hops to do when exploring the map. Also, it is possible to select network layers which should be visible on the map. By default all of them will be displayed. To apply changes or create new network map, press "Apply" button at the bottom of the form.
+
+Right mouse click above node opens context menu with options available. 'Pin down' option allows to unpin chosen node.
+Detailed information about device is available by clicking on 'Device Info' option from context menu. To draw network map in scope of another node please choose 'Put map root here' option from context menu. It is possible to open device or device component by clicking on corresponding target of network map.
+
+Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be brought back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
+
+=== VLANs ===
+Network map could have edges that belong not only to Layer2 in general, but to some VLAN. This is links from VLAN-aware switch to its interfaces, and to it's client MAC addresses. This edges could be filtered by their VLAN.
+
+When you select some VLANs on Layers panel, edges that belong to VLANs not included in selection will be removed from map. Layer2 edges without VLAN or edges that have VLAN that is selected will be shown.
+
+== zenmapper daemon ==
+To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
+
+zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.
+
+== Writing your own connection provider ==
+Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.
+
+We need to create new class, called for example NSXConnectionsProvider, which inherit from BaseConnectionsProvider, like this:
+
+<syntaxhighlight lang=python>
+# our provider will inherit from this:
+from ZenPacks.zenoss.Layer2.connections_provider import BaseConnectionsProvider
+
+# and will yield this:
+from ZenPacks.zenoss.Layer2.connections_provider import Connection
+
+class NSXConnectionsProvider(BaseConnectionsProvider):
+    def get_connections(self):
+        # self.context is a entity for which we will provide connections
+        for switch in self.context.nsxvirtualSwitchs():
+            # so, our device is called NSXManager, and it has switches
+            # yield connections to the switches
+            yield Connection(self.context, (switch, ), ('layer3', 'nsx'))
+
+            # each switch has interfaces:
+            for i in switch.nsxinterfaces():
+                # yield connection to the interfaces
+                yield Connection(switch, (i, ), ['layer3', 'nsx'])
+
+                # and each interface has many to one connection to edges:
+                yield Connection(i, (i.nsxedge(), ), ['layer3', 'nsx'])
+</syntaxhighlight>
+
+So, we described how to get connections, now we need to tell zenoss, that this will be connections provider for any NSXManager devices. We do it by registering adapter in our ZenPack's <code>configure.zcml</code>:
+
+
+<syntaxhighlight lang=xml>
+<configure zcml:condition="installed ZenPacks.zenoss.Layer2.connections_provider">
+    <!-- Add this adapters only when module connections_provider is possible to import
+         (Which means that there is installed recent version of Layer2). -->
+    <adapter
+        factory=".connections_provider.NSXConnectionsProvider"
+        for="ZenPacks.zenoss.NSX.NSXManager.NSXManager"
+        provides="ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider"
+    />
+</configure>
+</syntaxhighlight>
+
+Another way to include adapters, is to put them in separate file, called for example <code>layer2.zcml</code>:
+
+<syntaxhighlight lang=xml>
+<?xml version = "1.0" encoding = "utf-8"?>
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    >
+
+	<adapter
+        factory=".connections_provider.DeviceConnectionsProvider"
+        for=".HyperVVSMS.HyperVVSMS"
+        provides="ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider"
+	    />
+
+</configure>
+</syntaxhighlight>
+
+and than include that file conditionally:
+
+<syntaxhighlight lang=xml>
+    <include file="layer2.zcml"
+             xmlns:zcml="http://namespaces.zope.org/zcml"
+             zcml:condition="installed ZenPacks.zenoss.Layer2.connections_provider" />
+</syntaxhighlight>
+
+To test connections that your provider yields, you could run
+
+zenmapper run -v10 -d <name or id of your modeled device>
+
+And then look it up on the network map.
+
 == Usage ==
 
 This ZenPack has two separate capabilities. The first is to collect clients connected to switch ports so that event suppression can be done when the switch fails, and the second is to discover neighbor relationships between network devices using the CDP (Cisco Discovery Protocol) and LLDP (Link Layer Discover Protocol).
 
 === Collecting Switch Port Clients ===
 
-To enable discovery of clients connected to switch ports you must enable the ''zenoss.snmp.ClientMACs'' modeler plugin for the switch devices. There is no
+To enable discovery of clients connected to switch ports you must enable the <code>zenoss.snmp.ClientMACs</code> modeler plugin for the switch devices. There is no
 need to enable this plugin for hosts, servers, or other endpoint devices. It is recommended to only assign the modeler plugin to access switch to which monitored servers are connected.
 
 The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB. 
 
 === Collecting Network Device Neighbors ===
 
-To collect neighbor information from network devices that support CDP or LLDP, you must enable the ``zenoss.snmp.CDPLLDPDiscover`` modeler plugin for the devices.
+To collect neighbor information from network devices that support CDP or LLDP, you must enable the <code>zenoss.snmp.CDPLLDPDiscover</code> modeler plugin for the devices.
 
-== Requirements ==
+
 
 This ZenPack has the following requirements.
 
 ;[[ZenPack:PythonCollector|PythonCollector ZenPack]]
-: This ZenPack depends on [[ZenPack:PythonCollector|PythonCollector]] being installed, and having the associated ''zenpython'' collector process running.
+: This ZenPack depends on [[ZenPack:PythonCollector|PythonCollector]] being installed, and having the associated <code>zenpython</code> collector process running.
 
 == Service Impact ==
 
-When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.
+When combined with the Zenoss Service Dynamics product, this ZenPack adds
+built-in service impact capability based on Layer 2 data. The following service
+impact relationships are automatically added. These will be included in any
+services that contain one or more of the explicitly mentioned entities.
 
 ;Service Impact Relationships
 * Device impacted by upstream switch device.
 
+
 == Troubleshooting ==
 
-Please refer the the Zenoss Service Dynamics documentation if you run into any of the following problems:
+=== Europa ===
+If you are re-installing or updating this ZenPack on Europa, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.
 
-* ZenPack will not install
-* Adding a device fails
-* Don't understand how to add a device
-* Don't understand how to model a device
+=== Debugging network map ===
+This ZenPack gathers information about connections on different layers
+of network, and displays it on network map.  If you see some connections
+that should not be there, or are missing, first you could check if network
+map is rendered from proper model - connections catalog.
 
-If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics) users should contact [https://support.zenoss.com Zenoss Customer Support]. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
+To do that, install <code>tabulate</code> python package
+(<code>pip install tabulate</code>), start <code>zendmd</code> shell and run:
 
-== Layer2 Terminology ==
+<syntaxhighlight lang=bash>
+    from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+    cat = CatalogAPI(zport)
 
-The essential mechanism that separates network switches from network hubs is the MAC forwarding table. Instead of broadcasting incoming frames of link layer to all it's interfaces, as hub do, switch looks into forwarding table to find out to which particular interface is connected destination device. Switch learns which devices are connected to which interfaces by looking at the source MAC address of incoming frames. Those MAC addresses are called "client MAC addresses".
+    # example queries
+    cat.show_content() # show all catalog
+    cat.show_content(entity_id='/zport/dmd/Devices/Network/Switch/devices/192.168.1.1') # show only connections for given entity
+    cat.show_content(connected_to='/zport/dmd/Devices/Network/Switch/devices/192.168.1.1') # show what is connected to this entity
+    cat.show_content(layers=['layer2']) # show only connections on some layer
+</syntaxhighlight>
+
+If you don't see connections you expecting to see, you could check
+if <code>zenmapper</code> builds network map properly by running it with
+high verbosity:
+
+<syntaxhighlight lang=bash>
+zenmapper run -v10
+zenmapper run -v10 2> zenmapper.log # to redirect it to file
+</syntaxhighlight>
+
+Then you will see following log entries:
+
+<pre>
+2015-09-14 13:14:58,521 DEBUG zen.Layer2: Connection from ... to ... on layers ... added to connections_catalog
+</pre>
+
+When connections that reported by that log are erroneous, then probably there
+are errors in connections providers for your device, or in device model
+itself.
+
+=== Layer2 forwarding table ===
+Let's discuss Layer2 connections in particular.
+
+The essential mechanism that distinguishes network switches from network
+hubs is the MAC forwarding table. Instead of broadcasting incoming link
+layer frames to all it's interfaces, as hubs do, switches look into the
+forwarding table to find out which particular interface is connected to the
+destination device. The switch learns which devices are connected to which
+interface by looking at the source MAC address of incoming frames. Those
+MAC addresses are called "client MAC addresses".
+
+For zenoss to discover Layer 2 connection between some devices, MAC address of
+some interface of one device should be equal to client MAC address of some
+interface of other device. You could check if client MAC addresses for
+interface are modeled by looking at it's "Clients MAC addresses" display.
+It there are none, check that <code>zenoss.snmp.ClientMACs</code> modeler
+plugin is bound to device, and remodel device.
+
+It is also possible that there are no MAC address required to discover
+connection in forwarding table. To check that, you could run debug utility
+[https://github.com/zenoss/ZenPacks.zenoss.Layer2/blob/develop/bridge_snmp.py bridge_snmp.py]:
+
+<syntaxhighlight lang=bash>
+    python bridge_snmp.py clientmacs -c <community_string> <host>
+</syntaxhighlight>
+
+and see if your client mac address is visible at switch at all.
+
+Records in forwarding table are aged pretty fast, by default in 5 minutes. So,
+when there were no network activity on connection for more than 5 minutes,
+entry will be removed from switch forwarding table. You could check
+<code>dot1dTpAgingTime</code> object to know exact timeout period in seconds:
+
+<syntaxhighlight lang=bash>
+$ snmpget -v2c -c <community_string> <host> 1.3.6.1.2.1.17.4.2.0
+SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
+</syntaxhighlight>
+
+
+=== Impact ===
+This ZenPack also adds impact relation for layer2 connections. Switches impact
+devices connected to them. But this will work only when such connection is
+present on network map (see two previous sections for guide on troubleshooting
+that).
+
+If there is connection on network map, but still, no impact relation, than,
+probably impact relations were not rebuilt. You could do that by indexing
+device, for example by changing some field on overview and saving it. Or
+modeling device again.
+
+
+=== Limitations ===
+There are no client MACs data on interfaces modeled for the first time.
+This happens because <code>zenoss.snmp.ClientMACs</code> plugin runs before
+interfaces are modeled by another network modeler plugin (for example
+<code>cisco.snmp.Interfaces</code> or <code>zenoss.snmp.InterfaceMap</code>),
+so there is no entities to save this attribute on. Currently it is not possible
+to define order of modeler execution, so this remains a limitation.
+
+Possible workaround is to wait for next model cycle or just model the device again manually.
+
+=== More information ===
+If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics)
+users should contact [https://support.zenoss.com Zenoss Customer Support].
+Core users can use the #zenoss IRC channel or the community.zenoss.org forums.
+
 
 == Installed Items ==
 
 Installing this ZenPack will add the following items to your Zenoss system.
 
-;Modeler Plugins
+'''Modeler Plugins'''
 * zenoss.snmp.CDPLLDPDiscover
 * zenoss.snmp.ClientMACs
 
+'''zProperties'''
+* zZenossGateway
+
+'''Daemons'''
+* zenmapper
+
 == Changes ==
+
+;1.1.0
+* When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
+* Add checkbox that allows to show full map
+* Fix Cisco community string indexing in ClientMACs modeler plugin.
+* Fix issue getting client MAC address from labeled VLAN interfaces. (ZEN-19874)
+* Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603)
+* Make Impact use new connections catalog instead of macs catalog (ZEN-18636)
+* Fix Broken link for Subnet node in Network map (ZEN-20749)
 
 ;1.0.3
 * Remove macs_catalog when removing the ZenPack. (ZEN-17967)

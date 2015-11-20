@@ -39,16 +39,17 @@
         directory="resources"
         />
 
-    <!-- JavaScript needed for all Zenoss pages. -->
-    <!-- <browser:viewlet
-        name="js-layer2"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/layer2.js"
+    <browser:viewlet
+        name="css-network_map"
+        paths="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css"
         for="*"
         weight="20"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
-        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        class=".viewlet.StyleSrcBundleViewlet"
         permission="zope2.Public"
-        /> -->
+        />
+
+    <!-- JavaScript needed for all Zenoss pages. -->
     <browser:viewlet
         name="js-layer2views"
         paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js"
@@ -59,9 +60,58 @@
         permission="zope2.Public"
         />
 
+    <browser:viewlet
+        name="js-d3"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"
+        weight="9"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+
+    <browser:viewlet
+        name="js-graph_renderer"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"
+        weight="9"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+
+    <browser:viewlet
+        name="js-render_network_map"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"
+        weight="9"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+
+    <browser:viewlet
+        name="js-networkmap"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/componentview.js"
+        weight="9"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+
     <utility
         component=".zeplugins.L2SuppressEventsPlugin"
         provides="Products.ZenEvents.interfaces.IPostEventPlugin"
         name="IL2SuppressEventsPlugin"
         />
+
+    <adapter
+        factory=".connections_provider.DeviceConnectionsProvider"
+        for="Products.ZenModel.Device.Device"
+        provides=".connections_provider.IConnectionsProvider"
+    />
+
+    <adapter
+        factory=".connections_provider.NetworkConnectionsProvider"
+        for="Products.ZenModel.IpNetwork.IpNetwork"
+        provides=".connections_provider.IConnectionsProvider"
+    />
+
 </configure>
