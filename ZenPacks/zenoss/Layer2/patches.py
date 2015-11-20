@@ -167,16 +167,22 @@ Device._relations += (
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth='2', layers=None):
+def getJSONEdges(self, root_id='', depth='2', layers=None, full_map='false'):
     ''' Get JSON representation of network nodes '''
+
     if not root_id:
         return serialize("Set the UID of device or component")
     root_id = urllib.unquote(root_id)
+
+    full_map = (full_map == 'true')  # make it boolean
     try:
         if layers:
             layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-        return get_connections_json(self, root_id, int(depth), layers=layers)
+        return get_connections_json(
+            self, root_id, int(depth),
+            layers=layers, full_map=full_map
+        )
     except Exception as e:
         log.exception(e)
         return serialize(e)
