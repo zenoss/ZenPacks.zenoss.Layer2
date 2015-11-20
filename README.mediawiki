@@ -48,6 +48,11 @@ Detailed information about device is available by clicking on 'Device Info' opti
 
 Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be brought back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
 
+=== VLANs ===
+Network map could have edges that belong not only to Layer2 in general, but to some VLAN. This is links from VLAN-aware switch to its interfaces, and to it's client MAC addresses. This edges could be filtered by their VLAN.
+
+When you select some VLANs on Layers panel, edges that belong to VLANs not included in selection will be removed from map. Layer2 edges without VLAN or edges that have VLAN that is selected will be shown.
+
 == zenmapper daemon ==
 To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
 
@@ -290,6 +295,8 @@ Installing this ZenPack will add the following items to your Zenoss system.
 == Changes ==
 
 ;1.1.0
+* When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
+* Add checkbox that allows to show full map
 * Fix Cisco community string indexing in ClientMACs modeler plugin.
 * Fix issue getting client MAC address from labeled VLAN interfaces. (ZEN-19874)
 * Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603)
