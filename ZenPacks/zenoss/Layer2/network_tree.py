@@ -27,7 +27,9 @@ from .edge_contraction import contract_edges
 log = logging.getLogger('zen.Layer2')
 
 
-def get_connections_json(data_root, root_id, depth=1, layers=None):
+def get_connections_json(
+    data_root, root_id, depth=1, layers=None, full_map=False
+):
     '''
         Main function which is used from device to get responce text with
         connections data for graph.
@@ -40,11 +42,12 @@ def get_connections_json(data_root, root_id, depth=1, layers=None):
         obj = None
     if not obj:
         return serialize('Node %r was not found' % root_id)
-    return serialize(
-        contract_edges(
-            **get_connections(obj, depth, layers)
-        )
-    )
+
+    connections = get_connections(obj, depth, layers)
+    if not full_map:
+        connections = contract_edges(**connections)
+
+    return serialize(connections)
 
 
 def serialize(*args, **kwargs):
