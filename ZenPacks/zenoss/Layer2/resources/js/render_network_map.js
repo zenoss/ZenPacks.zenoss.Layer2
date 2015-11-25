@@ -7,6 +7,12 @@
  *
  ****************************************************************************/
 
+/*
+ * This file contains code to render network map panel and it's controls, and to 
+ * query backend for network map graph. When map graph is received
+ * it uses graph_renderer.js to actually render network map.
+ */
+
 "use strict";
 
 (function(){

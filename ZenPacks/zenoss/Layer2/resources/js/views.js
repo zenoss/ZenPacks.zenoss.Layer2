@@ -7,6 +7,14 @@
  *
  ****************************************************************************/
 
+/*
+ * This module:
+ * - contains neighbor switch panel
+ * - contains client MACs panel for interface component
+ * - Hides link to Software panel
+ * - Adds network map panel to device
+ */
+
 (function(){
 
 var ZC = Ext.ns('Zenoss.component');
@@ -216,6 +224,33 @@ Ext.onReady(function(){
             }
         });
     });
+
+
+    Ext.define('NetworkMapPanel', {
+        extend: 'Ext.panel.Panel',
+        alias: ['widget.network_map'],
+        layout: {
+            type: 'fit',
+        },
+        config: {
+            title: 'Network map',
+            viewName: 'network_map_view',
+        },
+        onRender: function () {
+            this.callParent();
+            window.form_panel.render(this);
+        },
+        setContext: function(uid) {
+            window.form_panel.change_root(uid);
+        },
+    });
+
+    Zenoss.nav.appendTo('Device', [{
+        id: 'network_map',
+        text: _t('Network map'),
+        xtype: 'network_map',
+        viewName: 'network_map_view',
+    }]);
 });
 
 })();

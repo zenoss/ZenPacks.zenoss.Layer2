@@ -40,7 +40,8 @@ log = logging.getLogger('zen.Layer2')
 @monkeypatch('Products.ZenModel.Device.Device')
 def get_ifinfo_for_layer2(self):
     '''
-    Returns list with subset of IpInterface properties
+        Returns list with subset of IpInterface properties.
+        This property of device is then used in modeler.
     '''
     res = {}
     if self.os:
@@ -56,6 +57,9 @@ def get_ifinfo_for_layer2(self):
 
 def format_macs(macs, get_device_by_mac):
     """
+    Gets list of macs in macs argument, and mapping from mac
+    to containing device in function get_device_by_mac.
+
     Renders data to use in UI panel
     """
     if not macs:
@@ -138,13 +142,6 @@ def unindex_object(self):
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
-def set_reindex_maps(self, value):
-    self.index_object()
-    if value == 'reindex please':
-        self.macs_indexed = True
-
-
-@monkeypatch('Products.ZenModel.Device.Device')
 def get_reindex_maps(self):
     ''' Should return something distinct from value passed to
         set_reindex_maps for set_reindex_maps to run
@@ -156,6 +153,14 @@ def get_reindex_maps(self):
         for x in i.clientmacs
         if x
     )
+
+
+@monkeypatch('Products.ZenModel.Device.Device')
+def set_reindex_maps(self, value):
+    self.index_object()
+    if value == 'reindex please':
+        self.macs_indexed = True
+
 
 Device._relations += (
     ('neighbor_switches', ToManyCont(

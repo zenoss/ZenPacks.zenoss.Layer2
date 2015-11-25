@@ -7,6 +7,30 @@
 #
 ##############################################################################
 
+''' This module defines interface for connections providers.
+
+Connections providers must define two methods:
+    get_status - returns True if adapted device (self.context) is up
+    get_connections - should yield Connection instances
+
+Connection (also defined below) instances are created like this:
+    Connection(
+        entity_id: string,
+        connected_to: tuple of strings,
+        layers: tuple of strings
+    )
+
+Also it contains BaseConnectionsProvider which implements this interface. Your
+own connections provider should be inherited from it.
+
+For example see DeviceConnectionsProvider and NetworkConnectionsProvider
+also defined in this module.
+
+All connection providers should be registered in configure.zcml.
+For more details see README.mediawiki
+
+'''
+
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
 

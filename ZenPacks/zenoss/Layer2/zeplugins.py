@@ -7,6 +7,14 @@
 #
 ##############################################################################
 
+'''
+This file contains L2SuppressEventsPlugin which is registered as utility
+for interface Products.ZenEvents.interfaces.IPostEventPlugin,
+so it is called from zeneventd daemon, and is able to change events.
+
+In our case it changes event state to 'suppressed' when there is no working
+path to device that was source of event.
+'''
 
 from Products.ZenEvents.interfaces import IPostEventPlugin
 from Products.Zuul.interfaces import ICatalogTool
@@ -18,15 +26,6 @@ from .connections_catalog import CatalogAPI
 import logging
 
 log = logging.getLogger("zen.eventd")
-
-
-def get_device(dmd, id):
-    dev = dmd.Devices.findDeviceByIdExact(id)
-    if dev:
-        log.debug("Our Device is %s" % dev)
-    else:
-        log.debug("Device %s no found" % id)
-    return dev
 
 
 class L2SuppressEventsPlugin(object):
@@ -63,3 +62,12 @@ class L2SuppressEventsPlugin(object):
                 dev.titleOrId()
             )
             evtproxy.eventState = STATUS_SUPPRESSED
+
+
+def get_device(dmd, id):
+    dev = dmd.Devices.findDeviceByIdExact(id)
+    if dev:
+        log.debug("Our Device is %s" % dev)
+    else:
+        log.debug("Device %s no found" % id)
+    return dev

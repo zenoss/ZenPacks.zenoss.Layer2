@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
+
+'''
+
+Vievlet that enables loading css registered in configure.zcml like this:
+
+    <browser:viewlet
+        name="css-network_map"
+        paths="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css"
+        for="*"
+        weight="20"
+        manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
+        class=".viewlet.StyleSrcBundleViewlet"
+        permission="zope2.Public"
+        />
+'''
+
 from zope.interface import implements
 
 from Products.Five.viewlet.viewlet import ViewletBase

@@ -7,6 +7,10 @@
 #
 ##############################################################################
 
+'''
+This module contains a zenmapper daemon, which updates connections catalog.
+'''
+
 from itertools import chain
 import logging
 
