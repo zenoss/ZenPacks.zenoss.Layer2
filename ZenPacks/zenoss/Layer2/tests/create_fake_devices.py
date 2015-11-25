@@ -7,6 +7,17 @@
 #
 ##############################################################################
 
+'''
+This file contains functions that help to create devices for test, and make
+connections between them.
+
+    Most useful functions:
+
+    create_topology - creates topology from description
+    get_device - finds or creates device
+    connect - connects two devices
+'''
+
 import random
 import string
 
@@ -61,7 +72,11 @@ def binary_tree_topology(deepness=5, root='bin', edges=[]):
 
 
 def create_topology(connections, dmd, update_catalog=True):
-    ''' Connections - iterable of pairs of device id's '''
+    '''
+        Connections should be iterable of pairs or triples
+        (third element could be comma separated list of layers)
+        Or multiline string, with space separated values in its lines.
+    '''
     if isinstance(connections, basestring):
         connections = parse_topology(connections)
 

@@ -7,6 +7,16 @@
  *
  ****************************************************************************/
 
+/*
+ * This file contains code that renders network map as directed graph using d3.js
+ *
+ * Usage:
+ *
+ * var graph = graph_renderer('#panel_id', on_node_click);
+ * graph.draw(topology);
+ * 
+ */
+
 "use strict";
 
 (function () {

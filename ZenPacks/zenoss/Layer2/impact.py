@@ -7,6 +7,18 @@
 #
 ##############################################################################
 
+'''
+In this module DeviceRelationsProvider.getEdges defines impact relationships.
+
+Network devices impact devices (usually servers) three links down
+(3, to skip two interfaces) in graph throught layer2 layer, but
+only if they are not also network devices, because this could create
+circular impacts.
+
+In the same way, devices are impacted by network devices, if they have that
+network devices three links upstream in their network map.
+'''
+
 from Products.ZenModel.IpInterface import IpInterface
 from Products.ZenModel.Device import Device
 from Products.ZenRelations.ToManyRelationship import ToManyRelationshipBase

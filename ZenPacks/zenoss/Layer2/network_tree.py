@@ -7,6 +7,11 @@
 #
 ##############################################################################
 
+'''
+Contains function get_connections_json, which returns JSON string with
+links and nodes of network map, for d3.js to render.
+'''
+
 import json
 from functools import partial
 from itertools import chain

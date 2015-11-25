@@ -7,6 +7,12 @@
 #
 ##############################################################################
 
+'''
+This module contains function contract_edges which reduces network graph,
+so it became more human-readable, but do not loose it's main meaning -
+to show what is connected.
+'''
+
 from collections import defaultdict
 from itertools import chain
 
