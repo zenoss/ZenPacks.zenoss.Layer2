@@ -49,23 +49,36 @@ class TestGetConnections(BaseTestCase):
         # make a look like a switch
         add_interface(
             a, macaddress=mac_a, clientmacs=[mac_b],
-            layers=['layer2', 'vlan1']
+            vlans=['vlan1']
         )
 
         # make b look like a server
-        add_interface(b, macaddress=mac_b, clientmacs=[], layers=['layer2'])
+        add_interface(b, macaddress=mac_b, clientmacs=[], vlans=[])
 
         catapi = CatalogAPI(self.dmd.zport)
         catapi.add_node(a)
         catapi.add_node(b)
 
-        zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
-
         res = get_connections(a, depth=3, layers=['vlan1'])
         self.assertItemsEqual(res['links'], [
-            {'color': 'gray', 'directed': False, 'source': 0, 'target': 1},
-            {'color': 'gray', 'directed': True, 'source': 1, 'target': 2},
-            {'color': 'gray', 'directed': False, 'source': 2, 'target': 3}
+            {
+                'color': ('layer2', u'vlan1'),
+                'directed': False,
+                'target': 1,
+                'source': 0
+            },
+            {
+                'color': ('layer2', u'vlan1'),
+                'directed': True,
+                'target': 2,
+                'source': 1
+            },
+            {
+                'color': ('layer2',),
+                'directed': False,
+                'target': 3,
+                'source': 2
+            },
         ])
 
 

@@ -154,6 +154,23 @@
         };
     };
 
+    var choose_colors = function(graph) {
+        // * Choose colors for graph
+        var i, layers, color;
+        for(i = 0; i<graph.links.length; i++) {
+            layers = graph.links[i].color;
+            graph.links[i].layers = layers;
+
+            color = 'gray';
+            if (layers.indexOf('layer3') > -1) color = 'blue';
+            if (layers.indexOf('layer2') > -1) color = 'green';
+            for(var j=0; j<layers.length; j++) {
+                if(layers[j].indexOf('vlan') == 0) color = 'olive';
+            }
+            graph.links[i].color = color;
+        };
+    };
+
     var refresh_map = function () {
         var params = sidebar.getValues();
         params.layers = get_checked_layers();
@@ -178,6 +195,7 @@
                     return show_error(res.error);
                 }
                 var graph = graph_renderer('#' + map.body.id, click_node);
+                choose_colors(res);
                 graph.draw(res);
             },
             failure: function(error) {
