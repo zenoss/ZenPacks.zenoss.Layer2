@@ -165,7 +165,7 @@
             if (layers.indexOf('layer3') > -1) color = 'blue';
             if (layers.indexOf('layer2') > -1) color = 'green';
             for(var j=0; j<layers.length; j++) {
-                if(layers[j].indexOf('vlan') == 0) color = 'olive';
+                if(layers[j].indexOf('vlan') == 0) color = 'orange';
             }
             graph.links[i].color = color;
         };
