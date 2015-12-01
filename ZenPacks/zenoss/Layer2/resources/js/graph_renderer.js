@@ -22,7 +22,118 @@
 (function () {
 
     var init_called = false;
-    var svg, drawing_space, bottom_layer, top_layer, controls, scale_display, center_button, force;
+    var svg, drawing_space, bottom_layer, top_layer,
+        controls, scale_display, center_button, force, tooltip;
+
+    var arrow_path = function(x1, y1, x2, y2, width, r, directed, gizmo, end_faster) {
+        var dx = x2 - x1; // direction of arrow
+        var dy = y2 - y1;
+        var l = Math.sqrt(dx * dx + dy * dy); // length of arrow
+        var fx = dx / l; // forward vector
+        var fy = dy / l;
+
+        x2 -= fx * end_faster; // make it shorter, so arrow is not below node
+        y2 -= fy * end_faster;
+         
+        var lx = -fy; // side vector
+        var ly = fx;
+         
+        var line_rectangle = [
+            (x1 + lx*width) + ',' + (y1 + ly*width),
+            (x2 + lx*width) + ',' + (y2 + ly*width),
+            (x2 - lx*width) + ',' + (y2 - ly*width),
+            (x1 - lx*width) + ',' + (y1 - ly*width)
+        ];
+         
+        var alx, aly, arx, ary;
+        if (directed) {
+            alx = x2 - fx*r*2 + lx*r;
+            aly = y2 - fy*r*2 + ly*r;
+            arx = x2 - fx*r*2 - lx*r;
+            ary = y2 - fy*r*2 - ly*r;
+        };
+         
+        var get_end_points = function () {
+            // return list of end vertexes that for an arrow or just side of rectangle.
+            if(directed) {            
+                return [
+                    'L' + (x2 - fx*r*2 + lx * width) + ',' + (y2 - fy*r*2 + ly * width),
+                    'L' + (x2 - fx*r*2 + lx * r) + ',' + (y2 - fy*r*2 + ly * r),
+                    'L' + x2 + ',' + y2,
+                    'L' + (x2 - fx*r*2 - lx * r) + ',' + (y2 - fy*r*2 - ly * r),
+                    'L' + (x2 - fx*r*2 - lx * width) + ',' + (y2 - fy*r*2 - ly * width),
+                ];      
+            } else {
+                return [
+                    'L' + line_rectangle[1],
+                    'L' + line_rectangle[2],
+                ];
+     
+            };
+        };
+         
+        if (!gizmo) {
+            return [
+                'M' + x1 + ',' + y1,
+                'L' + line_rectangle[0]
+            ].concat(
+                get_end_points(),
+                [
+                    'L' + line_rectangle[3],
+                    'L' + x1 + ',' + y1,
+                ]
+            ).join(' ');
+        };
+         
+        var cx = (x1 + x2) / 2;
+        var cy = (y1 + y2) / 2;
+        var h = Math.sqrt(r*r - width*width);
+         
+        var arc_rectangle = [
+            (cx - fx*h + lx*width) + ',' + (cy - fy*h + ly*width),
+            (cx + fx*h + lx*width) + ',' + (cy + fy*h + ly*width),
+            (cx + fx*h - lx*width) + ',' + (cy + fy*h - ly*width),
+            (cx - fx*h - lx*width) + ',' + (cy - fy*h - ly*width),
+        ];
+         
+        if (gizmo === 'circle') {
+            return [
+                'M' + x1 + ',' + y1,
+                'L' + line_rectangle[0],
+                'L' + arc_rectangle[0],
+                'A' + r + ',' + r + ' 0 0,0 ' + arc_rectangle[1],
+            ].concat(
+                get_end_points(),
+                [
+                    'L' + arc_rectangle[2],
+                    'A' + r + ',' + r + ' 0 0,0 ' + arc_rectangle[3],
+                    'L' + line_rectangle[3],
+                    'L' + x1 + ',' + y1,
+                ]
+            ).join(' ');
+        };
+         
+        if (gizmo === 'diamond') {
+            return [
+                'M' + x1 + ',' + y1,
+                'L' + line_rectangle[0],
+                'L' + arc_rectangle[0],
+                'L' + (cx + lx * r) + ',' + (cy + ly*r),
+                'L' + arc_rectangle[1],
+            ].concat(
+                get_end_points(),
+                [
+                    'L' + arc_rectangle[2],
+                    'L' + (cx - lx * r) + ',' + (cy - ly*r),
+                    'L' + arc_rectangle[3],
+                    'L' + line_rectangle[3],
+                    'L' + x1 + ',' + y1,
+                ]
+            ).join(' ');
+        };
+         
+        throw 'Unknown gizmo value'
+    };
 
     window.graph_renderer = function(panel_selector, on_node_click) {
 
@@ -60,20 +171,9 @@
                 .attr("height", height)
                 .call(zoom);
 
-
-            // http://bl.ocks.org/d3noob/5141278
-            svg.append("svg:defs").selectAll("marker")
-                .data(["end"])      // Different link/path types can be defined here
-              .enter().append("svg:marker")    // This section adds in the arrows
-                .attr("id", String)
-                .attr("refX", 31)
-                .attr("refY", 5)
-                .attr("markerWidth", 31)
-                .attr("markerHeight", 10)
-                .attr("orient", "auto")
-              .append("svg:path")
-                .attr("d", "M0,0L10,5L0,10L0,0");
-
+            tooltip = d3.select("body").append("div")   
+                .attr("class", "tooltip")               
+                .style("opacity", 0);
 
             drawing_space = svg.append('g'),
                 bottom_layer = drawing_space.append('g'),
@@ -134,17 +234,24 @@
                 .data(graph.links);
 
             // append
-            link.enter().append("line")
-                .attr("marker-end", function(d) {
-                    if(d.directed) 
-                        return "url(#end)"
-                    else
-                        return "none"
+            link.enter().append("path")
+                .attr("class", "link")
+                .on('mouseover', function(d) {
+                    tooltip.html(d.layers.join('<br />'))
+                        .style('left', d3.event.pageX + 'px')
+                        .style('top', d3.event.pageY + 'px');
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0.95);
                 })
-                .attr("class", "link");
+                .on('mouseout', function(d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0);
+                });
 
             // update
-            link.style('stroke', function(d) {
+            link.style('fill', function(d) {
                 return d.color || '#ccc'
             });
 
@@ -216,10 +323,16 @@
             // animation:
             var tick = function () {
                 link.attr({
-                    "x1": function (d) { return d.source.x; },
-                    "y1": function (d) { return d.source.y; },
-                    "x2": function (d) { return d.target.x; },
-                    "y2": function (d) { return d.target.y; },
+                    "d": function (d) { 
+                        return arrow_path(
+                            d.source.x, d.source.y,
+                            d.target.x, d.target.y,
+                            0.7, 5, d.directed,
+                            // if vlan (orange) - make gizmo diamond
+                            ((d.color === 'orange') ? 'diamond' : 'circle'),
+                            21
+                        );
+                    },
                 });
 
                 node.attr("transform", function (d) {

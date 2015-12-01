@@ -80,6 +80,7 @@ def get_connections(rootnode, depth=1, layers=None):
 
     nodes = []
     links = {}
+    colors = {}  # mapping from pair of nodes to their layers
     nodenums = {}
 
     # VLAN -> VLAN, Layer2 (search by vlan,
@@ -87,7 +88,8 @@ def get_connections(rootnode, depth=1, layers=None):
     # Layer2 -> Layer2      (no search by vlans)
     # VLAN, Layer2 -> Layer2 (no search by vlans)
     if layers:
-        layers = layers[:]  # copy so we not mutate function argument
+        # copy so we not mutate function argument
+        layers = map(str, layers)  # and also coerce to str (unicode happens)
         if 'layer2' in layers:
             layers = [l for l in layers if not l.startswith('vlan')]
         else:
@@ -110,7 +112,8 @@ def get_connections(rootnode, depth=1, layers=None):
 
     added_links = set()
 
-    def add_link(a, b, color):
+    def add_link(a, b):
+        color = colors[(a.get_path(), b.get_path())]
         s = nodenums[a.id]
         t = nodenums[b.id]
 
@@ -173,9 +176,9 @@ def get_connections(rootnode, depth=1, layers=None):
 
             add_node(b)
             if node in impacted:
-                add_link(a, b, 'gray')
+                add_link(a, b)
             if node in impactors:
-                add_link(b, a, 'gray')
+                add_link(b, a)
             get_connections(node, depth - 1)
 
     def get_related(node):
@@ -196,22 +199,26 @@ def get_connections(rootnode, depth=1, layers=None):
         )
 
     def get_impacted(node):
-        q = dict(entity_id=node.get_path())
+        node_id = node.get_path()
+        q = dict(entity_id=node_id)
         if layers:
             q['layers'] = layers
         for b in cat.search(**q):
             if connection_not_in_this_vlans(b, layers):
                 continue
             for c in b.connected_to:
+                colors[(node_id, c)] = b.layers
                 yield c
 
     def get_impactors(node):
-        q = dict(connected_to=node.get_path())
+        node_id = node.get_path()
+        q = dict(connected_to=node_id)
         if layers:
             q['layers'] = layers
         for b in cat.search(**q):
             if connection_not_in_this_vlans(b, layers):
                 continue
+            colors[(b.entity_id, node_id)] = b.layers
             yield b.entity_id
 
     def this_is_link(node):

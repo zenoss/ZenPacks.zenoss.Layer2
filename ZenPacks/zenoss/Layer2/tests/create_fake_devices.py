@@ -112,8 +112,8 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
     mac1 = random_mac()
     mac2 = random_mac()
 
-    add_interface(d1, macaddress=mac1, clientmacs=[mac2], layers=layers)
-    add_interface(d2, macaddress=mac2, clientmacs=[mac1], layers=layers)
+    add_interface(d1, macaddress=mac1, clientmacs=[mac2], vlans=layers)
+    add_interface(d2, macaddress=mac2, clientmacs=[mac1], vlans=layers)
 
     if update_catalog:
         catapi = CatalogAPI(dmd.zport)
@@ -121,14 +121,14 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
         catapi.add_node(d2)
 
 
-def add_interface(dev, macaddress='', clientmacs=[], layers=None):
+def add_interface(dev, macaddress='', clientmacs=[], vlans=None):
     ''' Add new interface to device '''
     eth_id = random_id()
     eth = IpInterface(eth_id, eth_id)
     eth.macaddress = macaddress
     eth.clientmacs = clientmacs
-    if layers:
-        eth.vlans = layers
+    if vlans:
+        eth.vlans = vlans
     dev.os.interfaces._setObject('unused_id_param', eth)
 
 
