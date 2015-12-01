@@ -80,3 +80,16 @@ p.message {
 .severity_none {
     fill: #ffffff;
 }
+.link {
+    stroke-width: 2px;
+    fill: none;
+}
+.tooltip {
+    position: fixed;
+    z-index: 10;
+    background-color: #DFE9F6;
+    border-color: #99BCE8;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 5px;
+}

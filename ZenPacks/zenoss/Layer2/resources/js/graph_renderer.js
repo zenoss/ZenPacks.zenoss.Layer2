@@ -22,12 +22,13 @@
 (function () {
 
     var init_called = false;
-    var svg, drawing_space, bottom_layer, top_layer, controls, scale_display, center_button, force;
+    var svg, drawing_space, bottom_layer, top_layer,
+        controls, scale_display, center_button, force, tooltip;
 
     window.graph_renderer = function(panel_selector, on_node_click) {
 
         var panel = d3.select(panel_selector);
-        var width = panel[0][0].clientWidth;
+        var width = panel[vg][0].clientWidth;
         var height = panel[0][0].clientHeight;
 
         var display_scale = function (sc) {
@@ -60,19 +61,35 @@
                 .attr("height", height)
                 .call(zoom);
 
+            tooltip = d3.select("body").append("div")   
+                .attr("class", "tooltip")               
+                .style("opacity", 0);
 
             // http://bl.ocks.org/d3noob/5141278
-            svg.append("svg:defs").selectAll("marker")
-                .data(["end"])      // Different link/path types can be defined here
-              .enter().append("svg:marker")    // This section adds in the arrows
-                .attr("id", String)
+            var defs = svg.append("defs");
+
+            defs.append('marker')
+                .attr("id", 'arrow_marker')
+                .attr('markerUnits', 'userSpaceOnUse')
                 .attr("refX", 31)
                 .attr("refY", 5)
                 .attr("markerWidth", 31)
                 .attr("markerHeight", 10)
                 .attr("orient", "auto")
-              .append("svg:path")
-                .attr("d", "M0,0L10,5L0,10L0,0");
+                .append("path")
+                    .attr("d", "M0,0L10,5L0,10L0,0");
+
+            defs.append('marker')
+                .attr('id', 'circle_marker')
+                .attr('markerUnits', 'userSpaceOnUse')
+                .attr('markerWidth', 10)
+                .attr('markerHeight', 10)
+                .attr("refX", 5)
+                .attr("refY", 5)
+                .append('circle')
+                    .attr('r', 5)
+                    .attr('cx', 5)
+                    .attr('cy', 5);
 
 
             drawing_space = svg.append('g'),
@@ -134,14 +151,25 @@
                 .data(graph.links);
 
             // append
-            link.enter().append("line")
+            link.enter().append("path")
                 .attr("marker-end", function(d) {
                     if(d.directed) 
-                        return "url(#end)"
+                        return "url(#arrow_marker)"
                     else
                         return "none"
                 })
-                .attr("class", "link");
+                .attr("marker-mid", function(d) {
+                    return "url(#circle_marker)";
+                })
+                .attr("class", "link")
+                .on('mouseover', function(d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0.95);
+                    tooltip.html(d.layers.join('<br />'))
+                        .style('left', d3.event.pageX + 'px')
+                        .style('top', d3.event.pageY + 'px');
+                });
 
             // update
             link.style('stroke', function(d) {
@@ -216,10 +244,13 @@
             // animation:
             var tick = function () {
                 link.attr({
-                    "x1": function (d) { return d.source.x; },
-                    "y1": function (d) { return d.source.y; },
-                    "x2": function (d) { return d.target.x; },
-                    "y2": function (d) { return d.target.y; },
+                    "d": function (d) { 
+                        return [
+                          "M", d.source.x, d.source.y,
+                          "L", (d.target.x + d.source.x) / 2, (d.target.y + d.source.y) / 2 + 10,
+                          "L", d.target.x, d.target.y,
+                        ].join(" ");
+                    },
                 });
 
                 node.attr("transform", function (d) {
