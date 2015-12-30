@@ -87,7 +87,8 @@ class ZenMapper(CyclingDaemon):
         else:
             log.info('Updating catalog')
             cat = CatalogAPI(self.dmd.zport)
-            cat.clear()
+            if not self.options.device:
+                cat.clear()
             for entity in self.get_devices_list():
                 cat.add_node(entity)
         commit()

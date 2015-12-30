@@ -225,7 +225,6 @@ def get_connections(rootnode, depth=1, layers=None):
         if isinstance(node, str) and node[0] == "!":
             return node[1:]
 
-    add_node(adapt_node(rootnode))
     get_connections(rootnode, depth)
 
     return dict(

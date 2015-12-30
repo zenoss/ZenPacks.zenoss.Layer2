@@ -80,7 +80,7 @@
                 "value": rec.inputValue,
                 "id": rec.id,
                 "leaf": true,
-                "checked": (checked_data.indexOf(rec.inputValue) > -1)
+                "checked": (checked_data.indexOf(rec.inputValue) > -1 || checked_data == '')
             }
 
             if (rec.boxLabel.indexOf('vlan') == 0) {
