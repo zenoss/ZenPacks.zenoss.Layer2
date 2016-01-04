@@ -10,7 +10,7 @@
 from __future__ import unicode_literals
 
 import json
-from mock import Mock, sentinel, MagicMock
+from mock import Mock, sentinel, MagicMock, patch
 
 from Products.Five import zcml
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
@@ -18,7 +18,7 @@ from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from .create_fake_devices import get_device, add_interface, random_mac
 
 import ZenPacks.zenoss.Layer2
-from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize
+from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize, NodeAdapter
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 
 
@@ -82,9 +82,57 @@ class TestGetConnections(BaseTestCase):
         ])
 
 
+class TestNodeAdapter(BaseTestCase):
+    def afterSetUp(self):
+        obj = Mock()
+        obj.macaddress = 'TE:ST:12:34:56:78'
+        obj.getPrimaryUrlPath.return_value = '/zport/dmd/Devices/Test'
+        obj.getEventSummary.return_value = [
+            ['zenevents_5_noack noack', 0, 1],
+            ['zenevents_4_noack noack', 0, 0],
+            ['zenevents_3_noack noack', 0, 0],
+            ['zenevents_2_noack noack', 0, 0],
+            ['zenevents_1_noack noack', 0, 0]]
+        self.instance = NodeAdapter(obj, '')
+        self.properties = dir(self.instance)
+
+    def test_instance_attributes(self):
+        self.assertIn('id', self.properties)
+        self.assertFalse(callable(self.instance.important))
+        self.assertTrue(callable(self.instance.get_path))
+        self.assertTrue(callable(self.instance.get_link))
+        self.assertTrue(callable(self.instance.titleOrId))
+        self.assertTrue(callable(self.instance.getIconPath))
+        self.assertTrue(callable(self.instance.getEventSummary))
+        self.assertTrue(callable(self.instance.getColor))
+
+    def test_get_path(self):
+        self.assertEqual(self.instance.get_path(), 'TE:ST:12:34:56:78')
+
+    def test_get_link(self):
+        self.assertEqual(self.instance.get_link(), '/zport/dmd/Devices/Test')
+
+    def test_titleOrId(self):
+        self.assertEqual(self.instance.titleOrId(), 'TE:ST:12:34:56:78')
+
+    def test_getIconPath(self):
+        self.assertEqual(self.instance.getIconPath(),
+                         '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
+
+    def test_getColor(self):
+        self.assertEqual(self.instance.getColor(), 'severity_critical')
+
+    def test_getEventSummary(self):
+        self.assertEqual(len(self.instance.getEventSummary()), 5)
+
+    def test_important(self):
+        self.assertEqual(self.instance.important, True)
+
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
     suite.addTest(makeSuite(TestSerialize))
     suite.addTest(makeSuite(TestGetConnections))
+    suite.addTest(makeSuite(TestNodeAdapter))
     return suite
