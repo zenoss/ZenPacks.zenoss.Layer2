@@ -10,7 +10,7 @@
 from __future__ import unicode_literals
 
 import json
-from mock import Mock, sentinel, MagicMock, patch
+from mock import Mock, patch
 
 from Products.Five import zcml
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
@@ -18,7 +18,8 @@ from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from .create_fake_devices import get_device, add_interface, random_mac
 
 import ZenPacks.zenoss.Layer2
-from ZenPacks.zenoss.Layer2.network_tree import get_connections, serialize, NodeAdapter
+from ZenPacks.zenoss.Layer2.network_tree import\
+    (get_connections, serialize, NodeAdapter, get_connections_json)
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 
 
@@ -39,6 +40,17 @@ class TestGetConnections(BaseTestCase):
     def afterSetUp(self):
         super(TestGetConnections, self).afterSetUp()
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+
+    @patch('ZenPacks.zenoss.Layer2.network_tree.get_connections')
+    @patch('ZenPacks.zenoss.Layer2.network_tree.serialize')
+    def test_get_connections_json(self, mock_serialize, mock_get_connections):
+        self.data_root = Mock()
+        self.data_root.Devices.findDevice.return_value = 'TEST'
+        self.data_root.dmd.getObjByPath.return_value = None
+        get_connections_json(self.data_root, 'TEST', full_map=True)
+        self.assertTrue(mock_get_connections.called)
+        mock_get_connections.assert_called_with('TEST', 1, None)
+        self.assertTrue(mock_serialize.called)
 
     def test_get_vlan_connections_with_unaware_node(self):
         a = get_device('a', self.dmd)
@@ -114,6 +126,9 @@ class TestNodeAdapter(BaseTestCase):
 
     def test_titleOrId(self):
         self.assertEqual(self.instance.titleOrId(), 'TE:ST:12:34:56:78')
+        obj = Mock(spec=['getNetworkName'])
+        obj.getNetworkName.return_value = 'network'
+        self.assertEqual(NodeAdapter(obj, '').titleOrId(), 'network')
 
     def test_getIconPath(self):
         self.assertEqual(self.instance.getIconPath(),
