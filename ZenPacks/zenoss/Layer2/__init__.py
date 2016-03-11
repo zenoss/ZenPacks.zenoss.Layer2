@@ -72,6 +72,7 @@ class ZenPack(ZenPackBase):
                 # Converts packed value into IP address
                 val = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
                 if not dmd.Devices.zZenossGateway:
+                    dmd.Devices.deleteZenProperty('zZenossGateway')
                     log.info("Setting zZenossGateway value to {}".format(val))
                     dmd.Devices.setZenProperty('zZenossGateway', val)
                 else:
