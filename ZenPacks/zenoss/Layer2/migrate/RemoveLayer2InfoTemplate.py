@@ -23,6 +23,11 @@ class RemoveLayer2InfoTemplate(ZenPackMigration):
 
     def migrate(self, pack):
         log.info('Removing Layer2Info template')
-        pack.dmd.Devices.rrdTemplates._delObject(
-            'Layer2Info', suppress_events=True
-        )
+        try:
+            pack.dmd.Devices.rrdTemplates._delObject(
+                'Layer2Info', suppress_events=True
+            )
+        except Exception:
+            # If this doesn't work, it's almost certainly because it was already removed
+            # If it fails for some other reason, we still don't really care
+            pass
