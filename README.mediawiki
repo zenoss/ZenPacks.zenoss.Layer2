@@ -294,6 +294,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.1.1
+* Fix page help code in Layer2 ZP conflict with other ZenPacks (ZEN-21264)
+
 ;1.1.0
 * When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
 * Add checkbox that allows to show full map
