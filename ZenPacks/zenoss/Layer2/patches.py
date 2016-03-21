@@ -253,18 +253,12 @@ Also,see documentation.</a></p>
 '''
 
 
-class NetworkMapHelp(PageLevelHelp):
-    def __init__(self, context, request):
-        # we completely overriding this metod, so calling super
-        # not for this class but for it's parent
-        super(PageLevelHelp, self).__init__(context, request)
-        primary, secondary = getSelectedNames(self)
-        if (primary, secondary) == ('Infrastructure', 'Network Map'):
-            self.tip = dict(
+@monkeypatch('Products.ZenUI3.tooltips.tooltips._TooltipCatalog')
+def pagehelp(self, navitem, lang="en"):
+    if navitem == 'Infrastructure-Network Map':
+            return dict(
                 title='Network Map',
                 tip=NETWORK_MAP_HELP
             )
-        else:
-            lang = negotiator.getLanguage(TooltipCatalog.langs('nav-help'),
-                                          self.request)
-            self.tip = TooltipCatalog.pagehelp(primary, lang)
+    else:
+        return original(self, navitem, lang)
