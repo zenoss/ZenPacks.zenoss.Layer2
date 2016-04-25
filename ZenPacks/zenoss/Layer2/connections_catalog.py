@@ -82,13 +82,15 @@ class ConnectionsCatalog(object):
                 'connected_to': obj.entity_id
             }))
 
-    def uncatalog_object(self, uid=None):
+    def uncatalog_object(self, connection=None):
         """
         Removes connection from Redis database
         """
-        if not uid:
+        if not connection:
             return
-        return self.redis.delete(self.prepId(uid))
+        self.redis.delete(self.prepId(connection.entity_id))
+        for path in connection.connected_to:
+            self.redis.delete(self.prepId(self.b_prefix + path))
 
     def clear(self):
         """
@@ -97,6 +99,8 @@ class ConnectionsCatalog(object):
         # TODO: Zenoss 5.x may have newer version of redis library
         # with iterator for keys. This may help in performance.
         for k in self.redis.keys(pattern=self.prepId('*')):
+            self.redis.delete(k)
+        for k in self.redis.keys(pattern=self.prepId(self.b_prefix + '*')):
             self.redis.delete(k)
 
     def search(self, **query):
@@ -130,10 +134,9 @@ class ConnectionsCatalog(object):
 class BaseCatalogAPI(object):
     ''' Provides a methods to store and retrieve data in catalog '''
 
-    name = DEFAULT_CATALOG_NAME
-
-    def __init__(self, zport):
+    def __init__(self, zport, name=DEFAULT_CATALOG_NAME):
         self.zport = zport
+        self.name = name
         self.catalog = ConnectionsCatalog(name=self.name)
 
     def clear(self):
@@ -204,7 +207,7 @@ class CatalogAPI(BaseCatalogAPI):
         if layers:
             q['layers'] = layers
         for b in self.search(**q):
-            yield b.entity_id
+            yield b.connected_to
 
     def get_two_way_connected(self, entity_id, layers=None):
         return set(chain(
