@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2014, 2015 all rights reserved.
+# Copyright (C) Zenoss, Inc. 2014, 2015, 2016 all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -8,6 +8,14 @@
 ##############################################################################
 
 '''
+By default creates 9-10 devices (with 3 IP Interfaces each) connected to root switch.
+Root switch 10.87.100.1 may already exists in Zenoss or will be added
+by this script.
+
+Usage:
+
+    zendmd --script=./create_fake_devices.py
+
 This file contains functions that help to create devices for test, and make
 connections between them.
 
@@ -26,11 +34,34 @@ from ZenPacks.zenoss.Layer2.utils import asmac
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 
 
+def random_id(length=6):
+    return ''.join(
+        random.choice(string.lowercase)
+        for i in range(length)
+    )
+
+
+root_and_leafs = '''
+    10.87.100.1 Leaf_1
+    Leaf_1 Leaf_{}
+    Leaf_1 Leaf_{}
+    Leaf_1 Leaf_2
+    Leaf_2 Leaf_{}
+    Leaf_2 Leaf_{}
+    Leaf_1 Leaf_3
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+'''.format(
+    random_id(), random_id(), random_id(), random_id(), random_id(), random_id()
+)
+
+
 def main():
-    create_topology(diamond, dmd)
-    # create_topology(Y_to_existing)
-    # create_topology(binary_tree_topology(deepness=3, root='test'))
-    # create_topology(Y)
+    create_topology(root_and_leafs, dmd)
+    # create_topology(diamond, dmd)
+    # create_topology(Y_to_existing, dmd)
+    # create_topology(binary_tree_topology(deepness=3, root='test'), dmd)
+    # create_topology(Y, dmd)
     commit()
 
 Y = '''
@@ -130,13 +161,6 @@ def add_interface(dev, macaddress='', clientmacs=[], vlans=None):
     if vlans:
         eth.vlans = vlans
     dev.os.interfaces._setObject('unused_id_param', eth)
-
-
-def random_id(length=6):
-    return ''.join(
-        random.choice(string.lowercase)
-        for i in range(length)
-    )
 
 
 def random_mac():
