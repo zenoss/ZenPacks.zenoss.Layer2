@@ -47,12 +47,21 @@ DEFAULT_CATALOG_NAME = 'l2'
 class ConnectionsCatalog(object):
     ''' This is actual storage of Layer2 connections '''
 
-    fields = 'entity_id, connected_to, layers'
+    name = None # name is prefix for all keys stored in redis
+    b_prefix = None # backward connection prefix
+    redis = None
+
+    # fields to store for entity (pickled)
+    fields = [
+        'entity_id',
+        'connected_to',
+        'layers'
+    ]
 
     def __init__(self, name):
         super(ConnectionsCatalog, self).__init__()
-        self.id = name
-        self.b_prefix = BACKWARD_PREFIX # backward connection prefix
+        self.name = name
+        self.b_prefix = BACKWARD_PREFIX
         self.redis = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT,
             db=REDIS_DB)
 
@@ -61,7 +70,7 @@ class ConnectionsCatalog(object):
         Use self name as a prefix to store and retrieve keys
         to not clash with other who may store daya in same Redis DB
         """
-        return self.id + '_' + oid
+        return self.name + '_' + oid
 
     def catalog_object(self, obj, uid=None):
         """
@@ -69,18 +78,21 @@ class ConnectionsCatalog(object):
         uid - leaved for backward compatibility with 1.1.x
         """
         # Store connection
-        self.redis.sadd(self.prepId(obj.entity_id), pickle.dumps({
-            'entity_id': obj.entity_id,
-            'layers': obj.layers,
-            'connected_to': obj.connected_to
-        }))
+        self.redis.sadd(
+            self.prepId(obj.entity_id),
+            pickle.dumps({field: getattr(obj, field) for field in self.fields})
+        )
         # Store backward connections as well, in the name of faster search
+        # this used in get_reverse_connected()
         for path in obj.connected_to:
-            self.redis.sadd(self.prepId(self.b_prefix + path), pickle.dumps({
-                'entity_id': path,
-                'layers': obj.layers,
-                'connected_to': obj.entity_id
-            }))
+            self.redis.sadd(
+                self.prepId(self.b_prefix + path),
+                pickle.dumps({
+                    'entity_id': path,
+                    'layers': obj.layers,
+                    'connected_to': obj.entity_id
+                })
+            )
 
     def uncatalog_object(self, connection=None):
         """
@@ -107,7 +119,7 @@ class ConnectionsCatalog(object):
         """
         Looks into Redis keys and mimics ZCatalog behaviour in same time.
         """
-        Brain = namedtuple('Brain', self.fields)
+        Brain = namedtuple('Brain', ', '.join(self.fields))
         connections = []
         pattern = self.prepId('*')
 
@@ -133,6 +145,9 @@ class ConnectionsCatalog(object):
 
 class BaseCatalogAPI(object):
     ''' Provides a methods to store and retrieve data in catalog '''
+
+    zport = None
+    name = None
 
     def __init__(self, zport, name=DEFAULT_CATALOG_NAME):
         self.zport = zport
@@ -182,6 +197,9 @@ class CatalogAPI(BaseCatalogAPI):
         if not reindex:
             return  # ok, we are already done
 
+        # TODO: make sure for what reason this was done previously
+        # and remove it if not needed anymore
+        # Assumption is: it may be needed for patches/index_object
         log.info('Triggering reindex for %s', node)
         notify(IndexingEvent(node))
         if hasattr(node, 'getDeviceComponent'):
