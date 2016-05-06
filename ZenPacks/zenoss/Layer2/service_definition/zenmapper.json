@@ -22,7 +22,7 @@
 		}],
 		"Instances": {
 		   "min": 1
-		}, 
+		},
 		"Endpoints": [{
 			"Name": "mariadb",
 			"Application": "zodb_.*",
@@ -34,6 +34,13 @@
 		    "PortNumber": 11211,
 		    "Protocol": "tcp",
 		    "Purpose": "import"
+		},
+		{
+           "Name": "redis",
+           "Application": "redis",
+           "PortNumber": 6379,
+           "Protocol": "tcp",
+           "Purpose": "import"
 		},
 		{
 		    "Name": "rabbitmq",

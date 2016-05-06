@@ -38,7 +38,7 @@ log = logging.getLogger('zen.Layer2')
 # TODO: add to zenmapper an options to run on remote server.
 # This may be useful for big Zenoss installations
 REDIS_HOST = 'localhost'
-REDIS_PORT = 16379
+REDIS_PORTS = [6379, 16379] # 5.x, 4.x
 REDIS_DB = 0
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
@@ -62,8 +62,20 @@ class ConnectionsCatalog(object):
         super(ConnectionsCatalog, self).__init__()
         self.name = name
         self.b_prefix = BACKWARD_PREFIX
-        self.redis = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT,
-            db=REDIS_DB)
+        self.redis = self.get_redis()
+
+    def get_redis(self):
+        """
+        Assume we on 5.x and if not - fallback to 4.x port
+        """
+        try:
+            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[0],
+                db=REDIS_DB)
+            r.get(None)
+        except redis.exceptions.ConnectionError:
+            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[1],
+                db=REDIS_DB)
+        return r
 
     def prepId(self, oid):
         """
