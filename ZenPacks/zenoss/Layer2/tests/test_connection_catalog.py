@@ -40,7 +40,8 @@ def fake_connections_provider(dmd, id='connection_id'):
 class TestCatalogAPI(BaseTestCase):
     def afterSetUp(self):
         super(TestCatalogAPI, self).afterSetUp()
-        self.cat = CatalogAPI(self.app.zport)
+        self.cat = CatalogAPI(self.app.zport, name="test_l2")
+        self.cat.clear()
         self.connection = fake_connection('test_id')
 
     def test_catalog_is_empty(self):
@@ -50,7 +51,7 @@ class TestCatalogAPI(BaseTestCase):
         self.cat.add_connection(self.connection)
         brains = self.cat.search()
 
-        self.assertEqual(len(brains), 1)
+        self.assertEqual(len(brains), 3)
         self.assertEqual(brains[0].entity_id, 'test_id')
         self.assertEqual(
             brains[0].connected_to, ('connected_to1', 'connected_to2')
@@ -78,7 +79,7 @@ class TestCatalogAPI(BaseTestCase):
         cp = fake_connections_provider(self.dmd)
         self.assertEqual(len(self.cat.search()), 0)
         self.cat.add_node(cp)
-        self.assertEqual(len(self.cat.search()), 1)
+        self.assertEqual(len(self.cat.search()), 3)
         self.cat.remove_node(cp)
         self.assertEqual(len(self.cat.search()), 0)
 
@@ -106,7 +107,7 @@ class TestCatalogAPI(BaseTestCase):
         self.cat.add_node(fake_connections_provider(self.dmd, 'con_id3'))
         self.cat.add_node(fake_connections_provider(self.dmd, 'con_id4'))
         self.cat.add_node(fake_connections_provider(self.dmd, 'con_id5'))
-        self.assertEqual(len(self.cat.search()), 5)
+        self.assertEqual(len(self.cat.search()), 15) # 5*3
         self.cat.clear()
         self.assertEqual(len(self.cat.search()), 0)
 
@@ -116,7 +117,8 @@ class TestCheckWorkingPath(BaseTestCase):
         super(TestCheckWorkingPath, self).afterSetUp()
 
         self.dmd.Devices.createOrganizer('/Network/Router/Cisco')
-        self.cat = CatalogAPI(self.dmd.zport)
+        self.cat = CatalogAPI(self.dmd.zport, name='test_l2')
+        self.cat.clear()
 
         zcml.load_config('testing.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)

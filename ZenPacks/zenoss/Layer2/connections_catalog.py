@@ -21,108 +21,193 @@ Usage:
 
 from itertools import chain
 import logging
+import redis
+import pickle
+from collections import namedtuple
 
-from transaction import commit
 from zExceptions import NotFound
 from zope.event import notify
 
-from Products.ZenUtils.Search import makeCaseSensitiveFieldIndex
-from Products.ZenUtils.Search import makeCaseSensitiveKeywordIndex
 from Products.Zuul.catalog.events import IndexingEvent
-from Products.Zuul.catalog.global_catalog import GlobalCatalog
 
 from .connections_provider import IConnection, IConnectionsProvider
 
 log = logging.getLogger('zen.Layer2')
 
 
-CATALOG_INDEX_TYPES = {
-    'str': makeCaseSensitiveFieldIndex,
-    'list': makeCaseSensitiveKeywordIndex
-}
+# TODO: add to zenmapper an options to run on remote server.
+# This may be useful for big Zenoss installations
+REDIS_HOST = 'localhost'
+REDIS_PORTS = [6379, 16379] # 5.x, 4.x
+REDIS_DB = 0
+BACKWARD_PREFIX = 'b_'
+DEFAULT_CATALOG_NAME = 'l2'
 
 
-class ConnectionsCatalog(GlobalCatalog):
-    ''' This is actual Zope catalog '''
+class ConnectionsCatalog(object):
+    ''' This is actual storage of Layer2 connections '''
+
+    name = None # name is prefix for all keys stored in redis
+    b_prefix = None # backward connection prefix
+    redis = None
+
+    # fields to store for entity (pickled)
+    fields = [
+        'entity_id',
+        'connected_to',
+        'layers'
+    ]
+    # layers list key
+    existing_layers_key = 'existing_layers'
+
     def __init__(self, name):
         super(ConnectionsCatalog, self).__init__()
-        self.id = name
+        self.name = name
+        self.b_prefix = BACKWARD_PREFIX
+        self.redis = self.get_redis()
+
+    def get_redis(self):
+        """
+        Assume we on 5.x and if not - fallback to 4.x port
+        """
+        try:
+            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[0],
+                db=REDIS_DB)
+            r.get(None)
+        except redis.exceptions.ConnectionError:
+            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[1],
+                db=REDIS_DB)
+        return r
+
+    def prepId(self, oid):
+        """
+        Use self name as a prefix to store and retrieve keys
+        to not clash with other who may store daya in same Redis DB
+        """
+        return self.name + '_' + oid
+
+    def catalog_object(self, obj, uid=None):
+        """
+        Saves connection and backward connection in Redis database.
+        uid - leaved for backward compatibility with 1.1.x
+        """
+        # Prepare batch of commands to be executed
+        pipe = self.redis.pipeline()
+
+        # Store connection
+        pipe.sadd(
+            self.prepId(obj.entity_id),
+            pickle.dumps({field: getattr(obj, field) for field in self.fields})
+        )
+        # Store backward connections as well, in the name of faster search
+        # this used in get_reverse_connected()
+        for path in obj.connected_to:
+            pipe.sadd(
+                self.prepId(self.b_prefix + path),
+                pickle.dumps({
+                    'entity_id': path,
+                    'layers': obj.layers,
+                    'connected_to': obj.entity_id
+                })
+            )
+        # Store layers list in set for faster retrieval
+        for layer in obj.layers:
+            pipe.sadd(self.prepId(self.existing_layers_key), layer)
+
+        # Finally execute batched redis commands
+        pipe.execute()
+
+    def uncatalog_object(self, connection=None):
+        """
+        Removes connection from Redis database
+        """
+        if not connection:
+            return
+        self.redis.delete(self.prepId(connection.entity_id))
+        for path in connection.connected_to:
+            self.redis.delete(self.prepId(self.b_prefix + path))
+
+    def clear(self):
+        """
+        Removes ALL connections records.
+        On large installation this should not be called often.
+        """
+        # TODO: Zenoss 5.x may have newer version of redis library
+        # with iterator for keys. This may help in performance.
+        # Also using EVAL is good way:
+        # self.redis.eval("local keys = redis.call('keys', '%s') \n for i=1,#keys,5000 do \n redis.call('del', unpack(keys, i, math.min(i+4999, #keys))) \n end \n return keys" % self.prepId('*'))
+        # Unfortunatelly this not available on 4.2.x
+        # So fallback to worst case:
+        for k in self.redis.keys(pattern=self.prepId('*')):
+            self.redis.delete(k)
+        for k in self.redis.keys(pattern=self.prepId(self.b_prefix + '*')):
+            self.redis.delete(k)
+
+    def search(self, **query):
+        """
+        Looks into Redis keys and mimics ZCatalog behaviour in same time.
+        """
+        Brain = namedtuple('Brain', ', '.join(self.fields))
+        connections = []
+        pattern = self.prepId('*')
+        key = None
+
+        # Direct connections lookup
+        if 'entity_id' in query:
+            key = self.prepId(query['entity_id'])
+        # Backward connections lookup
+        if 'connected_to' in query:
+            key = self.prepId(self.b_prefix + query['connected_to'])
+
+        if key:
+            for member in self.redis.smembers(key):
+                connections.append(Brain(**pickle.loads(member)))
+        else: # Not normally should be used at all, consider remove this clause
+            log.warn('Redis KEYS command may be very slow on large dataset')
+            # TODO: think of Redis SCAN / scan_iter
+            # https://github.com/andymccurdy/redis-py/blob/master/redis/client.py#L1401
+            for key in self.redis.keys(pattern=pattern):
+                for member in self.redis.smembers(key):
+                    connections.append(Brain(**pickle.loads(member)))
+
+        # Gracefully filters by layers if asked
+        if 'layers' in query and query['layers']:
+            connections = [x for x in connections \
+                if set(x.layers).intersection(set(query['layers']))]
+
+        return connections
+
+    def get_existing_layers(self):
+        '''
+        Returns list of registered layers in catalog
+        '''
+        return self.redis.smembers(self.prepId(self.existing_layers_key))
 
 
 class BaseCatalogAPI(object):
     ''' Provides a methods to store and retrieve data in catalog '''
 
-    _catalog = None
+    zport = None
     name = None
-    fields = {}
 
-    def __init__(self, zport):
+    def __init__(self, zport, name=DEFAULT_CATALOG_NAME):
         self.zport = zport
-
-    @property
-    def catalog(self):
-        ''' Find catalog in zport if exists, or create it from scratch'''
-        if self._catalog:
-            return self._catalog
-
-        if not hasattr(self.zport, self.name):
-            catalog = ConnectionsCatalog(self.name)
-            for key, value in self.fields.iteritems():
-                catalog.addIndex(key, CATALOG_INDEX_TYPES[value](key))
-                catalog.addColumn(key)
-
-            self.zport._setObject(self.name, catalog)
-
-            log.debug('Created catalog %s' % self.name)
-
-        self._catalog = getattr(self.zport, self.name)
-        return self._catalog
-
-    @catalog.deleter
-    def catalog(self):
-        ''' Delete catalog from this object and zport '''
-        self.zport._delObject(self.name)
-        del self._catalog
+        self.name = name
+        self.catalog = ConnectionsCatalog(name=self.name)
 
     def clear(self):
-        self.catalog._catalog.clear()
+        self.catalog.clear()
 
     def search(self, **query):
-        return self.catalog.search(query)
+        return self.catalog.search(**query)
 
     def show_content(self, **query):
-        ''' Used to watch content of catalog in zendmd '''
-        try:
-            from tabulate import tabulate
-        except ImportError:
-            print 'If you use "pip install tabulate" to install tabulate.'
-            print 'Output will be formatted better.'
-            print
-
-            def tabulate(table, headers):
-                for l in table:
-                    for k, v in zip(headers, l):
-                        print '%s = %s' % (k, v)
-                    print
-                return ''
-
-        print tabulate(
-            (self.braintuple(b)
-                for b in self.search(**query)),
-            headers=self.fields.keys()
-        )
-
-    def braintuple(self, brain):
-        return tuple(getattr(brain, f) for f in self.fields.keys())
+        ''' Used to watch content of catalog '''
+        for b in self.search(**query):
+            print b
 
 
 class CatalogAPI(BaseCatalogAPI):
-    name = 'connections_catalog'
-    fields = dict(
-        entity_id='str',
-        connected_to='list',
-        layers='list'
-    )
 
     @staticmethod
     def validate_connection(connection):
@@ -134,7 +219,7 @@ class CatalogAPI(BaseCatalogAPI):
         ''' Add a connection to a catalog '''
         connection = self.validate_connection(connection)
 
-        self.catalog.catalog_object(connection, uid=connection.hash)
+        self.catalog.catalog_object(connection)
         log.debug(
             'Connection from %s to %s on layers %s added to %s',
             connection.entity_id,
@@ -144,7 +229,7 @@ class CatalogAPI(BaseCatalogAPI):
         )
 
     def remove_connection(self, connection):
-        self.catalog.uncatalog_object(connection.hash)
+        self.catalog.uncatalog_object(connection)
         log.debug('%s removed from %s' % (connection, self.name))
 
     def add_node(self, node, reindex=False):
@@ -153,7 +238,9 @@ class CatalogAPI(BaseCatalogAPI):
         if not reindex:
             return  # ok, we are already done
 
-        commit()
+        # TODO: make sure for what reason this was done previously
+        # and remove it if not needed anymore
+        # Assumption is: it may be needed for patches/index_object
         log.info('Triggering reindex for %s', node)
         notify(IndexingEvent(node))
         if hasattr(node, 'getDeviceComponent'):
@@ -179,7 +266,7 @@ class CatalogAPI(BaseCatalogAPI):
         if layers:
             q['layers'] = layers
         for b in self.search(**q):
-            yield b.entity_id
+            yield b.connected_to
 
     def get_two_way_connected(self, entity_id, layers=None):
         return set(chain(
@@ -208,7 +295,7 @@ class CatalogAPI(BaseCatalogAPI):
         return visited
 
     def get_bfs_connected(self, entity_id, method, depth, layers=None):
-        ''' Return only set of nodes connected on depht distance using BFS '''
+        ''' Return only set of nodes connected on depth distance using BFS '''
 
         queue = [entity_id]
         distances = {
@@ -284,7 +371,7 @@ class CatalogAPI(BaseCatalogAPI):
         return False
 
     def get_existing_layers(self):
-        return set(layer for i in self.search() for layer in i.layers)
+        return self.catalog.get_existing_layers()
 
     def get_device_by_mac(self, mac):
         for brain in self.search(entity_id=mac):

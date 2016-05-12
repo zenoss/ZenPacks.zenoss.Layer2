@@ -8,7 +8,7 @@
  ****************************************************************************/
 
 /*
- * This file contains code to render network map panel and it's controls, and to 
+ * This file contains code to render network map panel and it's controls, and to
  * query backend for network map graph. When map graph is received
  * it uses graph_renderer.js to actually render network map.
  */
@@ -189,6 +189,7 @@
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
+            timeout: 180000,
             success: function (response, request) {
                 var res = JSON.parse(response.responseText);
                 if(res.error) {
@@ -199,7 +200,11 @@
                 graph.draw(res);
             },
             failure: function(error) {
-                show_error(error);
+                if(error.statusText) {
+                    show_error(error.statusText);
+                } else {
+                    show_error(error);
+                }
             },
             params: params,
         });
