@@ -143,7 +143,7 @@ This ZenPack has two separate capabilities. The first is to collect clients conn
 To enable discovery of clients connected to switch ports you must enable the <code>zenoss.snmp.ClientMACs</code> modeler plugin for the switch devices. There is no
 need to enable this plugin for hosts, servers, or other endpoint devices. It is recommended to only assign the modeler plugin to access switch to which monitored servers are connected.
 
-The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB. 
+The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB.
 
 === Collecting Network Device Neighbors ===
 
@@ -293,6 +293,10 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * zenmapper
 
 == Changes ==
+
+;1.2.0
+* Refactored connection catalog to use Redis as a storage. This prevent from cases
+where ZoDB grows over time (ZEN-22834).
 
 ;1.1.0
 * When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)

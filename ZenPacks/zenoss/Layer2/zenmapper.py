@@ -75,7 +75,7 @@ class ZenMapper(CyclingDaemon):
                 return []
         else:
             return chain(
-                self.dmd.Devices.getSubDevices(),
+                self.dmd.Devices.getSubDevicesGen(),
                 self.dmd.Networks.getSubNetworks()
             )
 

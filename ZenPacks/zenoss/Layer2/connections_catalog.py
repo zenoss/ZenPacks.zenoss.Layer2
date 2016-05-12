@@ -57,6 +57,8 @@ class ConnectionsCatalog(object):
         'connected_to',
         'layers'
     ]
+    # layers list key
+    existing_layers_key = 'existing_layers'
 
     def __init__(self, name):
         super(ConnectionsCatalog, self).__init__()
@@ -89,15 +91,18 @@ class ConnectionsCatalog(object):
         Saves connection and backward connection in Redis database.
         uid - leaved for backward compatibility with 1.1.x
         """
+        # Prepare batch of commands to be executed
+        pipe = self.redis.pipeline()
+
         # Store connection
-        self.redis.sadd(
+        pipe.sadd(
             self.prepId(obj.entity_id),
             pickle.dumps({field: getattr(obj, field) for field in self.fields})
         )
         # Store backward connections as well, in the name of faster search
         # this used in get_reverse_connected()
         for path in obj.connected_to:
-            self.redis.sadd(
+            pipe.sadd(
                 self.prepId(self.b_prefix + path),
                 pickle.dumps({
                     'entity_id': path,
@@ -105,6 +110,12 @@ class ConnectionsCatalog(object):
                     'connected_to': obj.entity_id
                 })
             )
+        # Store layers list in set for faster retrieval
+        for layer in obj.layers:
+            pipe.sadd(self.prepId(self.existing_layers_key), layer)
+
+        # Finally execute batched redis commands
+        pipe.execute()
 
     def uncatalog_object(self, connection=None):
         """
@@ -119,9 +130,14 @@ class ConnectionsCatalog(object):
     def clear(self):
         """
         Removes ALL connections records.
+        On large installation this should not be called often.
         """
         # TODO: Zenoss 5.x may have newer version of redis library
         # with iterator for keys. This may help in performance.
+        # Also using EVAL is good way:
+        # self.redis.eval("local keys = redis.call('keys', '%s') \n for i=1,#keys,5000 do \n redis.call('del', unpack(keys, i, math.min(i+4999, #keys))) \n end \n return keys" % self.prepId('*'))
+        # Unfortunatelly this not available on 4.2.x
+        # So fallback to worst case:
         for k in self.redis.keys(pattern=self.prepId('*')):
             self.redis.delete(k)
         for k in self.redis.keys(pattern=self.prepId(self.b_prefix + '*')):
@@ -134,18 +150,25 @@ class ConnectionsCatalog(object):
         Brain = namedtuple('Brain', ', '.join(self.fields))
         connections = []
         pattern = self.prepId('*')
+        key = None
 
         # Direct connections lookup
         if 'entity_id' in query:
-            pattern = self.prepId(query['entity_id'])
+            key = self.prepId(query['entity_id'])
         # Backward connections lookup
         if 'connected_to' in query:
-            pattern = self.prepId(self.b_prefix + query['connected_to'])
+            key = self.prepId(self.b_prefix + query['connected_to'])
 
-        # TODO: think of Redis batch job to reduce HTTP handshakes
-        for key in self.redis.keys(pattern=pattern):
+        if key:
             for member in self.redis.smembers(key):
                 connections.append(Brain(**pickle.loads(member)))
+        else: # Not normally should be used at all, consider remove this clause
+            log.warn('Redis KEYS command may be very slow on large dataset')
+            # TODO: think of Redis SCAN / scan_iter
+            # https://github.com/andymccurdy/redis-py/blob/master/redis/client.py#L1401
+            for key in self.redis.keys(pattern=pattern):
+                for member in self.redis.smembers(key):
+                    connections.append(Brain(**pickle.loads(member)))
 
         # Gracefully filters by layers if asked
         if 'layers' in query and query['layers']:
@@ -153,6 +176,12 @@ class ConnectionsCatalog(object):
                 if set(x.layers).intersection(set(query['layers']))]
 
         return connections
+
+    def get_existing_layers(self):
+        '''
+        Returns list of registered layers in catalog
+        '''
+        return self.redis.smembers(self.prepId(self.existing_layers_key))
 
 
 class BaseCatalogAPI(object):
@@ -342,7 +371,7 @@ class CatalogAPI(BaseCatalogAPI):
         return False
 
     def get_existing_layers(self):
-        return set(layer for i in self.search() for layer in i.layers)
+        return self.catalog.get_existing_layers()
 
     def get_device_by_mac(self, mac):
         for brain in self.search(entity_id=mac):

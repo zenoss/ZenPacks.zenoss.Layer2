@@ -117,30 +117,6 @@ def get_clients_links(self):
     )
 
 
-# @monkeypatch('Products.ZenModel.Device.Device')
-# def index_object(self, idxs=None, noips=False):
-#     original(self, idxs, noips)
-
-#     cat = CatalogAPI(self.zport)
-#     try:
-#         cat.add_node(self, reindex=True)
-#     except TypeError as e:
-#         log.error(e)
-
-
-# @monkeypatch('Products.ZenModel.Device.Device')
-# def unindex_object(self):
-#     original(self)
-
-#     cat = CatalogAPI(self.zport)
-#     try:
-#         cat.remove_node(self)
-#     except TypeError:
-#         pass  # if we are not able to adapt node,
-#         # we most probably were not able to adapt it
-#         # when adding it to catalog, so no need to remove
-
-
 @monkeypatch('Products.ZenModel.Device.Device')
 def get_reindex_maps(self):
     ''' Should return something distinct from value passed to

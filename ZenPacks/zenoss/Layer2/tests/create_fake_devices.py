@@ -42,22 +42,48 @@ def random_id(length=6):
 
 
 root_and_leafs = '''
-    10.87.100.1 Leaf_1
-    Leaf_1 Leaf_{}
-    Leaf_1 Leaf_{}
-    Leaf_1 Leaf_2
-    Leaf_2 Leaf_{}
-    Leaf_2 Leaf_{}
+    10.87.100.1 Leaf_1 layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_{} layer4,layer5
+    Leaf_1 Leaf_2 layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
+    Leaf_2 Leaf_{} layer6,layer7
     Leaf_1 Leaf_3
     Leaf_3 Leaf_{}
     Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
+    Leaf_3 Leaf_{}
 '''.format(
-    random_id(), random_id(), random_id(), random_id(), random_id(), random_id()
+    random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(),
+    random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(),
+    random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id(), random_id()
 )
 
 
 def main():
-    create_topology(root_and_leafs, dmd)
+    create_topology(root_and_leafs, dmd, False)
     # create_topology(diamond, dmd)
     # create_topology(Y_to_existing, dmd)
     # create_topology(binary_tree_topology(deepness=3, root='test'), dmd)
@@ -145,6 +171,12 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
 
     add_interface(d1, macaddress=mac1, clientmacs=[mac2], vlans=layers)
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], vlans=layers)
+
+    for i in range(10):
+        add_interface(d1, macaddress=random_mac(), clientmacs=[mac1], vlans=layers)
+
+    for i in range(10):
+        add_interface(d1, macaddress=random_mac(), clientmacs=[mac2], vlans=layers)
 
     if update_catalog:
         catapi = CatalogAPI(dmd.zport)
