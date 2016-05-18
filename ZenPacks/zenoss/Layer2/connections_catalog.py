@@ -232,8 +232,33 @@ class CatalogAPI(BaseCatalogAPI):
         self.catalog.uncatalog_object(connection)
         log.debug('%s removed from %s' % (connection, self.name))
 
+    def is_changed(self, node):
+        '''
+        Check if node was modified from previous cataloging
+        '''
+        val = None
+        attr = None
+        if hasattr(node, 'getLastChangeString'):
+            attr = 'getLastChangeString'
+        elif hasattr(node, 'getModificationTimeString'):
+            attr = 'getModificationTimeString'
+
+        if attr:
+            try:
+                val = getattr(node, attr)()
+            except AttributeError:
+                val = None
+
+        if val:
+            rid = self.catalog.prepId(node._guid)
+            if self.catalog.redis.get(rid) == val:
+                return False
+            self.catalog.redis.set(rid, val)
+        return True
+
     def add_node(self, node, reindex=False):
-        map(self.add_connection, IConnectionsProvider(node).get_connections())
+        if self.is_changed(node):
+            map(self.add_connection, IConnectionsProvider(node).get_connections())
 
         if not reindex:
             return  # ok, we are already done
