@@ -13,6 +13,7 @@ This module contains a zenmapper daemon, which updates connections catalog.
 
 from itertools import chain
 import logging
+import timeit
 
 import Globals
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
@@ -74,12 +75,17 @@ class ZenMapper(CyclingDaemon):
                 )
                 return []
         else:
-            return chain(
+            return chain.from_iterable([
                 self.dmd.Devices.getSubDevicesGen(),
                 self.dmd.Networks.getSubNetworks()
-            )
+            ])
 
     def main_loop(self):
+        """
+        zenmapper main loop
+        """
+        start_time = timeit.default_timer()
+
         if self.options.clear:
             log.info('Clearing catalog')
             cat = CatalogAPI(self.dmd.zport)
@@ -87,9 +93,17 @@ class ZenMapper(CyclingDaemon):
         else:
             log.info('Updating catalog')
             cat = CatalogAPI(self.dmd.zport)
+            count = 0
+            end_time = self.options.cycletime * 0.95
             for entity in self.get_devices_list():
+                count += 1
                 cat.add_node(entity)
-        commit()
+                if timeit.default_timer() - start_time > end_time:
+                    log.info('Interrupted by timer. '
+                        'Processed {} nodes'.format(count))
+                    break
+            else:
+                log.info('Processed all {} nodes'.format(count))
 
 if __name__ == '__main__':
     main()
