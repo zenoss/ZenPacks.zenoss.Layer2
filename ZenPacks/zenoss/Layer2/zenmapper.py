@@ -100,7 +100,7 @@ class ZenMapper(CyclingDaemon):
                 cat.add_node(entity)
                 if timeit.default_timer() - start_time > end_time:
                     log.info('Interrupted by timer. '
-                        'Processed {} nodes'.format(count))
+                            'Processed {} nodes'.format(count))
                     break
             else:
                 log.info('Processed all {} nodes'.format(count))
