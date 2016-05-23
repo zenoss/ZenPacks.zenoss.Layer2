@@ -94,6 +94,8 @@ class ZenMapper(CyclingDaemon):
             log.info('Updating catalog')
             cat = CatalogAPI(self.dmd.zport)
             count = 0
+            # 0.95 is here to allow daemon to gracefully stop
+            # without overtiming to next cycle start time.
             end_time = self.options.cycletime * 0.95
             for entity in self.get_devices_list():
                 count += 1
