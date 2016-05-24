@@ -13,7 +13,6 @@ This module contains a zenmapper daemon, which updates connections catalog.
 
 from itertools import chain
 import logging
-import timeit
 
 import Globals
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
@@ -84,8 +83,6 @@ class ZenMapper(CyclingDaemon):
         """
         zenmapper main loop
         """
-        start_time = timeit.default_timer()
-
         if self.options.clear:
             log.info('Clearing catalog')
             cat = CatalogAPI(self.dmd.zport)
