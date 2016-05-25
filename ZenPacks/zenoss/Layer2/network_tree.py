@@ -167,13 +167,6 @@ def get_connections(rootnode, depth=1, layers=None):
 
             b = adapt_node(node)
 
-            # need to check for uid in leafs before adding node to graph
-            # as next time it will be skipped due to optimization
-            for node_b in get_reverse_connected(b):
-                if this_is_link(node_b):
-                    b.link = node_b[1:]
-                    break
-
             add_node(b)
             if node in impacted:
                 add_link(a, b)
@@ -183,9 +176,6 @@ def get_connections(rootnode, depth=1, layers=None):
 
     def get_related(node):
         return cat.get_two_way_connected(node.get_path(), layers)
-
-    def get_reverse_connected(node):
-        return cat.get_reverse_connected(node.get_path(), layers)
 
     def connection_not_in_this_vlans(edge, filter_layers):
         return (
