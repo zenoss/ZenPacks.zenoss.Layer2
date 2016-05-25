@@ -118,6 +118,17 @@ def get_clients_links(self):
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
+def setLastChange(self, value=None):
+    original(self, value)
+
+    cat = CatalogAPI(self.zport)
+    try:
+        cat.add_node(self)
+    except TypeError as e:
+        log.error(e)
+
+
+@monkeypatch('Products.ZenModel.Device.Device')
 def get_reindex_maps(self):
     ''' Should return something distinct from value passed to
         set_reindex_maps for set_reindex_maps to run
