@@ -297,6 +297,14 @@ Installing this ZenPack will add the following items to your Zenoss system.
 ;1.2.0
 * Refactored connection catalog to use Redis as a storage. This prevent from cases
 where ZoDB grows over time (ZEN-22834).
+* Layer2 index now don't touch/modify ZoDB storage in any of cases.
+* Devices added to index in time they changed. Zenmapper daemon adds to index only
+differences, e.g. indexing is incremental now.
+* In time when zenpack installed/upgraded zenmapper daemon will create initial index.
+This occurs only on first run. And it may take several minutes depending on
+number of devices. On target system with 10k devices it takes about 40 minutes
+and requires 10GB of memory to complete.
+* In case when Zenoss totally stopped (including redis) catalog is cleared.
 
 ;1.1.0
 * When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
