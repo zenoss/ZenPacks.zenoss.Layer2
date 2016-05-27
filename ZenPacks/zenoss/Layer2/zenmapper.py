@@ -92,6 +92,7 @@ class ZenMapper(CyclingDaemon):
             cat = CatalogAPI(self.dmd.zport)
             for entity in self.get_devices_list():
                 cat.add_node(entity)
+                entity._p_invalidate()
 
 if __name__ == '__main__':
     main()
