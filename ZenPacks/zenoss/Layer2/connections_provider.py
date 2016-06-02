@@ -30,12 +30,16 @@ All connection providers should be registered in configure.zcml.
 For more details see README.mediawiki
 
 '''
+import logging
 
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
 
 from Products.Zuul.catalog.interfaces import IGloballyIndexed
 from Products.Zuul.catalog.interfaces import IIndexableWrapper
+
+
+log = logging.getLogger('zen.Layer2')
 
 
 class InterfaceConnections(object):
@@ -217,6 +221,19 @@ def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
         return []
     if callable(iface.vlans):
-        return ['vlan{}'.format(vlan.vlan_id) for vlan in iface.vlans()]
+        vlans = []
+        for vlan in iface.vlans():
+            if hasattr(vlan, 'vlan_id'):
+                vlan_id = vlan.vlan_id
+            elif hasattr(vlan, 'ipVlanId'):
+                # NetScaler VLANs have no `vlan_id` attribute.
+                vlan_id = vlan.ipVlanId
+            else:
+                log.warning('VLAN component %s has no Id', vlan)
+                continue
+
+            vlans.append('vlan{}'.format(vlan_id))
+
+        return vlans
     else:
         return iface.vlans
