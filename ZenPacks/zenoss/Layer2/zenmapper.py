@@ -58,6 +58,12 @@ class ZenMapper(CyclingDaemon):
             help="Fully qualified device name ie www.confmon.com"
         )
 
+        self.parser.add_option(
+            '--redis-url',
+            dest='redis_url', type='string',
+            help='redis connection string: redis://[hostname]:[port]/[db]'
+        )
+
     def get_devices_list(self):
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
@@ -85,11 +91,11 @@ class ZenMapper(CyclingDaemon):
         """
         if self.options.clear:
             log.info('Clearing catalog')
-            cat = CatalogAPI(self.dmd.zport)
+            cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
             cat.clear()
         else:
             log.info('Updating catalog')
-            cat = CatalogAPI(self.dmd.zport)
+            cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
             for entity in self.get_devices_list():
                 cat.add_node(entity)
                 entity._p_invalidate()
