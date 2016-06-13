@@ -13,6 +13,7 @@ This module contains a zenmapper daemon, which updates connections catalog.
 
 from itertools import chain
 import logging
+import multiprocessing
 
 import Globals
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
@@ -22,6 +23,11 @@ from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
 
 log = logging.getLogger('zen.ZenMapper')
+
+
+def _worker(connections):
+    for con in connections:
+        cat.add_connection(con)
 
 
 def main():
@@ -58,7 +64,7 @@ class ZenMapper(CyclingDaemon):
             help="Fully qualified device name ie www.confmon.com"
         )
 
-    def get_devices_list(self):
+    def get_connections_list(self, cat):
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
             if device:
@@ -66,33 +72,42 @@ class ZenMapper(CyclingDaemon):
                     "Updating connections for device %s",
                     self.options.device
                 )
-                return [device]
+                yield IConnectionsProvider(device).get_connections()
             else:
                 log.error(
                     "Device with id %s was not found",
                     self.options.device
                 )
-                return []
+                yield
         else:
-            return chain.from_iterable([
-                self.dmd.Devices.getSubDevicesGen(),
-                self.dmd.Networks.getSubNetworks()
-            ])
+            for node in chain.from_iterable([
+                    self.dmd.Devices.getSubDevicesGen(),
+                    self.dmd.Networks.getSubNetworks()]):
+                if cat.is_changed(node):
+                    yield IConnectionsProvider(node).get_connections()
+                node._p_invalidate()
 
     def main_loop(self):
         """
         zenmapper main loop
         """
+
         if self.options.clear:
             log.info('Clearing catalog')
             cat = CatalogAPI(self.dmd.zport)
             cat.clear()
         else:
             log.info('Updating catalog')
+            count = multiprocessing.cpu_count()
+            pool = multiprocessing.Pool(processes=count)
+
             cat = CatalogAPI(self.dmd.zport)
-            for entity in self.get_devices_list():
-                cat.add_node(entity)
-                entity._p_invalidate()
+
+            for connections in self.get_connections_list(cat):
+                pool.apply_async(_worker, list(connections))
+            pool.close()
+            pool.join()
+
 
 if __name__ == '__main__':
     main()
