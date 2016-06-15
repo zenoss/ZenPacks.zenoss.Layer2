@@ -35,11 +35,7 @@ from .connections_provider import IConnection, IConnectionsProvider
 log = logging.getLogger('zen.Layer2')
 
 
-# TODO: add to zenmapper an options to run on remote server.
-# This may be useful for big Zenoss installations
-REDIS_HOST = 'localhost'
-REDIS_PORTS = [6379, 16379] # 5.x, 4.x
-REDIS_DB = 0
+DEFUALT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
 
@@ -60,23 +56,35 @@ class ConnectionsCatalog(object):
     # layers list key
     existing_layers_key = 'existing_layers'
 
-    def __init__(self, name):
+    def __init__(self, name, redis_url=None):
         super(ConnectionsCatalog, self).__init__()
         self.name = name
         self.b_prefix = BACKWARD_PREFIX
-        self.redis = self.get_redis()
+        self.redis = self.get_redis(redis_url)
 
-    def get_redis(self):
+    def get_redis(self, redis_url=None):
         """
-        Assume we on 5.x and if not - fallback to 4.x port
+        Use Redis URL if specified, otherwise try to use
+        default URLs for 5.x and 4.x.
         """
-        try:
-            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[0],
-                db=REDIS_DB)
-            r.get(None)
-        except redis.exceptions.ConnectionError:
-            r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORTS[1],
-                db=REDIS_DB)
+        if redis_url:
+            redis_urls = [redis_url]
+        else:
+            redis_urls = DEFUALT_REDIS_URLS
+
+        last_error = None
+        for url in redis_urls:
+            try:
+                r = redis.StrictRedis.from_url(url)
+                r.get(None)
+                last_error = None
+                break
+            except redis.exceptions.ConnectionError as e:
+                last_error = e
+
+        if last_error:
+            raise last_error
+
         return r
 
     def prepId(self, oid):
@@ -190,10 +198,10 @@ class BaseCatalogAPI(object):
     zport = None
     name = None
 
-    def __init__(self, zport, name=DEFAULT_CATALOG_NAME):
+    def __init__(self, zport, name=DEFAULT_CATALOG_NAME, redis_url=None):
         self.zport = zport
         self.name = name
-        self.catalog = ConnectionsCatalog(name=self.name)
+        self.catalog = ConnectionsCatalog(self.name, redis_url)
 
     def clear(self):
         self.catalog.clear()
