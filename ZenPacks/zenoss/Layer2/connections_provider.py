@@ -179,6 +179,14 @@ class BaseConnectionsProvider(object):
         return '<ConnectionsProvider for: %s>' % self.context
 
 
+class MACObject(object):
+    def __init__(self, context):
+        self.context = context
+
+    def getPrimaryUrlPath(self):
+        return "!" + self.context.getPrimaryUrlPath()
+
+
 class DeviceConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
         return self.context.getStatus() == 0
@@ -192,6 +200,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 continue
             yield Connection(self.context, (mac, ), layers)
             yield Connection(mac, (self.context, ), layers)
+            yield Connection(MACObject(interface), (mac, ), layers)
             for cl in ic.clientmacs:
                 if cl.strip():
                     yield Connection(mac, (cl, ), layers)

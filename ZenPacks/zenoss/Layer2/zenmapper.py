@@ -17,7 +17,6 @@ import multiprocessing
 
 import Globals
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
-from transaction import commit
 
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
@@ -75,6 +74,12 @@ class ZenMapper(CyclingDaemon):
             help='redis connection string: redis://[hostname]:[port]/[db]'
         )
 
+        self.parser.add_option(
+            '--workers',
+            dest='workers', default=10, type="int",
+            help='Workers number'
+        )
+
     def get_connections_list(self, cat):
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
@@ -109,8 +114,7 @@ class ZenMapper(CyclingDaemon):
             cat.clear()
         else:
             log.info('Updating catalog')
-            # count = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(processes=10)
+            pool = multiprocessing.Pool(processes=self.options.workers)
 
             cat = CatalogAPI(self.dmd.zport)
 
