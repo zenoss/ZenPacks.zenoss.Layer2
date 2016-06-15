@@ -24,12 +24,12 @@ from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
 log = logging.getLogger('zen.ZenMapper')
 
 
-def _worker(connections):
+def _worker(connections, redis_url):
     """
     Performs cataloging of L2 connections.
     CatalogAPI instance don't need access to dmd here.
     """
-    cat = CatalogAPI(None)
+    cat = CatalogAPI(zport=None, redis_url=redis_url)
     for con in connections:
         cat.add_connection(con)
 
@@ -107,19 +107,17 @@ class ZenMapper(CyclingDaemon):
         """
         zenmapper main loop
         """
-
+        cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
         if self.options.clear:
             log.info('Clearing catalog')
-            cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
             cat.clear()
         else:
             log.info('Updating catalog')
             pool = multiprocessing.Pool(processes=self.options.workers)
 
-            cat = CatalogAPI(self.dmd.zport)
-
             for connections in self.get_connections_list(cat):
-                pool.apply_async(_worker, (list(connections),))
+                pool.apply_async(_worker,
+                    (list(connections), self.options.redis_url))
 
             pool.close()
             pool.join()

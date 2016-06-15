@@ -35,7 +35,7 @@ from .connections_provider import IConnection, IConnectionsProvider
 log = logging.getLogger('zen.Layer2')
 
 
-DEFUALT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
+DEFAULT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
 
@@ -70,7 +70,7 @@ class ConnectionsCatalog(object):
         if redis_url:
             redis_urls = [redis_url]
         else:
-            redis_urls = DEFUALT_REDIS_URLS
+            redis_urls = DEFAULT_REDIS_URLS
 
         last_error = None
         for url in redis_urls:
