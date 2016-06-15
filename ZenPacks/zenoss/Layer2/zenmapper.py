@@ -26,6 +26,11 @@ log = logging.getLogger('zen.ZenMapper')
 
 
 def _worker(connections):
+    """
+    Performs cataloging of L2 connections.
+    CatalogAPI instance don't need access to dmd here.
+    """
+    cat = CatalogAPI(None)
     for con in connections:
         cat.add_connection(con)
 
@@ -98,13 +103,14 @@ class ZenMapper(CyclingDaemon):
             cat.clear()
         else:
             log.info('Updating catalog')
-            count = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(processes=count)
+            # count = multiprocessing.cpu_count()
+            pool = multiprocessing.Pool(processes=10)
 
             cat = CatalogAPI(self.dmd.zport)
 
             for connections in self.get_connections_list(cat):
-                pool.apply_async(_worker, list(connections))
+                pool.apply_async(_worker, (list(connections),))
+
             pool.close()
             pool.join()
 
