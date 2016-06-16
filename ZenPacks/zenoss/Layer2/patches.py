@@ -123,7 +123,8 @@ def setLastChange(self, value=None):
 
     cat = CatalogAPI(self.zport)
     try:
-        cat.add_node(self)
+        if cat.is_changed(self):
+            cat.add_node(self)
     except TypeError as e:
         log.error(e)
 
