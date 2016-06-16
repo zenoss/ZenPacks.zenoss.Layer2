@@ -94,7 +94,7 @@ class ZenMapper(CyclingDaemon):
                     "Device with id %s was not found",
                     self.options.device
                 )
-                yield
+                return
         else:
             for node in chain.from_iterable([
                     self.dmd.Devices.getSubDevicesGen(),
