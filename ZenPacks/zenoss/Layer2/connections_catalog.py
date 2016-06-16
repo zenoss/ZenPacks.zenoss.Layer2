@@ -22,7 +22,7 @@ Usage:
 from itertools import chain
 import logging
 import redis
-import pickle
+import cPickle as pickle
 from collections import namedtuple
 
 from zExceptions import NotFound
@@ -100,7 +100,7 @@ class ConnectionsCatalog(object):
         uid - leaved for backward compatibility with 1.1.x
         """
         # Prepare batch of commands to be executed
-        pipe = self.redis.pipeline()
+        pipe = self.redis.pipeline(transaction=False)
 
         # Store connection
         pipe.sadd(
@@ -266,7 +266,8 @@ class CatalogAPI(BaseCatalogAPI):
 
     def add_node(self, node, reindex=False):
         if self.is_changed(node):
-            map(self.add_connection, IConnectionsProvider(node).get_connections())
+            for connection in IConnectionsProvider(node).get_connections():
+                self.add_connection(connection)
 
         if not reindex:
             return  # ok, we are already done
