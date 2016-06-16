@@ -22,7 +22,7 @@ Usage:
 from itertools import chain
 import logging
 import redis
-import pickle
+import cPickle as pickle
 from collections import namedtuple
 
 from zExceptions import NotFound
@@ -35,7 +35,7 @@ from .connections_provider import IConnection, IConnectionsProvider
 log = logging.getLogger('zen.Layer2')
 
 
-DEFUALT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
+DEFAULT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
 
@@ -70,7 +70,7 @@ class ConnectionsCatalog(object):
         if redis_url:
             redis_urls = [redis_url]
         else:
-            redis_urls = DEFUALT_REDIS_URLS
+            redis_urls = DEFAULT_REDIS_URLS
 
         last_error = None
         for url in redis_urls:
@@ -100,7 +100,7 @@ class ConnectionsCatalog(object):
         uid - leaved for backward compatibility with 1.1.x
         """
         # Prepare batch of commands to be executed
-        pipe = self.redis.pipeline()
+        pipe = self.redis.pipeline(transaction=False)
 
         # Store connection
         pipe.sadd(
@@ -231,8 +231,8 @@ class CatalogAPI(BaseCatalogAPI):
         log.debug(
             'Connection from %s to %s on layers %s added to %s',
             connection.entity_id,
-            ', '.join(connection.connected_to),
-            ', '.join(connection.layers),
+            connection.connected_to,
+            connection.layers,
             self.name
         )
 
@@ -266,7 +266,8 @@ class CatalogAPI(BaseCatalogAPI):
 
     def add_node(self, node, reindex=False):
         if self.is_changed(node):
-            map(self.add_connection, IConnectionsProvider(node).get_connections())
+            for connection in IConnectionsProvider(node).get_connections():
+                self.add_connection(connection)
 
         if not reindex:
             return  # ok, we are already done
