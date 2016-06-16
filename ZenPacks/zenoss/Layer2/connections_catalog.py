@@ -231,8 +231,8 @@ class CatalogAPI(BaseCatalogAPI):
         log.debug(
             'Connection from %s to %s on layers %s added to %s',
             connection.entity_id,
-            ', '.join(connection.connected_to),
-            ', '.join(connection.layers),
+            connection.connected_to,
+            connection.layers,
             self.name
         )
 
