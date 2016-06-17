@@ -153,6 +153,7 @@ class ZenMapper(CyclingDaemon):
             log.info('Updating catalog.')
             for node in self.get_nodes_list():
                 self.cat.add_node(node)
+                node._p_invalidate()
 
     def main_loop(self):
         """
