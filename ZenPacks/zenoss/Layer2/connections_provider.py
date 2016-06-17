@@ -213,6 +213,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
 
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
+            interface._p_invalidate()
 
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):

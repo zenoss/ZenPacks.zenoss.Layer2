@@ -11,11 +11,14 @@
 This module contains a zenmapper daemon, which updates connections catalog.
 '''
 
-from itertools import chain
+from itertools import chain, islice
+import os
+import sys
 import logging
 import multiprocessing
 
 import Globals
+from Products.ZenUtils.CmdBase import remove_args
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
 
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
@@ -24,14 +27,25 @@ from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
 log = logging.getLogger('zen.ZenMapper')
 
 
-def _worker(connections, redis_url):
+def exec_worker(offset, chunk):
     """
-    Performs cataloging of L2 connections.
-    CatalogAPI instance don't need access to dmd here.
+    Used to create a worker for zenmapper daemon. Removes the
+    "cycle", "workers" and "daemon" sys args and replace the current process by
+    executing sys args
     """
-    cat = CatalogAPI(zport=None, redis_url=redis_url)
-    for con in connections:
-        cat.add_connection(con)
+    argv = [sys.executable]
+    # Remove unwanted parameters from worker processes
+    argv.extend(remove_args(sys.argv[:],
+        ['-D','--daemon', '-c', '--cycle'], ['--workers']))
+    # Tell the worker process to log to the log file and not just to console
+    argv.append('--duallog')
+    argv.append('--worker')
+    argv.append('--offset=%i' % offset)
+    argv.append('--chunk=%i' % chunk)
+    try:
+        os.execvp(argv[0], argv)
+    except:
+        log.exception("Failed to start process")
 
 
 def main():
@@ -76,11 +90,30 @@ class ZenMapper(CyclingDaemon):
 
         self.parser.add_option(
             '--workers',
-            dest='workers', default=10, type="int",
+            dest='workers', default=2, type="int",
             help='Workers number'
         )
 
-    def get_connections_list(self, cat):
+        self.parser.add_option(
+            "--worker",
+            dest="worker",
+            action="store_true",
+            help="Run as worker"
+        )
+
+        self.parser.add_option(
+            '--offset',
+            dest='offset', type="int",
+            help='Start point to process in worker'
+        )
+
+        self.parser.add_option(
+            '--chunk',
+            dest='chunk', type="int",
+            help='Chunk size to process in worker'
+        )
+
+    def get_nodes_list(self):
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
             if device:
@@ -88,39 +121,59 @@ class ZenMapper(CyclingDaemon):
                     "Updating connections for device %s",
                     self.options.device
                 )
-                yield IConnectionsProvider(device).get_connections()
+                return [device]
             else:
                 log.error(
                     "Device with id %s was not found",
                     self.options.device
                 )
-                return
+                return []
         else:
-            for node in chain.from_iterable([
-                    self.dmd.Devices.getSubDevicesGen(),
-                    self.dmd.Networks.getSubNetworks()]):
-                if cat.is_changed(node):
-                    yield IConnectionsProvider(node).get_connections()
+            return chain.from_iterable([
+                self.dmd.Devices.getSubDevicesGen(),
+                self.dmd.Networks.getSubNetworks()])
+
+    def start_worker(self, worker_id, chunk):
+        log.info('Starting worker %i with chunk %i' % (worker_id, chunk))
+        p = multiprocessing.Process(
+            target=exec_worker,
+            args=(worker_id, chunk)
+            )
+        p.daemon = True
+        p.start()
+
+    def _do_job(self, offset, chunk):
+        ""
+        if chunk:
+            log.info('Worker %i: updating catalog' % offset)
+            for node in islice(iter(self.get_nodes_list()), offset*chunk, chunk):
+                self.cat.add_node(node)
+            log.info('Worker %i: finished job.' % offset)
+        else:
+            log.info('Updating catalog.')
+            for node in self.get_nodes_list():
+                self.cat.add_node(node)
                 node._p_invalidate()
 
     def main_loop(self):
         """
         zenmapper main loop
         """
-        cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
+        self.cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
+
         if self.options.clear:
             log.info('Clearing catalog')
             cat.clear()
+        elif self.options.cycle:
+            chunk = len(list(self.get_nodes_list())) / self.options.workers + 1
+            for i in xrange(self.options.workers):
+                self.start_worker(i, chunk)
+        elif self.options.worker:
+            offset = self.options.offset
+            chunk = self.options.chunk
+            self._do_job(offset, chunk)
         else:
-            log.info('Updating catalog')
-            pool = multiprocessing.Pool(processes=self.options.workers)
-
-            for connections in self.get_connections_list(cat):
-                pool.apply_async(_worker,
-                    (list(connections), self.options.redis_url))
-
-            pool.close()
-            pool.join()
+            self._do_job(offset=0, chunk=0)
 
 
 if __name__ == '__main__':
