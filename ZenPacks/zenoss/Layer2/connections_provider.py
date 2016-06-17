@@ -213,6 +213,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
 
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
+                ip._p_invalidate()
             interface._p_invalidate()
 
 
@@ -225,6 +226,7 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             net = self.context
             yield Connection(net, (dev, ), ['layer3', ])
             yield Connection(dev, (net, ), ['layer3', ])
+            ip._p_invalidate()
 
 
 def get_vlans(iface):
