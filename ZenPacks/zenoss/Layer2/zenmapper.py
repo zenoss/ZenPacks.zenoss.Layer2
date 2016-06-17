@@ -163,8 +163,8 @@ class ZenMapper(CyclingDaemon):
 
         if self.options.clear:
             log.info('Clearing catalog')
-            cat.clear()
-        elif self.options.cycle:
+            self.cat.clear()
+        elif self.options.cycle and self.options.workers > 0:
             chunk = len(list(self.get_nodes_list())) / self.options.workers + 1
             for i in xrange(self.options.workers):
                 self.start_worker(i, chunk)
