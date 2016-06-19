@@ -113,7 +113,10 @@ class ZenMapper(CyclingDaemon):
             help='Chunk size to process in worker'
         )
 
-    def get_nodes_list(self):
+    def get_nodes_list(self, sort=False):
+        """
+        Returns list of devices and networks to index
+        """
         if self.options.device:
             device = self.dmd.Devices.findDevice(self.options.device)
             if device:
@@ -128,12 +131,18 @@ class ZenMapper(CyclingDaemon):
                     self.options.device
                 )
                 return []
-        else:
-            return chain.from_iterable([
-                self.dmd.Devices.getSubDevicesGen(),
-                self.dmd.Networks.getSubNetworks()])
+
+        nodes = chain.from_iterable([
+            self.dmd.Devices.getSubDevicesGen(),
+            self.dmd.Networks.getSubNetworks()])
+        if not sort:
+            return list(nodes)
+        return sorted(nodes, key=lambda x: x.uuid)
 
     def start_worker(self, worker_id, chunk):
+        """
+        Creates new process of zenmapper with a task to process chunk of nodes
+        """
         log.info('Starting worker %i with chunk %i' % (worker_id, chunk))
         p = multiprocessing.Process(
             target=exec_worker,
@@ -143,15 +152,19 @@ class ZenMapper(CyclingDaemon):
         p.start()
 
     def _do_job(self, offset, chunk):
-        ""
+        """
+        Do actual indexing of nodes into L2 catalog
+        """
         if chunk:
             log.info('Worker %i: updating catalog' % offset)
-            for node in islice(iter(self.get_nodes_list()), offset*chunk, chunk):
+            nodes = self.get_nodes_list(sort=True)[offset*chunk:offset*chunk + chunk]
+            for node in nodes:
                 self.cat.add_node(node)
+                node._p_invalidate()
             log.info('Worker %i: finished job.' % offset)
         else:
             log.info('Updating catalog.')
-            for node in self.get_nodes_list():
+            for node in self.get_nodes_list(sort=True):
                 self.cat.add_node(node)
                 node._p_invalidate()
 
@@ -165,7 +178,7 @@ class ZenMapper(CyclingDaemon):
             log.info('Clearing catalog')
             self.cat.clear()
         elif self.options.cycle and self.options.workers > 0:
-            chunk = len(list(self.get_nodes_list())) / self.options.workers + 1
+            chunk = len(self.get_nodes_list()) / self.options.workers + 1
             for i in xrange(self.options.workers):
                 self.start_worker(i, chunk)
         elif self.options.worker:
