@@ -11,7 +11,7 @@
 This module contains a zenmapper daemon, which updates connections catalog.
 '''
 
-from itertools import chain, islice
+from itertools import chain
 import os
 import sys
 import logging
@@ -20,6 +20,7 @@ import multiprocessing
 import Globals
 from Products.ZenUtils.CmdBase import remove_args
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
+from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
@@ -137,7 +138,7 @@ class ZenMapper(CyclingDaemon):
             self.dmd.Networks.getSubNetworks()])
         if not sort:
             return list(nodes)
-        return sorted(nodes, key=lambda x: x.uuid)
+        return sorted(nodes, key=lambda x: IGlobalIdentifier(x).getGUID())
 
     def start_worker(self, worker_id, chunk):
         """
