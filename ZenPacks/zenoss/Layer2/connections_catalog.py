@@ -383,7 +383,7 @@ class CatalogAPI(BaseCatalogAPI):
             layers.extend(c.layers)
 
         # check if any of the layers has working path to the device
-        for layer in layers:
+        for layer in set(layers):
             visited = set()
 
             def visit(node):
