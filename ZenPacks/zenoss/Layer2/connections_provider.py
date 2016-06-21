@@ -196,7 +196,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
             ic = InterfaceConnections(interface)
             layers = ic.layers
             mac = ic.macaddress
-            if not mac or mac == "00:00:00:00:00:00":
+            if not mac or mac.startswith("00:"):
                 continue
             yield Connection(self.context, (mac, ), layers)
             yield Connection(mac, (self.context, ), layers)
