@@ -58,6 +58,10 @@ class ZenMapper(CyclingDaemon):
     name = 'zenmapper'
     mname = name
 
+    def __init__(self, noopts=0, app=None, keeproot=False):
+        super(ZenMapper, self).__init__(noopts, app, keeproot)
+        self._workers = {}
+
     def buildOptions(self):
         super(CyclingDaemon, self).buildOptions()
         self.parser.add_option(
@@ -144,13 +148,17 @@ class ZenMapper(CyclingDaemon):
         """
         Creates new process of zenmapper with a task to process chunk of nodes
         """
-        log.info('Starting worker %i with chunk %i' % (worker_id, chunk))
-        p = multiprocessing.Process(
-            target=exec_worker,
-            args=(worker_id, chunk)
-            )
-        p.daemon = True
-        p.start()
+        if worker_id in self._workers and self._workers[worker_id].is_alive():
+            log.info('Worker %i still running.' % worker_id)
+        else:
+            log.info('Starting worker %i with chunk %i' % (worker_id, chunk))
+            p = multiprocessing.Process(
+                target=exec_worker,
+                args=(worker_id, chunk)
+                )
+            p.daemon = True
+            p.start()
+            self._workers[worker_id] = p
 
     def _do_job(self, offset, chunk):
         """
