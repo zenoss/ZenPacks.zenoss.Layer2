@@ -29,12 +29,20 @@ def fake_connection(con_id):
     return c
 
 
+class FakeConnectionsProvider(BaseConnectionsProvider):
+
+    def __init__(self, context, id):
+        self.context = context
+        self.id = id
+
+    def get_layers(self):
+        return ['layer2', 'layer3']
+
+    def get_connections(self):
+        yield fake_connection(self.id)
+
 def fake_connections_provider(dmd, id='connection_id'):
-    cp = BaseConnectionsProvider(sentinel.context)
-    cp.get_status = MagicMock()
-    cp.get_connections = MagicMock(return_value=[fake_connection(id)])
-    cp.get_layers = MagicMock()
-    return cp
+    return FakeConnectionsProvider(sentinel.context, id)
 
 
 class TestCatalogAPI(BaseTestCase):
@@ -52,10 +60,8 @@ class TestCatalogAPI(BaseTestCase):
         brains = self.cat.search()
 
         self.assertEqual(len(brains), 3)
-        self.assertEqual(brains[0].entity_id, 'test_id')
-        self.assertEqual(
-            brains[0].connected_to, ('connected_to1', 'connected_to2')
-        )
+        self.assertTrue('test_id' in [x.entity_id for x in brains])
+        self.assertEqual(brains[0].connected_to, 'test_id')
         self.assertEqual(brains[0].layers, ('layer1', 'layer2', 'layer1'))
 
     def test_remove_connection(self):
@@ -79,9 +85,9 @@ class TestCatalogAPI(BaseTestCase):
         cp = fake_connections_provider(self.dmd)
         self.assertEqual(len(self.cat.search()), 0)
         self.cat.add_node(cp)
-        self.assertEqual(len(self.cat.search()), 3)
+        self.assertEqual(len(self.cat.search(entity_id='connection_id')), 1)
         self.cat.remove_node(cp)
-        self.assertEqual(len(self.cat.search()), 0)
+        self.assertEqual(len(self.cat.search(entity_id='connection_id')), 0)
 
     def test_get_directly_connected(self):
         self.cat.add_node(fake_connections_provider(self.dmd))
@@ -124,7 +130,9 @@ class TestCheckWorkingPath(BaseTestCase):
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
 
     def topology(self, topology):
-        create_topology(topology, self.dmd)
+        devices = create_topology(topology, self.dmd, False)
+        for device in devices:
+            self.cat.add_node(device)
 
     def test_check_nearest_down(self):
         self.topology('''
@@ -151,10 +159,10 @@ class TestCheckWorkingPath(BaseTestCase):
 
     def test_check_one_way_down(self):
         self.topology('''
-            a b
-            a c
-            b d
-            c d
+            a b l2
+            a c l2
+            b d l2
+            c d l2
         ''')
 
         self.cat.get_status = lambda x: x != router('c')

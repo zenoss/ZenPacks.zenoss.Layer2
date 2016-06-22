@@ -134,20 +134,20 @@ def create_topology(connections, dmd, update_catalog=True):
         (third element could be comma separated list of layers)
         Or multiline string, with space separated values in its lines.
     '''
+    devices = []
     if isinstance(connections, basestring):
         connections = parse_topology(connections)
 
     for c in connections:
         layers = c[2].split(',') if len(c) > 2 else None
-        connect(
-            get_device(c[0], dmd),
-            get_device(c[1], dmd),
-            dmd,
-            layers,
-            update_catalog
-        )
+        d1 = get_device(c[0], dmd)
+        d2 = get_device(c[1], dmd)
+        connect(d1, d2, dmd, layers, update_catalog)
+        devices.append(d1)
+        devices.append(d2)
 
     dmd.Devices.reIndex()
+    return devices
 
 
 def parse_topology(text):
@@ -171,12 +171,6 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
 
     add_interface(d1, macaddress=mac1, clientmacs=[mac2], vlans=layers)
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], vlans=layers)
-
-    for i in range(10):
-        add_interface(d1, macaddress=random_mac(), clientmacs=[mac1], vlans=layers)
-
-    for i in range(10):
-        add_interface(d1, macaddress=random_mac(), clientmacs=[mac2], vlans=layers)
 
     if update_catalog:
         catapi = CatalogAPI(dmd.zport)
