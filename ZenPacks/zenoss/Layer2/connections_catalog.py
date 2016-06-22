@@ -53,6 +53,7 @@ class ConnectionsCatalog(object):
         'connected_to',
         'layers'
     ]
+    Brain = namedtuple('Brain', fields)
     # layers list key
     existing_layers_key = 'existing_layers'
 
@@ -155,21 +156,31 @@ class ConnectionsCatalog(object):
         """
         Looks into Redis keys and mimics ZCatalog behaviour in same time.
         """
-        Brain = namedtuple('Brain', ', '.join(self.fields))
         connections = []
         pattern = self.prepId('*')
-        key = None
+        keys = []
 
         # Direct connections lookup
         if 'entity_id' in query:
-            key = self.prepId(query['entity_id'])
+            entity_id = query['entity_id']
+            if isinstance(entity_id, basestring):
+                entity_id = (entity_id, )
+
+            keys.extend(self.prepId(id) for id in entity_id)
         # Backward connections lookup
         if 'connected_to' in query:
-            key = self.prepId(self.b_prefix + query['connected_to'])
+            connected_to = query['connected_to']
+            if isinstance(connected_to, basestring):
+                connected_to = (connected_to, )
 
-        if key:
-            for member in self.redis.smembers(key):
-                connections.append(Brain(**pickle.loads(member)))
+            keys.extend(self.prepId(self.b_prefix + id) for id in connected_to)
+
+        if len(keys) > 1:
+            for member in self.redis.sunion(keys):
+                connections.append(self.Brain(**pickle.loads(member)))
+        elif len(keys) == 1:
+            for member in self.redis.smembers(keys[0]):
+                connections.append(self.Brain(**pickle.loads(member)))
         else: # Not normally should be used at all, consider remove this clause
             log.warn('Redis KEYS command may be very slow on large dataset')
             # TODO: think of Redis SCAN / scan_iter
@@ -304,28 +315,38 @@ class CatalogAPI(BaseCatalogAPI):
             yield b.connected_to
 
     def get_two_way_connected(self, entity_id, layers=None):
-        return set(chain(
-            self.get_directly_connected(entity_id, layers),
-            self.get_reverse_connected(entity_id, layers)
-        ))
+        q = dict(entity_id=entity_id, connected_to=entity_id)
+        if layers:
+            q['layers'] = layers
+        for b in self.search(**q):
+            if isinstance(b.connected_to, basestring):
+                yield b.connected_to
+            else:
+                for c in b.connected_to:
+                    yield c
 
     def get_connected(self, entity_id, method, layers=None, depth=None):
         ''' Return set of all connected nodes '''
         visited = set()
 
-        def visit(node, depth):
+        def visit(nodes, depth):
             if depth is not None and depth < 0:
                 return
-            if node in visited:
+            nodes_to_check = list(set(nodes).difference(visited))
+            if not nodes_to_check:
                 return
-            visited.add(node)
+            visited.update(nodes_to_check)
 
             if depth is not None:
                 depth -= 1
-            for n in method(node, layers):
-                visit(n, depth)
 
-        visit(entity_id, depth)
+            # TODO: To find optimal batch size value.
+            batch_size = 400
+            for pos in xrange(0, len(nodes_to_check), batch_size):
+                nodes_to_visit = method(nodes_to_check[pos:pos + batch_size], layers)
+                visit(nodes_to_visit, depth)
+
+        visit([entity_id], depth)
 
         return visited
 
