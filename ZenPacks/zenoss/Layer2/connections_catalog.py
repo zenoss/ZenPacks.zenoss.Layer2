@@ -175,8 +175,9 @@ class ConnectionsCatalog(object):
             # TODO: think of Redis SCAN / scan_iter
             # https://github.com/andymccurdy/redis-py/blob/master/redis/client.py#L1401
             for key in self.redis.keys(pattern=pattern):
-                for member in self.redis.smembers(key):
-                    connections.append(Brain(**pickle.loads(member)))
+                if key != self.prepId(self.existing_layers_key):
+                    for member in self.redis.smembers(key):
+                        connections.append(Brain(**pickle.loads(member)))
 
         # Gracefully filters by layers if asked
         if 'layers' in query and query['layers']:

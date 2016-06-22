@@ -72,26 +72,11 @@ class TestGetConnections(BaseTestCase):
         catapi.add_node(b)
 
         res = get_connections(a, depth=3, layers=['vlan1'])
-        self.assertItemsEqual(res['links'], [
-            {
-                'color': ('layer2', u'vlan1'),
-                'directed': False,
-                'target': 1,
-                'source': 0
-            },
-            {
-                'color': ('layer2', u'vlan1'),
-                'directed': True,
-                'target': 2,
-                'source': 1
-            },
-            {
-                'color': ('layer2',),
-                'directed': False,
-                'target': 3,
-                'source': 2
-            },
-        ])
+        links = str(res['links'])
+        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': False", links)
+        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': True", links)
+        self.assertIn("{'color': ('layer2',), 'directed': False", links)
+        self.assertIn("{'color': ('layer2',), 'directed': True", links)
 
 
 class TestNodeAdapter(BaseTestCase):
