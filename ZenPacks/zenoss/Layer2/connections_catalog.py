@@ -188,7 +188,7 @@ class ConnectionsCatalog(object):
             for key in self.redis.keys(pattern=pattern):
                 if key != self.prepId(self.existing_layers_key):
                     for member in self.redis.smembers(key):
-                        connections.append(Brain(**pickle.loads(member)))
+                        connections.append(self.Brain(**pickle.loads(member)))
 
         # Gracefully filters by layers if asked
         if 'layers' in query and query['layers']:
