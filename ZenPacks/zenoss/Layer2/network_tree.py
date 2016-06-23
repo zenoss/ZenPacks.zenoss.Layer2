@@ -180,9 +180,6 @@ def get_connections(rootnode, depth=1, layers=None):
                 add_link(b, a)
             get_connections(node, depth - 1)
 
-    def get_related(node):
-        return cat.get_two_way_connected(node.get_path(), layers)
-
     def get_reverse_connected(node):
         return cat.get_reverse_connected(node.get_path(), layers)
 

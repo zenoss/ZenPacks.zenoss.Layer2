@@ -38,6 +38,8 @@ log = logging.getLogger('zen.Layer2')
 DEFAULT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
+# TODO: To find optimal batch size value.
+BATCH_SIZE = 400
 
 
 class ConnectionsCatalog(object):
@@ -340,10 +342,8 @@ class CatalogAPI(BaseCatalogAPI):
             if depth is not None:
                 depth -= 1
 
-            # TODO: To find optimal batch size value.
-            batch_size = 400
-            for pos in xrange(0, len(nodes_to_check), batch_size):
-                nodes_to_visit = method(nodes_to_check[pos:pos + batch_size], layers)
+            for pos in xrange(0, len(nodes_to_check), BATCH_SIZE):
+                nodes_to_visit = method(nodes_to_check[pos:pos + BATCH_SIZE], layers)
                 visit(nodes_to_visit, depth)
 
         visit([entity_id], depth)
@@ -397,32 +397,37 @@ class CatalogAPI(BaseCatalogAPI):
         node = self.get_obj(node)
         if node is None:
             return True
-        return IConnectionsProvider(node).get_status()
+        try:
+            return IConnectionsProvider(node).get_status()
+        except TypeError:
+            return True
 
     def check_working_path(self, from_entity, to_entity):
-        layers = []
-        for c in self.search(entity_id=from_entity):
-            layers.extend(c.layers)
+        visited = set([from_entity])
 
-        # check if any of the layers has working path to the device
-        for layer in set(layers):
-            visited = set()
+        nodes = self.search(entity_id=from_entity)
+        layers = set()
+        for node in nodes:
+            for layer in node.layers:
+                layers.add(layer)
 
-            def visit(node):
-                if node in visited:
-                    return
-                if not self.get_status(node):
-                    return
-                if node == to_entity:
-                    raise StopIteration
+        def visit(node):
+            if node in visited:
+                return
+            if not self.get_status(node):
+                return
+            if node == to_entity:
+                raise StopIteration
+            visited.add(node)
 
-                visited.add(node)
-                for n in self.get_directly_connected(node, [layer]):
-                    visit(n)
-            try:
+            for next_node in self.get_directly_connected(node, layers):
+                visit(next_node)
+
+        try:
+            for node in nodes:
                 visit(from_entity)
-            except StopIteration:
-                return True
+        except StopIteration:
+            return True
 
         return False
 
