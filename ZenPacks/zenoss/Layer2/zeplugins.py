@@ -52,13 +52,16 @@ class L2SuppressEventsPlugin(object):
         if not zdev:
             return
 
+        if dev == zdev:
+            return
+
         cat = CatalogAPI(dmd.zport)
         if not cat.check_working_path(
             zdev.getPrimaryUrlPath(),
             dev.getPrimaryUrlPath()
         ):
             log.debug(
-                "No path from % to zenoss. Suppressing event.",
+                "No path from %s to zenoss. Suppressing event.",
                 dev.titleOrId()
             )
             evtproxy.eventState = STATUS_SUPPRESSED
