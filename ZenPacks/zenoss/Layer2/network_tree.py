@@ -173,7 +173,7 @@ def get_connections(rootnode, depth=1, layers=None):
 
         related = copy.deepcopy(impacted)
         for node_path, links in impactors.iteritems():
-            related[node_path] = set(related.get(node_path)) | set(links)
+            related[node_path] = set(related.get(node_path, [])) | set(links)
 
         # some of leaf may contain a component (usualy IpInterface) uid
         # prefixed with asterix (!)
