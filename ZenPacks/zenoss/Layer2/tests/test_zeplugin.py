@@ -29,6 +29,7 @@ class TestSuppressEventsPlugin(BaseTestCase):
             eventState=None,
         )
         self.dmd = Mock()
+        self.dmd.Devices.findDeviceByIdExact = lambda x: Mock()
 
     def apply(self):
         self.apply_plugin(self.evtproxy, self.dmd)

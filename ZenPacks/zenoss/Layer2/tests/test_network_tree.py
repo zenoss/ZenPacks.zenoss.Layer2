@@ -76,7 +76,6 @@ class TestGetConnections(BaseTestCase):
         self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': False", links)
         self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': True", links)
         self.assertIn("{'color': ('layer2',), 'directed': False", links)
-        self.assertIn("{'color': ('layer2',), 'directed': True", links)
 
 
 class TestNodeAdapter(BaseTestCase):

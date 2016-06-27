@@ -61,7 +61,6 @@ class TestCatalogAPI(BaseTestCase):
 
         self.assertEqual(len(brains), 3)
         self.assertTrue('test_id' in [x.entity_id for x in brains])
-        self.assertEqual(brains[0].connected_to, 'test_id')
         self.assertEqual(brains[0].layers, ('layer1', 'layer2', 'layer1'))
 
     def test_remove_connection(self):
@@ -159,14 +158,13 @@ class TestCheckWorkingPath(BaseTestCase):
 
     def test_check_one_way_down(self):
         self.topology('''
-            a b l2
-            a c l2
-            b d l2
-            c d l2
+            a b
+            a c
+            c d
         ''')
 
         self.cat.get_status = lambda x: x != router('c')
-        self.assertTrue(
+        self.assertFalse(
             self.cat.check_working_path(router('a'), router('d'))
         )
 
