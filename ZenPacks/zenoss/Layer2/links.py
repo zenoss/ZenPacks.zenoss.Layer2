@@ -18,6 +18,10 @@ from .connections_catalog import CatalogAPI
 
 unused(Globals)
 
+
+MAX_LINKS = 100
+
+
 log = logging.getLogger('zen.Layer2')
 
 
@@ -43,4 +47,9 @@ class DeviceLinkProvider(object):
                 links.add('Switch: <a href="{}">{}</a>'.format(
                     id, id.split('/')[-1]
                 ))
+
+                # The list of links might be huge, limit the output.
+                if len(links) >= MAX_LINKS:
+                    break
+
         return ['<br />'] + list(links)
