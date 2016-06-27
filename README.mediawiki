@@ -56,6 +56,9 @@ When you select some VLANs on Layers panel, edges that belong to VLANs not inclu
 == zenmapper daemon ==
 To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
 
+By default zenmapper configured to start 2 workers. This may be changed in config file
+by setting "workers" option value. Consider to use more than 2 workers in case you have >1000 devices monitored in Zenoss system. In small or test environment one may disable workers by setting it value to 0. This affects memory used by zenmapper as well as speed of indexing L2 connections.
+
 zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.
 
 == Writing your own connection provider ==
@@ -171,6 +174,10 @@ services that contain one or more of the explicitly mentioned entities.
 
 === Europa ===
 If you are re-installing or updating this ZenPack on Europa, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.
+
+=== Open vSwitch zenpack ===
+Open vSwitch zenpack version prior to 1.1.1 should be updated or removed before Layer2 zenpack
+installation.
 
 === Debugging network map ===
 This ZenPack gathers information about connections on different layers
@@ -295,6 +302,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 == Changes ==
 
 ;1.2.0
+* Added "workers" option to zenmapper daemon.
 * Refactored connection catalog to use Redis as a storage. This prevent from cases
 where ZoDB grows over time (ZEN-22834).
 * Layer2 index now don't touch/modify ZoDB storage in any of cases.
