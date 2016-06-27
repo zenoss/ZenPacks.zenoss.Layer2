@@ -48,6 +48,8 @@ Detailed information about device is available by clicking on 'Device Info' opti
 
 Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be brought back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
 
+Please note: for performance reasons map displays only first 1000 nodes found. If this case occurs, filters can help to refine results.
+
 === VLANs ===
 Network map could have edges that belong not only to Layer2 in general, but to some VLAN. This is links from VLAN-aware switch to its interfaces, and to it's client MAC addresses. This edges could be filtered by their VLAN.
 
@@ -57,9 +59,11 @@ When you select some VLANs on Layers panel, edges that belong to VLANs not inclu
 To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
 
 By default zenmapper configured to start 2 workers. This may be changed in config file
-by setting "workers" option value. Consider to use more than 2 workers in case you have >1000 devices monitored in Zenoss system. In small or test environment one may disable workers by setting it value to 0. This affects memory used by zenmapper as well as speed of indexing L2 connections.
+by setting "workers" option value. Consider to use more than 2 workers in case you have >1000 devices monitored in Zenoss system. In small or test environment one may disable workers by setting it's value to 0. This affects memory used by zenmapper as well as speed of indexing L2 connections.
 
 zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.
+
+By default zenmapper doesn't perform cleanup of index. Normally this should not affect performance. In case in rapidly-changing environment <code>--clear</code> option may be handy. As and example, once per-month it may be scheduled to run zenmapper with clear flag. This may be not required if Zenoss maintanance performed on regular basis - Layer2 index cleared when redis stopped as well.
 
 == Writing your own connection provider ==
 Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.
@@ -310,8 +314,7 @@ where ZoDB grows over time (ZEN-22834).
 differences, e.g. indexing is incremental now.
 * In time when zenpack installed/upgraded zenmapper daemon will create initial index.
 This occurs only on first run. And it may take several minutes depending on
-number of devices. On target system with 10k devices it takes about 40 minutes
-and requires 10GB of memory to complete.
+number of devices.
 * In case when Zenoss totally stopped (including redis) catalog is cleared.
 
 ;1.1.0
