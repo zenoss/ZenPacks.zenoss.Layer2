@@ -37,6 +37,7 @@ class DeviceLinkProvider(object):
         # Upstream devices
         cat = CatalogAPI(self.device.zport)
         this_id = self.device.getPrimaryUrlPath()
+        suffix = []
         for id in cat.get_connected(
             entity_id=this_id,
             layers=['layer2'],
@@ -44,12 +45,14 @@ class DeviceLinkProvider(object):
             depth=3,
         ):
             if id.startswith('/zport/dmd/Devices/Network/') and id != this_id:
+                # The list of links might be huge, limit the output.
+                if len(links) > MAX_LINKS:
+                    suffix = ['(list of switches was truncated to '
+                              '%s items)' % MAX_LINKS]
+                    break
+
                 links.add('Switch: <a href="{}">{}</a>'.format(
                     id, id.split('/')[-1]
                 ))
 
-                # The list of links might be huge, limit the output.
-                if len(links) >= MAX_LINKS:
-                    break
-
-        return ['<br />'] + list(links)
+        return ['<br />'] + list(links) + suffix
