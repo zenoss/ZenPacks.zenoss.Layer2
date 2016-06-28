@@ -33,6 +33,15 @@ log = logging.getLogger('zen.Layer2')
 ZEP_BATCH_SIZE = 400
 CATALOG_BATCH_SIZE = 400
 
+MAX_NODES_COUNT = 2000
+
+
+class StopTraversing(Exception):
+
+    """Raised when max nodes count is reached to stop network map generation."""
+
+    pass
+
 
 def get_connections_json(
     data_root, root_id, depth=1, layers=None, full_map=False
@@ -112,6 +121,9 @@ def get_connections(rootnode, depth=1, layers=None):
                 layers.append('layer2')
 
     def add_node(n):
+        if len(nodes) >= MAX_NODES_COUNT:
+            raise StopTraversing()
+
         if n.id in nodenums:
             return
 
@@ -157,7 +169,7 @@ def get_connections(rootnode, depth=1, layers=None):
     def get_connections(nodes, depth):
         """ Depth-first search of the network tree emanating from nodes """
         if depth == 0:
-            return
+            return set()
 
         adapted_nodes = {}
         for node in nodes:
@@ -187,7 +199,7 @@ def get_connections(rootnode, depth=1, layers=None):
         for node in adapted_nodes.itervalues():
             add_node(node)
 
-        nodes_to_check = []
+        nodes_to_check = set()
         for node_path, links in related.iteritems():
             adapted_node = adapted_nodes[node_path]
 
@@ -211,11 +223,9 @@ def get_connections(rootnode, depth=1, layers=None):
                 if link_node in impactors.get(node_path, []):
                     add_link(link_adapted_node, adapted_node)
 
-                nodes_to_check.append(link_node)
+                nodes_to_check.add(link_node)
 
-        for pos in xrange(0, len(nodes_to_check), CATALOG_BATCH_SIZE):
-            get_connections(nodes_to_check[pos:pos + CATALOG_BATCH_SIZE],
-                            depth - 1)
+        return nodes_to_check
 
     def get_reverse_connected(nodes):
         q = dict(connected_to=nodes)
@@ -274,7 +284,21 @@ def get_connections(rootnode, depth=1, layers=None):
         if isinstance(node, str) and node[0] == "!":
             return node[1:]
 
-    get_connections([rootnode], depth)
+    nodes_queue = [rootnode]
+    iteration_depth = depth
+    reduced_result = False
+    try:
+        while nodes_queue:
+            nodes_to_check = set()
+            for pos in xrange(0, len(nodes_queue), CATALOG_BATCH_SIZE):
+                nodes_to_check.update(
+                    get_connections(nodes_queue[pos:pos + CATALOG_BATCH_SIZE],
+                                    iteration_depth))
+
+            nodes_queue = list(nodes_to_check)
+            iteration_depth -= 1
+    except StopTraversing:
+        reduced_result = True
 
     zep = getFacade('zep', zport)
 
@@ -292,6 +316,7 @@ def get_connections(rootnode, depth=1, layers=None):
     return dict(
         links=links.values(),
         nodes=nodes,
+        reduced=reduced_result
     )
 
 

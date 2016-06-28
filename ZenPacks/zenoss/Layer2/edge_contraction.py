@@ -17,7 +17,7 @@ from collections import defaultdict
 from itertools import chain
 
 
-def contract_edges(nodes, links):
+def contract_edges(nodes, links, reduced):
     '''
         Changes graph, so only nodes with important=True are left, and those
         which are unimportant but connect important nodes.
@@ -27,7 +27,10 @@ def contract_edges(nodes, links):
         For details see docstrings of tests in .tests.test_edge_contraction
     '''
     contractor = EdgeContractor(nodes, links)
-    return contractor.get_contracted_graph()
+    result = contractor.get_contracted_graph()
+    result['reduced'] = reduced
+
+    return result
 
 
 class EdgeContractor(object):

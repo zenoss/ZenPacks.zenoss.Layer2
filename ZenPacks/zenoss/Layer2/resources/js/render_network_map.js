@@ -18,7 +18,8 @@
 (function(){
     window.form_panel = {};
 
-    var show_error = Zenoss.flares.Manager.error;
+    var show_error = Zenoss.flares.Manager.error,
+        show_warning = Zenoss.flares.Manager.warning;
 
     var get_checked_layers = function () {
         // build a comma-separated list of checked layers
@@ -198,6 +199,12 @@
                 var graph = graph_renderer('#' + map.body.id, click_node);
                 choose_colors(res);
                 graph.draw(res);
+                
+                if (res.reduced) {
+                    return show_warning('Resulting network map is to big and '+
+                                        'number of nodes was reduced. ' +
+                                        'Please try to narrow map parameters.');
+                }
             },
             failure: function(error) {
                 if(error.statusText) {
