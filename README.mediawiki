@@ -63,7 +63,7 @@ by setting "workers" option value. Consider to use more than 2 workers in case y
 
 zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.
 
-By default zenmapper doesn't perform cleanup of index. Normally this should not affect performance. In case in rapidly-changing environment <code>--clear</code> option may be handy. As and example, once per-month it may be scheduled to run zenmapper with clear flag. This may be not required if Zenoss maintanance performed on regular basis - Layer2 index cleared when redis stopped as well.
+By default zenmapper doesn't perform cleanup of index. Normally this should not affect performance. In case of rapidly-changing environment <code>--clear</code> option may be handy. As and example, once per-month it may be scheduled to run zenmapper with clear flag. This may be be done in time Zenoss maintanance performed.
 
 == Writing your own connection provider ==
 Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.
@@ -315,7 +315,6 @@ differences, e.g. indexing is incremental now.
 * In time when zenpack installed/upgraded zenmapper daemon will create initial index.
 This occurs only on first run. And it may take several minutes depending on
 number of devices.
-* In case when Zenoss totally stopped (including redis) catalog is cleared.
 
 ;1.1.0
 * When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
