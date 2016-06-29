@@ -34,7 +34,8 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 2, 'target': 3, 'directed': False},
             {'source': 3, 'target': 4, 'directed': False},
         ]
-        res = contract_edges(nodes, links)
+        reduced = True
+        res = contract_edges(nodes, links, reduced)
         self.assertEqual(res, dict(
             nodes=[
                 {'name': 0, 'important': True},
@@ -46,7 +47,8 @@ class TestEdgeContraction(BaseTestCase):
                 {'source': 0, 'target': 1, 'directed': False},
                 {'source': 1, 'target': 2, 'directed': False},
                 {'source': 2, 'target': 3, 'directed': False},
-            ]
+            ],
+            reduced=reduced
         ))
 
     def test_star(self):
@@ -64,12 +66,14 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 0, 'target': 1, 'directed': False},
             {'source': 0, 'target': 2, 'directed': False},
         ]
-        res = contract_edges(nodes, links)
+        reduced = False
+        res = contract_edges(nodes, links, reduced)
         self.assertEqual(res, dict(
             links=[],
             nodes=[
                 {'name': 0, 'important': True},
-            ]
+            ],
+            reduced=reduced
         ))
 
     def test_all_unimportant(self):
@@ -86,9 +90,11 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 0, 'target': 1, 'directed': False},
             {'source': 0, 'target': 2, 'directed': False},
         ]
-        self.assertEqual(contract_edges(nodes, links), dict(
+        reduced = False
+        self.assertEqual(contract_edges(nodes, links, reduced), dict(
             links=[],
             nodes=[],
+            reduced=reduced
         ))
 
     def test_branch(self):
@@ -106,21 +112,25 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 0, 'target': 1, 'directed': False},
             {'source': 1, 'target': 2, 'directed': False},
         ]
-        res = contract_edges(nodes, links)
+        reduced = True
+        res = contract_edges(nodes, links, reduced)
         self.assertEqual(res, dict(
             links=[],
             nodes=[
                 {'name': 0, 'important': True},
-            ]
+            ],
+            reduced=reduced
         ))
 
     def test_one_node(self):
         nodes = [{'name': 1, 'important': True}]
-        self.assertEqual(contract_edges(nodes, []), dict(
+        reduced = False
+        self.assertEqual(contract_edges(nodes, [], reduced), dict(
             links=[],
             nodes=[
                 {'name': 1, 'important': True}
-            ]
+            ],
+            reduced=reduced
         ))
 
     def test_branch2(self):
@@ -148,7 +158,8 @@ class TestEdgeContraction(BaseTestCase):
             {'color': 'gray', 'source': 0, 'target': 1, 'directed': False},
             {'color': 'gray', 'source': 0, 'target': 2, 'directed': False}
         ]
-        self.assertEqual(contract_edges(nodes, links), dict(
+        reduced = False
+        self.assertEqual(contract_edges(nodes, links, reduced), dict(
             links=[],
             nodes=[{
                 'color': 'severity_debug',
@@ -156,7 +167,8 @@ class TestEdgeContraction(BaseTestCase):
                 'image': '/zport/dmd/img/icons/router.png',
                 'important': True,
                 'name': 'a'
-            }]
+            }],
+            reduced=reduced
         ))
 
     def test_duplicate(self):
@@ -179,7 +191,8 @@ class TestEdgeContraction(BaseTestCase):
             {'source': 1, 'target': 3, 'directed': False},
             {'source': 2, 'target': 3, 'directed': False},
         ]
-        res = contract_edges(nodes, links)
+        reduced = True
+        res = contract_edges(nodes, links, reduced)
 
         self.assertEqual(res['links'], [
             {'source': 0, 'target': 1, 'directed': False},
@@ -194,6 +207,7 @@ class TestEdgeContraction(BaseTestCase):
             res['nodes']
         )
         self.assertEqual(len(res['nodes']), 3)
+        self.assertEqual(res['reduced'], reduced)
 
     def test_excessive_node(self):
         '''
@@ -240,7 +254,8 @@ class TestEdgeContraction(BaseTestCase):
             {'color': 'gray', 'directed': False, 'target': 1, 'source': 0},
             {'color': 'gray', 'directed': True, 'target': 2, 'source': 1}
         ]
-        res = contract_edges(nodes, links)
+        reduced = False
+        res = contract_edges(nodes, links, reduced)
         self.assertEqual(res, dict(
             links=[],
             nodes=[{
@@ -250,7 +265,8 @@ class TestEdgeContraction(BaseTestCase):
                 'important': True,
                 'name': '-switch.zenoss.loc',
                 'path': '/zport/dmd/Devices/Network/Cisco/devices/10.10.10.10'
-            }]
+            }],
+            reduced=reduced
         ))
 
 
