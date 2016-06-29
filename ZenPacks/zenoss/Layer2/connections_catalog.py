@@ -337,18 +337,21 @@ class CatalogAPI(BaseCatalogAPI):
             nodes_to_check = list(set(nodes).difference(visited))
             if not nodes_to_check:
                 return
+            for node in nodes_to_check:
+                yield node
             visited.update(nodes_to_check)
 
             if depth is not None:
                 depth -= 1
 
             for pos in xrange(0, len(nodes_to_check), BATCH_SIZE):
-                nodes_to_visit = method(nodes_to_check[pos:pos + BATCH_SIZE], layers)
-                visit(nodes_to_visit, depth)
+                nodes_to_visit = method(nodes_to_check[pos:pos + BATCH_SIZE],
+                                        layers)
+                for node in visit(nodes_to_visit, depth):
+                    yield node
 
-        visit([entity_id], depth)
-
-        return visited
+        for node in visit([entity_id], depth):
+            yield node
 
     def get_bfs_connected(self, entity_id, method, depth, layers=None):
         ''' Return only set of nodes connected on depth distance using BFS '''
