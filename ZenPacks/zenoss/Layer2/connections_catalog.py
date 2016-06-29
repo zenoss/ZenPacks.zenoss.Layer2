@@ -35,7 +35,7 @@ from .connections_provider import IConnection, IConnectionsProvider
 log = logging.getLogger('zen.Layer2')
 
 
-DEFAULT_REDIS_URLS = ['redis://localhost:6379/0', 'redis://localhost:16379/0']  # 5.x, 4.x
+DEFAULT_REDIS_URLS = ['redis://localhost:6379/1', 'redis://localhost:16379/1']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
 # TODO: To find optimal batch size value.
@@ -143,16 +143,7 @@ class ConnectionsCatalog(object):
         Removes ALL connections records.
         On large installation this should not be called often.
         """
-        # TODO: Zenoss 5.x may have newer version of redis library
-        # with iterator for keys. This may help in performance.
-        # Also using EVAL is good way:
-        # self.redis.eval("local keys = redis.call('keys', '%s') \n for i=1,#keys,5000 do \n redis.call('del', unpack(keys, i, math.min(i+4999, #keys))) \n end \n return keys" % self.prepId('*'))
-        # Unfortunatelly this not available on 4.2.x
-        # So fallback to worst case:
-        for k in self.redis.keys(pattern=self.prepId('*')):
-            self.redis.delete(k)
-        for k in self.redis.keys(pattern=self.prepId(self.b_prefix + '*')):
-            self.redis.delete(k)
+        self.redis.flushdb()
 
     def search(self, **query):
         """
