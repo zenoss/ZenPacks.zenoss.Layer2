@@ -188,7 +188,7 @@ class ZenMapper(CyclingDaemon):
         """
         Removes records for deleted devices.
         """
-        for worker in self._workers.iteritems():
+        for worker in self._workers.values():
             if worker.is_alive():
                 return
 
