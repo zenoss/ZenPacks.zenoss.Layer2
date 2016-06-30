@@ -83,6 +83,13 @@ class ZenMapper(CyclingDaemon):
         )
 
         self.parser.add_option(
+            "--force",
+            dest="force",
+            action="store_true",
+            help="Force reindex"
+        )
+
+        self.parser.add_option(
             '-d', '--device', dest='device',
             help="Fully qualified device name ie www.confmon.com"
         )
@@ -168,14 +175,26 @@ class ZenMapper(CyclingDaemon):
             log.info('Worker %i: updating catalog' % offset)
             nodes = self.get_nodes_list(sort=True)[offset*chunk:offset*chunk + chunk]
             for node in nodes:
-                self.cat.add_node(node)
+                self.cat.add_node(node, force=self.options.force)
                 node._p_invalidate()
             log.info('Worker %i: finished job.' % offset)
         else:
             log.info('Updating catalog.')
             for node in self.get_nodes_list(sort=True):
-                self.cat.add_node(node)
+                self.cat.add_node(node, force=self.options.force)
                 node._p_invalidate()
+
+    def _compact_catalog(self):
+        """
+        Removes records for deleted devices.
+        """
+        for worker in self._workers.iteritems():
+            if worker.is_alive():
+                return
+
+        guids = [IGlobalIdentifier(x).getGUID() for x in self.get_nodes_list()]
+        log.info('Compacting catalog')
+        self.cat.compact_catalog(guids)
 
     def main_loop(self):
         """
@@ -187,6 +206,7 @@ class ZenMapper(CyclingDaemon):
             log.info('Clearing catalog')
             self.cat.clear()
         elif self.options.cycle and self.options.workers > 0:
+            self._compact_catalog()
             chunk = len(self.get_nodes_list()) / self.options.workers + 1
             for i in xrange(self.options.workers):
                 self.start_worker(i, chunk)
@@ -195,6 +215,7 @@ class ZenMapper(CyclingDaemon):
             chunk = self.options.chunk
             self._do_job(offset, chunk)
         else:
+            self._compact_catalog()
             self._do_job(offset=0, chunk=0)
 
 

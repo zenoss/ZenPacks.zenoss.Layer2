@@ -29,6 +29,7 @@ from zExceptions import NotFound
 from zope.event import notify
 
 from Products.Zuul.catalog.events import IndexingEvent
+from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 from .connections_provider import IConnection, IConnectionsProvider
 
@@ -58,6 +59,8 @@ class ConnectionsCatalog(object):
     Brain = namedtuple('Brain', fields)
     # layers list key
     existing_layers_key = 'existing_layers'
+    # indexed nodes GUIDs
+    existing_nodes_key = 'existing_nodes'
 
     def __init__(self, name, redis_url=None):
         super(ConnectionsCatalog, self).__init__()
@@ -102,6 +105,7 @@ class ConnectionsCatalog(object):
         Saves connection and backward connection in Redis database.
         uid - leaved for backward compatibility with 1.1.x
         """
+        keys = [self.prepId(obj.entity_id)]
         # Prepare batch of commands to be executed
         pipe = self.redis.pipeline(transaction=False)
 
@@ -113,8 +117,10 @@ class ConnectionsCatalog(object):
         # Store backward connections as well, in the name of faster search
         # this used in get_reverse_connected()
         for path in obj.connected_to:
+            key = self.prepId(self.b_prefix + path)
+            keys.append(key)
             pipe.sadd(
-                self.prepId(self.b_prefix + path),
+                key,
                 pickle.dumps({
                     'entity_id': path,
                     'layers': obj.layers,
@@ -127,6 +133,9 @@ class ConnectionsCatalog(object):
 
         # Finally execute batched redis commands
         pipe.execute()
+
+        # Returned keys list to get all connection indexes for a node
+        return keys
 
     def uncatalog_object(self, connection=None):
         """
@@ -179,9 +188,11 @@ class ConnectionsCatalog(object):
             # TODO: think of Redis SCAN / scan_iter
             # https://github.com/andymccurdy/redis-py/blob/master/redis/client.py#L1401
             for key in self.redis.keys(pattern=pattern):
-                if key != self.prepId(self.existing_layers_key):
+                try:
                     for member in self.redis.smembers(key):
                         connections.append(self.Brain(**pickle.loads(member)))
+                except Exception:
+                    pass
 
         # Gracefully filters by layers if asked
         if 'layers' in query and query['layers']:
@@ -232,7 +243,6 @@ class CatalogAPI(BaseCatalogAPI):
         ''' Add a connection to a catalog '''
         connection = self.validate_connection(connection)
 
-        self.catalog.catalog_object(connection)
         log.debug(
             'Connection from %s to %s on layers %s added to %s',
             connection.entity_id,
@@ -241,9 +251,26 @@ class CatalogAPI(BaseCatalogAPI):
             self.name
         )
 
+        return self.catalog.catalog_object(connection)
+
     def remove_connection(self, connection):
         self.catalog.uncatalog_object(connection)
         log.debug('%s removed from %s' % (connection, self.name))
+
+    def compact_catalog(self, guids):
+        """
+        Removes obsolete nodes
+        """
+        cat = self.catalog
+        key = cat.prepId(cat.existing_nodes_key)
+        nodes = cat.redis.smembers(key)
+        obsolete_guids = set(nodes) - set(guids)
+
+        pipe = cat.redis.pipeline(transaction=False)
+        for guid in obsolete_guids:
+            self.remove_node(guid)
+        pipe.srem(key, obsolete_guids)
+        pipe.execute()
 
     def is_changed(self, node):
         '''
@@ -263,16 +290,38 @@ class CatalogAPI(BaseCatalogAPI):
                 val = None
 
         if val:
-            rid = self.catalog.prepId(node._guid)
-            if self.catalog.redis.get(rid) == val:
+            cat = self.catalog
+            rid = cat.prepId(IGlobalIdentifier(node).getGUID())
+            if cat.redis.get(rid) == val:
                 return False
-            self.catalog.redis.set(rid, val)
+            cat.redis.set(rid, val)
         return True
 
-    def add_node(self, node, reindex=False):
-        if self.is_changed(node):
+    def _add_node(self, node, keys):
+        """
+        Adds node GUID to list of all indexed nodes
+        and list of associated connections' keys
+        """
+        guid = IGlobalIdentifier(node).getGUID()
+        cat = self.catalog
+        keys_key = cat.prepId(cat.b_prefix + guid)
+
+        pipe = cat.redis.pipeline(transaction=False)
+        pipe.sadd(cat.prepId(cat.existing_nodes_key), guid)
+        for key in set(keys):
+            pipe.sadd(keys_key, key)
+        pipe.execute()
+
+    def add_node(self, node, reindex=False, force=False):
+        """
+        Adds node connections to index
+        """
+        if force or self.is_changed(node):
+            self.remove_node(node, update=True)
+            keys = []
             for connection in IConnectionsProvider(node).get_connections():
-                self.add_connection(connection)
+                keys.extend(self.add_connection(connection))
+            self._add_node(node, keys)
 
         if not reindex:
             return  # ok, we are already done
@@ -286,11 +335,28 @@ class CatalogAPI(BaseCatalogAPI):
             for component in node.getDeviceComponents():
                 notify(IndexingEvent(component))
 
-    def remove_node(self, node):
-        map(
-            self.remove_connection,
-            IConnectionsProvider(node).get_connections()
-        )
+    def remove_node(self, node, update=False):
+        """
+        Removes node connections and other associated records
+        """
+        if isinstance(node, basestring):
+            guid = node
+        else:
+            guid = IGlobalIdentifier(node).getGUID()
+        cat = self.catalog
+        keys_key = cat.prepId(cat.b_prefix + guid)
+        pipe = cat.redis.pipeline(transaction=False)
+
+        keys = cat.redis.smembers(keys_key)
+        if keys:
+            for key in keys:
+                pipe.delete(key)
+
+        pipe.srem(cat.prepId(cat.existing_nodes_key), guid)
+        pipe.delete(keys_key)
+        if not update:
+            pipe.delete(cat.prepId(guid))
+        pipe.execute()
 
     def get_directly_connected(self, entity_id, layers=None):
         q = dict(entity_id=entity_id)
