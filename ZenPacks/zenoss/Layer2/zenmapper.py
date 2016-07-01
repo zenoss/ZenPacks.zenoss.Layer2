@@ -192,6 +192,9 @@ class ZenMapper(CyclingDaemon):
             if worker.is_alive():
                 return
 
+        if self.options.device:
+            return
+
         guids = [IGlobalIdentifier(x).getGUID() for x in self.get_nodes_list()]
         log.info('Compacting catalog')
         self.cat.compact_catalog(guids)
