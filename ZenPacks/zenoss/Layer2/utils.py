@@ -10,6 +10,7 @@
 '''
     Miscelanous utilities.
 '''
+from Products.Zuul.catalog.global_catalog import GlobalCatalog
 
 
 def asmac(val):
@@ -27,4 +28,5 @@ def asip(val):
 # write proper migration of zport.connections_catalog or
 # version 1.1.0 of Layer2 will be so old, that no one will
 # have connections_catalog in their ZODB pickled from utils.
-from .connections_catalog import ConnectionsCatalog
+class ConnectionsCatalog(GlobalCatalog):
+    pass
