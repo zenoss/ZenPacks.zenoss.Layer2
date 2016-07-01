@@ -179,6 +179,9 @@ def get_connections(rootnode, depth=1, layers=None):
             visited.add(adapted_node.id)
             adapted_nodes[adapted_node.get_path()] = adapted_node
 
+        if not adapted_nodes:
+            return set()
+
         # leafs of current node in graph
         impacted = get_impacted(adapted_nodes.keys())
         impactors = get_impactors(adapted_nodes.keys())
