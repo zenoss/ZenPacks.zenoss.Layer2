@@ -30,6 +30,7 @@ from zope.event import notify
 
 from Products.Zuul.catalog.events import IndexingEvent
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
+from Products.ZenModel.IpNetwork import IpNetwork
 
 from .connections_provider import IConnection, IConnectionsProvider
 
@@ -339,6 +340,8 @@ class CatalogAPI(BaseCatalogAPI):
         """
         Removes node connections and other associated records
         """
+        if update and isinstance(node, IpNetwork):
+            return
         if isinstance(node, basestring):
             guid = node
         else:
