@@ -37,6 +37,7 @@ class TestUpdateCatalog(BaseTestCase):
 
         self.zenmapper = TestableZenMapper()
         self.zenmapper.dmd = self.dmd
+        self.zenmapper._workers = {}
         self.zenmapper.options = lambda: 1
         self.zenmapper.options.device = False
         self.zenmapper.options.clear = False
@@ -44,6 +45,7 @@ class TestUpdateCatalog(BaseTestCase):
         self.zenmapper.options.redis_url = ''
         self.zenmapper.options.workers = 0
         self.zenmapper.options.worker = False
+        self.zenmapper.options.force = False
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
