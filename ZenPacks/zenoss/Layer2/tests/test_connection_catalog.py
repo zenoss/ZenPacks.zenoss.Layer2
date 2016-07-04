@@ -10,9 +10,13 @@
 from mock import MagicMock, sentinel
 
 from Products.Five import zcml
+from zope.interface import implements
+
 import Products.ZenTestCase
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from Products.ZenEvents import ZenEventClasses
+from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
+from Products.ZenUtils.guid.guid import generate
 
 import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
@@ -30,16 +34,25 @@ def fake_connection(con_id):
 
 
 class FakeConnectionsProvider(BaseConnectionsProvider):
+    implements(IGlobalIdentifier)
 
-    def __init__(self, context, id):
+    def __init__(self, context, id, guid=None):
         self.context = context
         self.id = id
+        if guid is None:
+            self.guid = generate()
+        else:
+            self.guid = guid
 
     def get_layers(self):
         return ['layer2', 'layer3']
 
     def get_connections(self):
         yield fake_connection(self.id)
+
+    def getGUID(self):
+        return self.guid
+
 
 def fake_connections_provider(dmd, id='connection_id'):
     return FakeConnectionsProvider(sentinel.context, id)
