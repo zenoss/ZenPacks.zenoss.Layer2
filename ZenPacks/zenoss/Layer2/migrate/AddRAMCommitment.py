@@ -59,4 +59,5 @@ class AddRAMCommitment(ZenPackMigration):
                             "migrations. Please set RAM commitment for "
                             "zenmapper service manualy to 5G using "
                             "Control Center UI.")
+                return
         ctx.commit()
