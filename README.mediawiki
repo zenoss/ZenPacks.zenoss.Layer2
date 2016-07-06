@@ -306,7 +306,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
-;1.2.0
+;1.2.1
 * Added "workers" option to zenmapper daemon.
 * Refactored connection catalog to use Redis as a storage. This prevent from cases
 where ZoDB grows over time (ZEN-22834).
@@ -316,6 +316,9 @@ differences, e.g. indexing is incremental now.
 * In time when zenpack installed/upgraded zenmapper daemon will create initial index.
 This occurs only on first run. And it may take several minutes depending on
 number of devices.
+
+;1.1.1
+* Fix page help code in Layer2 ZP conflict with other ZenPacks (ZEN-21264)
 
 ;1.1.0
 * When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)
