@@ -7,6 +7,10 @@
 #
 ##############################################################################
 
+import copy
+import os
+import unittest
+import tempfile
 from mock import MagicMock, sentinel
 
 from Products.Five import zcml
@@ -15,11 +19,14 @@ from zope.interface import implements
 import Products.ZenTestCase
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from Products.ZenEvents import ZenEventClasses
+from Products.ZenUtils import Utils
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 from Products.ZenUtils.guid.guid import generate
 
 import ZenPacks.zenoss.Layer2
+from ZenPacks.zenoss.Layer2 import connections_catalog
 from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+from ZenPacks.zenoss.Layer2.connections_catalog import discover_redis_url
 from ZenPacks.zenoss.Layer2.connections_provider import Connection,\
     BaseConnectionsProvider
 
@@ -211,9 +218,85 @@ class TestCheckWorkingPath(BaseTestCase):
         )
 
 
+def clear_memoize_cache(f):
+    f.undecorated._m_cache = {}
+
+
+class TestFunctions(unittest.TestCase):
+
+    """Test functions in connection_catalog module."""
+
+    def test_discover_redis_url_zenoss4_available(self):
+        """Test when running on same server as redis in Zenoss 4."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as redis_conf:
+            tempfilename = redis_conf.name
+            redis_conf.write((
+                "pidfile /opt/zenoss/var/zredis-localhost.pid\n"
+                "# Zenoss uses 16379 to avoid conflicting with the system Redis instance.\n"
+                "port 16379\n"
+                "logfile /opt/zenoss/log/zredis.log\n"
+                ))
+
+        # Temporarily patch zenPath to avoid contamination or clobbering
+        # of redis.conf.
+        orig_zenPath = copy.copy(connections_catalog.zenPath)
+
+        def new_zenPath(*args):
+            if args == ("var", "redis.conf"):
+                return tempfilename
+            else:
+                return orig_zenPath(*args)
+
+        connections_catalog.zenPath = new_zenPath
+
+        clear_memoize_cache(discover_redis_url)
+        self.assertEqual("redis://localhost:16379/1", discover_redis_url())
+
+        # Remove temporary redis.conf.
+        os.unlink(tempfilename)
+
+        # Restore zenPath to original behavior.
+        connections_catalog.zenPath = orig_zenPath
+
+    def test_discover_redis_url_zenoss4_explicit(self):
+        """Test when user has manually set REDIS_URL in Zenoss 4."""
+        os.environ["REDIS_URL"] = "FOO"
+        clear_memoize_cache(discover_redis_url)
+        self.assertEqual("FOO", discover_redis_url())
+        del(os.environ["REDIS_URL"])
+
+    def test_discover_redis_url_zenoss4_unavailable(self):
+        """Test when running on different server than redis in Zenoss 4."""
+        # Temporarily patch zenPath to avoid contamination or clobbering
+        # of redis.conf.
+        orig_zenPath = copy.copy(connections_catalog.zenPath)
+
+        def new_zenPath(*args):
+            if args == ("var", "redis.conf"):
+                return "/this/path/better/never/exist/redis.conf"
+            else:
+                return orig_zenPath(*args)
+
+        connections_catalog.zenPath = new_zenPath
+
+        clear_memoize_cache(discover_redis_url)
+        self.assertEqual(None, discover_redis_url())
+
+        # Restore zenPath to original behavior.
+        connections_catalog.zenPath = orig_zenPath
+
+    def test_discover_redis_url_zenoss5(self):
+        """Test when running in Zenoss 5."""
+        os.environ["CONTROLPLANE"] = "1"
+        clear_memoize_cache(discover_redis_url)
+        self.assertEqual("redis://localhost:6379/1", discover_redis_url())
+        del(os.environ["CONTROLPLANE"])
+
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
     suite.addTest(makeSuite(TestCatalogAPI))
     suite.addTest(makeSuite(TestCheckWorkingPath))
+    suite.addTest(makeSuite(TestFunctions))
     return suite
