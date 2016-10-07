@@ -121,7 +121,13 @@ def get_clients_links(self):
 def setLastChange(self, value=None):
     original(self, value)
 
-    cat = CatalogAPI(self.zport)
+    try:
+        cat = CatalogAPI(self.zport)
+    except Exception as e:
+        # On remote hub redis is not avaialable.
+        # Do nothing and let zenmapper index this device.
+        return
+
     try:
         if cat.is_changed(self):
             cat.add_node(self)

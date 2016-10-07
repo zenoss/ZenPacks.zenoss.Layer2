@@ -21,6 +21,7 @@ Usage:
 
 from itertools import chain
 import logging
+import os
 import redis
 import cPickle as pickle
 from collections import namedtuple
@@ -29,7 +30,9 @@ from zExceptions import NotFound
 from zope.event import notify
 
 from Products.Zuul.catalog.events import IndexingEvent
+from Products.Zuul.decorators import memoize
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
+from Products.ZenUtils.Utils import zenPath
 from Products.ZenModel.IpNetwork import IpNetwork
 
 from .connections_provider import IConnection, IConnectionsProvider
@@ -37,11 +40,44 @@ from .connections_provider import IConnection, IConnectionsProvider
 log = logging.getLogger('zen.Layer2')
 
 
-DEFAULT_REDIS_URLS = ['redis://localhost:6379/1', 'redis://localhost:16379/1']  # 5.x, 4.x
 BACKWARD_PREFIX = 'b_'
 DEFAULT_CATALOG_NAME = 'l2'
 # TODO: To find optimal batch size value.
 BATCH_SIZE = 400
+
+
+@memoize
+def discover_redis_url():
+    """Return the correct redis URL or None if unavailable.
+
+    Zenoss 5 will have the CONTROLPLANE environment variable set to 1,
+    and will have redis on it's standard 6379 port.
+
+    Zenoss 4 will write the port into $ZENHOME/var/redis.conf, but only
+    on the host running zredis. Remote hubs won't be able automatically
+    discovery their redis URL. So we'll attempt to load it from a
+    REDIS_URL environment variable.
+
+    """
+    if os.environ.get("CONTROLPLANE"):
+        return "redis://localhost:6379/1"
+
+    env_redis_url = os.environ.get("REDIS_URL")
+    if env_redis_url:
+        return env_redis_url
+
+    try:
+        with open(zenPath("var", "redis.conf"), "r") as redis_conf:
+            for line in redis_conf:
+                if line.startswith("port"):
+                    try:
+                        port = line.strip().split()[1]
+                    except Exception:
+                        continue
+                    else:
+                        return "redis://localhost:{}/1".format(port)
+    except Exception:
+        return
 
 
 class ConnectionsCatalog(object):
@@ -70,27 +106,19 @@ class ConnectionsCatalog(object):
         self.redis = self.get_redis(redis_url)
 
     def get_redis(self, redis_url=None):
-        """
-        Use Redis URL if specified, otherwise try to use
-        default URLs for 5.x and 4.x.
-        """
-        if redis_url:
-            redis_urls = [redis_url]
-        else:
-            redis_urls = DEFAULT_REDIS_URLS
+        """Return StrictRedis instance given redis_url.
 
-        last_error = None
-        for url in redis_urls:
-            try:
-                r = redis.StrictRedis.from_url(url)
-                r.get(None)
-                last_error = None
-                break
-            except redis.exceptions.ConnectionError as e:
-                last_error = e
+        The correct redis_url will be discovered from the environment
+        if it isn't specified.
 
-        if last_error:
-            raise last_error
+        """
+        if not redis_url:
+            redis_url = discover_redis_url()
+            if not redis_url:
+                raise Exception("Unable to discover redis URL.")
+
+        r = redis.StrictRedis.from_url(redis_url)
+        r.get(None)
 
         return r
 
