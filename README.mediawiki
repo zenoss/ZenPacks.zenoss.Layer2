@@ -308,6 +308,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 ;1.2.2
 * Fix potential 2 minute modeling delay in Zenoss 4.
+* Fix "Connection refused" when Redis not available.
 
 ;1.2.1
 * Added "workers" option to zenmapper daemon.
