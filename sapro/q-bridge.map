@@ -1,0 +1,123 @@
+<DeviceMap
+    Release = "5.0"
+    Description = "Q-BRIDGE MIB test map."
+    UserData = ""
+    SetupFile = ""
+    Interface = ""
+    Separator = ":"
+    StartInterfaceNum = "0"
+    TPGFilePath = ""
+    Username = "Chet Luther <cluther@zenoss.com>">
+    <Device
+        <General
+            Name = "10.181.128.1"
+            MultiHome = "1"
+            DHCP = "0"
+            SubnetMask = "255.255.0.0"
+            MacAddress = "00:00:00:00:01:01"
+            Interface = ""
+            UserData = ""
+            TopologyData = ""
+            DisplayLogo = "../images/saptopo/netdevice.bmp"
+            DisplayTag = "q-bridge-sw-a"
+            MultiHome = "1"
+        />
+        <SNMP
+            ReadCommunity = "public"
+            WriteCommunity = "private"
+            MibFile = "../cmf/mib2.cmf"
+            AgentFile = "../projects/l2/q-bridge-sw-a.var"
+            TrapMgr = ""
+            ResponseDelay = "0"
+            ModelingFile = ""
+            SnmpStr = "V1V2V3"
+            MtuSize = "1500"
+            SnmpPort = "161"
+            SecurityLevel = "NoAuthNoPriv"
+        />
+    />
+    <Device
+        <General
+            Name = "10.181.128.2"
+            MultiHome = "1"
+            DHCP = "0"
+            SubnetMask = "255.255.0.0"
+            MacAddress = "00:00:00:00:02:01"
+            Interface = ""
+            UserData = ""
+            TopologyData = ""
+            DisplayLogo = "../images/saptopo/netdevice.bmp"
+            DisplayTag = "q-bridge-sw-b"
+            MultiHome = "1"
+        />
+        <SNMP
+            ReadCommunity = "public"
+            WriteCommunity = "private"
+            MibFile = "../cmf/mib2.cmf"
+            AgentFile = "../projects/l2/q-bridge-sw-b.var"
+            TrapMgr = ""
+            ResponseDelay = "0"
+            ModelingFile = ""
+            SnmpStr = "V1V2V3"
+            MtuSize = "1500"
+            SnmpPort = "161"
+            SecurityLevel = "NoAuthNoPriv"
+        />
+    />
+    <Device
+        <General
+            Name = "10.181.128.3"
+            MultiHome = "1"
+            DHCP = "0"
+            SubnetMask = "255.255.0.0"
+            MacAddress = "00:00:00:00:03:01"
+            Interface = ""
+            UserData = ""
+            TopologyData = ""
+            DisplayLogo = "../images/saptopo/netdevice.bmp"
+            DisplayTag = "q-bridge-host-1"
+            MultiHome = "1"
+        />
+        <SNMP
+            ReadCommunity = "public"
+            WriteCommunity = "private"
+            MibFile = "../cmf/mib2.cmf"
+            AgentFile = "../projects/l2/q-bridge-host-1.var"
+            TrapMgr = ""
+            ResponseDelay = "0"
+            ModelingFile = ""
+            SnmpStr = "V1V2V3"
+            MtuSize = "1500"
+            SnmpPort = "161"
+            SecurityLevel = "NoAuthNoPriv"
+        />
+    />
+    <Device
+        <General
+            Name = "10.181.128.4"
+            MultiHome = "1"
+            DHCP = "0"
+            SubnetMask = "255.255.0.0"
+            MacAddress = "00:00:00:00:04:01"
+            Interface = ""
+            UserData = ""
+            TopologyData = ""
+            DisplayLogo = "../images/saptopo/netdevice.bmp"
+            DisplayTag = "q-bridge-host-2"
+            MultiHome = "1"
+        />
+        <SNMP
+            ReadCommunity = "public"
+            WriteCommunity = "private"
+            MibFile = "../cmf/mib2.cmf"
+            AgentFile = "../projects/l2/q-bridge-host-2.var"
+            TrapMgr = ""
+            ResponseDelay = "0"
+            ModelingFile = ""
+            SnmpStr = "V1V2V3"
+            MtuSize = "1500"
+            SnmpPort = "161"
+            SecurityLevel = "NoAuthNoPriv"
+        />
+    />
+</DeviceMap>

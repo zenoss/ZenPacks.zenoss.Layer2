@@ -355,6 +355,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Added rootCauses event field for suppressed events.
 * Improved event suppression performance and reliability.
 * Added zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)
+* Added client discovery support using Q-BRIDGE MIB. (ZEN-25336)
 
 ;1.2.2
 * Fix potential 2 minute modeling delay in Zenoss 4.
