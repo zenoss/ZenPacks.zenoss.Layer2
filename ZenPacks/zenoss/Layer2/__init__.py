@@ -11,12 +11,6 @@ Custom ZenPack initialization code. All code defined in this module will be
 executed at startup time in all Zope clients.
 """
 
-import logging
-
-import os.path
-import socket
-import struct
-
 import Globals
 
 from Products.ZenUtils.Utils import unused
@@ -27,59 +21,70 @@ import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
 
-log = logging.getLogger('zen.Layer2')
+ZPROPERTY_CATEGORY = 'Layer 2'
 
-
-setzPropertyCategory('zZenossGateway', 'Misc')
+setzPropertyCategory('zL2SuppressIfDeviceDown', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2SuppressIfPathsDown', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2PotentialRootCause', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2Gateways', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zZenossGateway', ZPROPERTY_CATEGORY)
 
 
 class ZenPack(ZenPackBase):
     """ Layer2 zenpack loader """
 
     packZProperties = [
+        ('zL2SuppressIfDeviceDown', True, 'boolean'),
+        ('zL2SuppressIfPathsDown', True, 'boolean'),
+        ('zL2PotentialRootCause', True, 'boolean'),
+        ('zL2Gateways', [], 'lines'),
         ('zZenossGateway', '', 'string'),
-    ]
+        ]
+
+    packZProperties_data = {
+        'zL2SuppressIfDeviceDown': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: Device Down',
+            'description': 'Suppresses non-ping events when it is down.',
+            'type': 'boolean',
+            },
+
+        'zL2SuppressIfPathsDown': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: All Paths to Gateways Down',
+            'description': 'Suppresses ping events when all paths to all gateways are down.',
+            'type': 'boolean',
+            },
+
+        'zL2PotentialRootCause': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: Can Device be a Root Cause?',
+            'description': 'Set to False only for endpoints like hosts.',
+            },
+
+        'zL2Gateways': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Device Gateways',
+            'description': 'Gateways for device. Must be Zenoss device IDs.',
+            'type': 'lines',
+            },
+
+        'zZenossGateway': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': '[DEPRECATED] Use zL2Gateways',
+            'description': '[DEPRECATED] Use zL2Gateways instead to support multiple gateways per device.',
+            'type': 'string',
+            },
+        }
 
     def install(self, app):
         super(ZenPack, self).install(app)
         self._buildDeviceRelations()
-        self._getDefaultGateway(app.zport.dmd)
 
     def _buildDeviceRelations(self):
         # TODO: figure out how this is usefull and remove if it is not.
         for d in self.dmd.Devices.getSubDevicesGen():
             d.buildRelations()
-
-    def _getDefaultGateway(self, dmd):
-        """
-        Try to determine zZenossGateway value from /proc/net/route information
-        """
-
-        if os.path.exists('/.dockerinit'):
-            log.warning(
-                'We are inside docker container. '
-                'Please set zZenossGateway manually.'
-            )
-            return
-
-        with open("/proc/net/route") as fh:
-            for line in fh:
-                fields = line.strip().split()
-                # Checks gateway value and flag if record actual
-                if fields[1] != '00000000' or not int(fields[3], 16) & 2:
-                    continue
-
-                # Converts packed value into IP address
-                val = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-                if not dmd.Devices.zZenossGateway:
-                    dmd.Devices.deleteZenProperty('zZenossGateway')
-                    log.info("Setting zZenossGateway value to {}".format(val))
-                    dmd.Devices.setZenProperty('zZenossGateway', val)
-                else:
-                    log.info(
-                        "zZenossGateway already has value %s",
-                        dmd.Devices.zZenossGateway
-                    )
 
     def remove(self, app, leaveObjects=False):
         super(ZenPack, self).remove(app, leaveObjects)

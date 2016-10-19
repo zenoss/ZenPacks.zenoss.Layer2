@@ -153,54 +153,6 @@ class TestCheckWorkingPath(BaseTestCase):
         for device in devices:
             self.cat.add_node(device)
 
-    def test_check_nearest_down(self):
-        self.topology('''
-            a b
-            b c
-        ''')
-
-        self.cat.get_status = lambda x: x != router('b')
-        self.assertFalse(
-            self.cat.check_working_path(router('a'), router('c'))
-        )
-
-    def test_check_next_nearest_down(self):
-        self.topology('''
-            a b
-            b c
-            c d
-        ''')
-
-        self.cat.get_status = lambda x: x != router('c')
-        self.assertFalse(
-            self.cat.check_working_path(router('a'), router('d'))
-        )
-
-    def test_check_one_way_down(self):
-        self.topology('''
-            a b
-            a c
-            c d
-        ''')
-
-        self.cat.get_status = lambda x: x != router('c')
-        self.assertFalse(
-            self.cat.check_working_path(router('a'), router('d'))
-        )
-
-    def test_check_two_ways_down(self):
-        self.topology('''
-            a b
-            a c
-            b d
-            c d
-        ''')
-
-        self.cat.get_status = lambda x: x in (router('a'), router('d'))
-        self.assertFalse(
-            self.cat.check_working_path(router('a'), router('d'))
-        )
-
     def test_get_bsf_connected(self):
         self.topology('''
             a b

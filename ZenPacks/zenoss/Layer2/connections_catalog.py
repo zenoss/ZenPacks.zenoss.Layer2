@@ -493,35 +493,6 @@ class CatalogAPI(BaseCatalogAPI):
         except TypeError:
             return True
 
-    def check_working_path(self, from_entity, to_entity):
-        visited = set([from_entity])
-
-        nodes = self.search(entity_id=from_entity)
-        layers = set()
-        for node in nodes:
-            for layer in node.layers:
-                layers.add(layer)
-
-        def visit(node):
-            if node in visited:
-                return
-            if not self.get_status(node):
-                return
-            if node == to_entity:
-                raise StopIteration
-            visited.add(node)
-
-            for next_node in self.get_directly_connected(node, layers):
-                visit(next_node)
-
-        try:
-            for node in nodes:
-                visit(from_entity)
-        except StopIteration:
-            return True
-
-        return False
-
     def get_existing_layers(self):
         return self.catalog.get_existing_layers()
 

@@ -3,5 +3,8 @@
 *.egg-info
 dist
 build
+untitled.py
 Templates
 simulation/env/*
+stress/*.log
+stress/*.profile

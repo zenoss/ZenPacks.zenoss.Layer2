@@ -28,13 +28,45 @@ This ZenPack performs no monitoring.
 
 === Event Suppression ===
 
-The forwarding table information gathered by the ''zenoss.snmp.ClientMACs'' modeler is used to automatically perform event suppression in the case of switch failure.
+This ZenPack supports two types of event suppression.
 
-If Zenoss has modeled the forwarding tables of a server's upstream switches, and those switches fail resulting in the server becoming unreachable, the server failure events will be suppressed while the root cause failures of the switches will be shown.
+* Suppression of ping failures when one or more upstream ping failures can be identified as the reason for the failure.
+* Suppression of non-ping events on devices with open ping failure events.
 
-To determine connectivity of device to zenoss instance, this ZenPack needs to know where on the network map zenoss instance is located. It is described on Configuration properties of devices class in <code>zZenossGateway</code> zproperty. At ZenPack installation it populated with value
-found in ''/proc/net/route''. If required, you may manually put there id of the zenoss device, or device to which it is connected.
+We will use the term ''symptomatic event'' to refer to events that are a symptom of a problem, but not the root cause.
 
+==== Ping Event Suppression ====
+
+Suppression of ping events can be enabled on a per-device or device class basis by enabling the zL2SuppressIfPathsDown configuration property. This mode of suppression requires that the ''zenoss.snmp.ClientMACs'' modeler plugin be enabled and successfully functioning on all network devices such as switches and routers that you believe could be a root cause of other monitored devices becoming unreachable.
+
+There are two ways symptomatic ping events can be suppressed. By manually configuring the ultimate gateway(s) of the device(s) using the zL2Gateways property, or by leaving the zL2Gateways property empty and setting the zL2PotentialRootCause property appropriately so that the gateway(s) can be automatically discovered.
+
+[[File:layer2_datacenter_topology_diagram.png|Data Center Topology Diagram]]
+
+The diagram above depicts a common data center network topology where each rack has a redundant pair of access switches sometimes referred to as `top-of-rack switches. Each of those top-of-rack switches connect to a redundant pair of end-of-row switches. Each of those end-of-row switches connect to a redundant pair of core switches for the data center. Then perhaps the pair of core switches connect to a pair of gateway routers to connect the data center to the Internet or other data centers over private links. In this kind of topology the layer 3 gateway for hosts is often the core switches.
+
+In this type of topology the gateways for host-1-1-1 can be automatically discovered to be rack-1-1a and rack-1-1b if zL2PotentialRootCause is enabled for the switches, and disabled for the hosts. The zL2PotentialRootCause should be enabled for devices that could potentially be a root caused for
+other devices becoming unreachable, and disabled for devices that cannot be a root cause. This property is important to prevent root caused events from incorrectly being suppressed. To enable this 
+
+By relying on this automatic discovery of gateways we can only achieve suppression of events from the hosts. We'd get all of the host events suppressed in the case of an entire data center outage, but all of the rack, row, core, and gateway events would remain unsuppressed and it would be left as manual identification of the gateways as the root cause.
+
+To achieve multi-hop suppression the zL2Gateways property must be configured. Despite the name of the property containing "L2", the configured gateways need not be restricted to the layer 2 gateways. In the example topology above, the best value for zL2Gateways would likely be gw-a and gw-b (one per line). It's important to use the Zenoss device id(s) for the gateways, and to enter one per line in zL2Gateways. There's no limit to the number of gateways, but more than two probably isn't realistic.
+
+With zL2Gateways set to gw-a and gw-b in the above topology, a complete failure of the data center would result in all events being suppressed except for two events: a ping failure on each of gw-a and gw-b. This is assuming that zL2SuppressIfDeviceDown is enabled. See ''Non-Ping Event Suppression' below for more information on zL2SuppressIfDeviceDown.
+
+==== Non-Ping Event Suppression ====
+
+Suppression of non-ping events can be enabled on a per-device or device class basis by enabling the zL2SuppressIfDeviceDown configuration property. No other configuration or modeling is necessary. Events will only be suppressed for a device with this property enabled when they have a new, acknowledged, or suppressed critical event in the /Status/Ping event class. This suppression is effective at reducing the potential clutter of symptomatic events when a device is no longer reachable on the network either because it has failed, or because the Zenoss collector is no longer able to reach it.
+
+This suppression can be used together with ping event suppression for the most complete reduction of symptomatic event clutter.
+
+==== Event Suppression Performance ====
+
+All forms of event suppression as described above have a cost in terms of event processing performance. When zL2SuppressIfDeviceDown is enabled, there is a small additional overhead for processing all events. When zL2SuppressIfPathsDown is enabled and first-hop suppression is performed using either automatic gateway discovery or manual gateway configuration, there is another small overhead for processing ping failure events.
+
+In worst case scenario testing the overhead for processing non-ping events with the zL2SuppressIfDeviceDown configuration is approximately TODO percent, and the overhead for processing ping failure events is approximately TODO percent in the case of a first-hop switch failure, and TODO percent in the case of a fourth-hop gateway failure.
+
+All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be simply scaled by adding more workers/instances, this additional event processing overhead can be offset by running one or more zeneventd instances as event processing throughput needs require.
 
 == Network map ==
 [[File:Network map.png|thumb|320px|Network map]]
@@ -305,6 +337,16 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * zenmapper
 
 == Changes ==
+
+;1.3.0
+* Support for multiple gateways per device or device class. (ZEN-24767)
+* Added zL2Gateways property. (ZEN-24767)
+* Deprecated zZenossGateway property. (ZEN-24767)
+* Added zL2PotentialRootCause to allow automatic gateways discovery.
+* Added zL2SuppressIfPathsDown to toggle ping event suppression.
+* Added zL2SuppressIfDeviceDown to toggle non-ping event suppression.
+* Added rootCauses event field for suppressed events.
+* Improved event suppression performance and reliability.
 
 ;1.2.2
 * Fix potential 2 minute modeling delay in Zenoss 4.

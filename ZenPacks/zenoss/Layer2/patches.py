@@ -17,6 +17,7 @@ from zope.i18n.negotiator import negotiator
 
 from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
+from Products.ZenModel.PerformanceConf import PerformanceConf
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 from Products.ZenUI3.navigation import getSelectedNames
 from Products.ZenUI3.tooltips.tooltips import PageLevelHelp, TooltipCatalog
@@ -156,6 +157,39 @@ def set_reindex_maps(self, value):
         self.macs_indexed = True
 
 
+@monkeypatch('Products.ZenModel.Device.Device')
+def get_l2_gateways(self):
+    """Return list of devices on the path to the device."""
+    gateway_device_ids = set()
+
+    try:
+        gateway_device_ids.add(self.zZenossGateway)
+    except Exception:
+        pass
+
+    try:
+        gateway_device_ids.update(self.zL2Gateways)
+    except Exception:
+        pass
+
+    # Only use collector gateways if device gateways aren't set.
+    if not filter(None, gateway_device_ids):
+        try:
+            collector = self.getPerformanceServer()
+            gateway_device_ids.update(collector.l2_gateways)
+        except Exception:
+            pass
+
+    gateway_device_ids = filter(None, gateway_device_ids)
+    if gateway_device_ids:
+        devices = self.getDmdRoot("Devices")
+        return filter(
+            None,
+            [devices.findDeviceByIdExact(x) for x in gateway_device_ids])
+
+    return []
+
+
 Device._relations += (
     ('neighbor_switches', ToManyCont(
         ToOne,
@@ -223,6 +257,16 @@ IpInterfaceInfo.clientmacs = ProxyProperty('clientmacs')
 IpInterfaceInfo.baseport = ProxyProperty('baseport')
 IpInterfaceInfo.get_clients_links = property(get_clients_links)
 
+
+# -- PerformanceConf Patches -------------------------------------------------
+
+PerformanceConf.l2_gateways = None
+PerformanceConf._properties = PerformanceConf._properties + (
+    {'id': 'l2_gateways', 'type': 'lines', 'mode': 'w'},
+    )
+
+
+# ----------------------------------------------------------------------------
 
 # Help popup similar to defined in
 # Products/ZenUI3/tooltips/data/en/nav-help.xml

@@ -35,8 +35,15 @@ import logging
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
 
+from Products.ZenEvents import ZenEventClasses
+from Products.Zuul import getFacade
 from Products.Zuul.catalog.interfaces import IGloballyIndexed
 from Products.Zuul.catalog.interfaces import IIndexableWrapper
+
+from zenoss.protocols.protobufs.zep_pb2 import (
+    STATUS_NEW, STATUS_ACKNOWLEDGED, STATUS_SUPPRESSED,
+    SEVERITY_CRITICAL,
+    )
 
 
 log = logging.getLogger('zen.Layer2')
@@ -189,7 +196,16 @@ class MACObject(object):
 
 class DeviceConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
-        return self.context.getStatus() == 0
+        device = self.context
+        zep = getFacade('zep', device.getDmd())
+        event_filter = zep.createEventFilter(
+            tags=[device.getUUID()],
+            event_class=[ZenEventClasses.Status_Ping],
+            severity=[SEVERITY_CRITICAL],
+            status=[STATUS_NEW, STATUS_ACKNOWLEDGED, STATUS_SUPPRESSED])
+
+        result = zep.getEventSummaries(0, filter=event_filter, limit=0)
+        return int(result['total']) == 0
 
     def get_connections(self):
         for interface in self.context.os.interfaces():
