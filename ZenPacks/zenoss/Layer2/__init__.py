@@ -28,6 +28,7 @@ setzPropertyCategory('zL2SuppressIfPathsDown', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zL2PotentialRootCause', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zL2Gateways', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zZenossGateway', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zLocalMacAddresses', ZPROPERTY_CATEGORY)
 
 
 class ZenPack(ZenPackBase):
@@ -39,6 +40,7 @@ class ZenPack(ZenPackBase):
         ('zL2PotentialRootCause', True, 'boolean'),
         ('zL2Gateways', [], 'lines'),
         ('zZenossGateway', '', 'string'),
+        ('zLocalMacAddresses', ['00:00:00:00:00:00'], 'lines'),
         ]
 
     packZProperties_data = {
@@ -73,6 +75,13 @@ class ZenPack(ZenPackBase):
             'category': ZPROPERTY_CATEGORY,
             'label': '[DEPRECATED] Use zL2Gateways',
             'description': '[DEPRECATED] Use zL2Gateways instead to support multiple gateways per device.',
+            'type': 'string',
+            },
+
+        'zLocalMacAddresses': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Local MAC Addresses',
+            'description': 'Suppress these MAC addresses when mapping interfaces.',
             'type': 'string',
             },
         }

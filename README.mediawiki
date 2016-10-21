@@ -82,6 +82,8 @@ Map could be zoomed using mouse wheel, and panned using mouse. If it disappears 
 
 Please note: for performance reasons map displays only first 1000 nodes found. If this case occurs, filters can help to refine results.
 
+Also note: Sometimes devices will have non-routable MAC interfaces that are not useful. To remove these unwanted or internal MAC addresses from the map, you can add entries to the zLocalMacAddresses property and remodel your network devices.
+
 === VLANs ===
 Network map could have edges that belong not only to Layer2 in general, but to some VLAN. This is links from VLAN-aware switch to its interfaces, and to it's client MAC addresses. This edges could be filtered by their VLAN.
 
@@ -331,6 +333,11 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * zenoss.snmp.ClientMACs
 
 '''zProperties'''
+* zL2Gateways
+* zL2PotentialRootCause
+* zL2SuppressIfDeviceDown
+* zL2SuppressIfPathsDown
+* zLocalMacAddresses
 * zZenossGateway
 
 '''Daemons'''
@@ -347,6 +354,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Added zL2SuppressIfDeviceDown to toggle non-ping event suppression.
 * Added rootCauses event field for suppressed events.
 * Improved event suppression performance and reliability.
+* Added zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)
 
 ;1.2.2
 * Fix potential 2 minute modeling delay in Zenoss 4.

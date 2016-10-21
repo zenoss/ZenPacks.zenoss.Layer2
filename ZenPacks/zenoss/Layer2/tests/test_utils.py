@@ -7,11 +7,11 @@
 #
 ##############################################################################
 
-from mock import Mock, sentinel
-
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.utils import asmac
+from ZenPacks.zenoss.Layer2.utils import (asmac,
+                                          is_valid_macaddr802,
+                                          filterMacSet)
 
 
 class TestUtils(BaseTestCase):
@@ -20,6 +20,16 @@ class TestUtils(BaseTestCase):
             asmac('\x01\x23\x45\x67\x89\xab'),
             '01:23:45:67:89:AB'
         )
+
+    def test_is_valid_macaddr802(self):
+        mac = '01:23:45:67:89:AB'
+        self.assertTrue(is_valid_macaddr802(mac))
+
+    def test_filterMacSet(self):
+        a = ['01:23:45:67:89:AB', '00:00:00:00:00:00']
+        b = ['00:00:00:00:00:00', 'invalid_mac']
+        c = filterMacSet(a, b)
+        self.assertTrue('00:00:00:00:00:00' not in c)
 
 
 def test_suite():
