@@ -66,6 +66,7 @@ class TestModelerPlugins(TestClientMacsState):
         super(TestModelerPlugins, self).afterSetUp()
         self.device = Mock()
         self.log = Mock()
+        self.device.zLocalMacAddresses = ['00:00:00:00:00:00', 'invalid_mac']
 
     def test_client_macs_imports(self):
         from ZenPacks.zenoss.Layer2.modeler.plugins.\

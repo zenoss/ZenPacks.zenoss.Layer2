@@ -18,7 +18,7 @@ from Products.ZenUtils.Driver import drive
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from ZenPacks.zenoss.Layer2.utils import asmac
+from ZenPacks.zenoss.Layer2.utils import asmac, filterMacSet, is_valid_macaddr802
 
 
 # ftp://ftp.cisco.com/pub/mibs/v1/BRIDGE-MIB.my
@@ -113,6 +113,7 @@ class ClientMACs(PythonPlugin):
         'get_ifinfo_for_layer2',
         'getHWManufacturerName',
         'macs_indexed',
+        'zLocalMacAddresses',
     )
 
     deviceProperties = (
@@ -125,6 +126,11 @@ class ClientMACs(PythonPlugin):
     def collect(self, device, log):
         """Return deferred with results of collection."""
         log.info("%s: collecting client MAC addresses", device.id)
+
+        # Inspect MAC addresses format in zLocalMacAddresses
+        for mac in device.zLocalMacAddresses:
+            if not is_valid_macaddr802(mac):
+                log.warn("Invalid MAC Address '%s' found in %s", mac, 'zLocalMacAddresses')
 
         self.log = log
 
@@ -162,16 +168,23 @@ class ClientMACs(PythonPlugin):
         maps = []
 
         for iface_id, data in state.iftable.items():
-            clientmacs.update(data['clientmacs'])
+            # zLocalMacAddresses are usually internal MACS with no external use
+            # hence remove the zLocalMacAddresses from device.clientmacs
+
+            filtered_macs = filterMacSet(data['clientmacs'],
+                                         device.zLocalMacAddresses)
+            clientmacs.update(filtered_macs)
+
             maps.append(
                 ObjectMap({
                     'compname': 'os',
                     'relname': 'interfaces',
                     'id': iface_id,
-                    'clientmacs': list(set(data['clientmacs'])),
+                    'clientmacs': list(filtered_macs),
                     'baseport': data['baseport'],
                 }))
 
+        # Also remove zLocalMacAddresses from device.set_reindex_maps()
         if not state.macs_indexed and state.iftable:
             reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
             maps.insert(0, reindex_map)
