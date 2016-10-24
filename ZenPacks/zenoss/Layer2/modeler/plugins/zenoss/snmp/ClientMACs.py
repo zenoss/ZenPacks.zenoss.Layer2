@@ -21,7 +21,7 @@ from Products.ZenUtils.Driver import drive
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from ZenPacks.zenoss.Layer2.utils import asmac, filterMacSet, is_valid_macaddr802
+from ZenPacks.zenoss.Layer2.utils import filterMacSet, is_valid_macaddr802
 
 
 class ForwardingEntryStatus(object):
@@ -85,12 +85,10 @@ class ClientMACs(PythonPlugin):
             if not is_valid_macaddr802(mac):
                 log.warn("Invalid MAC Address '%s' found in %s", mac, 'zLocalMacAddresses')
 
-        self.log = log
-
         state = ClientMACsState(
             device=device,
             iftable=getattr(device, 'get_ifinfo_for_layer2', {}),
-            macs_indexed=getattr(device, 'macs_indexed', False))
+            log=log)
 
         results = []
 
@@ -113,6 +111,8 @@ class ClientMACs(PythonPlugin):
 
     def process(self, device, results, log):
         """Process collect's results. Return iterable of datamaps."""
+        log.info("%s: processing client MAC addresses", device.id)
+
         state, results = results
 
         for tabledata in results:
@@ -139,7 +139,8 @@ class ClientMACs(PythonPlugin):
                 }))
 
         # Also remove zLocalMacAddresses from device.set_reindex_maps()
-        if not state.macs_indexed and state.iftable:
+        macs_indexed = getattr(device, 'macs_indexed', False)
+        if not macs_indexed and state.iftable:
             reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
             maps.insert(0, reindex_map)
 
@@ -159,12 +160,11 @@ class ClientMACsState(object):
 
     device = None
     iftable = None
-    macs_indexed = None
 
-    def __init__(self, device=None, iftable=None, macs_indexed=None):
+    def __init__(self, device=None, iftable=None, log=None):
         self.device = device
         self.iftable = iftable
-        self.macs_indexed = macs_indexed
+        self.log = log
 
     @property
     def is_cisco(self):
@@ -238,7 +238,7 @@ class ClientMACsState(object):
         for tp_fdb_tablename in ('dot1dTpFdbTable', 'dot1qTpFdbTable'):
             tp_fdb_table = tabledata.get(tp_fdb_tablename, {})
 
-            for tp_fdb_entry in tp_fdb_table.itervalues():
+            for idx, tp_fdb_entry in tp_fdb_table.iteritems():
                 entry_status = tp_fdb_entry.get('tpFdbStatus')
                 if entry_status != ForwardingEntryStatus.learned:
                     continue
@@ -251,9 +251,10 @@ class ClientMACsState(object):
                 if not ifindex:
                     continue
 
-                mac = tp_fdb_entry.get('tpFdbAddress')
-                if mac:
-                    ifindex_to_macs[ifindex].append(asmac(mac))
+                try:
+                    ifindex_to_macs[ifindex].append(mac_from_snmpindex(idx))
+                except ValueError as e:
+                    self.log.warning("%s: %s", self.device.id, e)
 
         for iface in self.iftable.itervalues():
             ifindex = int(iface['ifindex'])
@@ -261,6 +262,40 @@ class ClientMACsState(object):
             baseport = ifindex_to_portid.get(ifindex)
             if baseport:
                 iface['baseport'] = baseport
+
+
+def mac_from_snmpindex(snmpindex):
+    """Return "01:23:45:67:89:ab" formatted MAC address string.
+
+    The snmpindex argument is expected to be the index from a
+    GetTableMap of BRIDGE-MIB::dot1dTpFdbEntry such as the following:
+
+        .1.35.69.103.137.174
+
+    Or the index from Q-BRIDGE::dot1qTpFdbEntry such as the following:
+
+        .20.1.35.69.103.137.175
+
+    Note that the Q-BRIDGE version has a leading value that doesn't
+    exist in the BRIDGE-MIB version that must be ignored to get to the 6
+    bytes of a MAC address.
+
+    These input strings should result in the following returned strings
+    respectively.
+
+        01:23:45:67:89:AE
+        01:23:45:67:89:AF
+
+    """
+    try:
+        mac_parts = snmpindex.strip('.').split('.')[-6:]
+        if len(mac_parts) != 6:
+            raise ValueError("snmpindex has fewer than 6 bytes")
+
+        # Convert from "." delimited decimal to ":" delimited hex.
+        return ':'.join('%02X' % int(x) for x in mac_parts)
+    except Exception:
+        raise ValueError("no MAC address in {!r}".format(snmpindex))
 
 
 class SnmpClientOptions(object):
@@ -287,7 +322,6 @@ class ClientMACsSnmpPlugin(SnmpPlugin):
         # BRIDGE-MIB: Physical ports to MAC addresses of clients.
         GetTableMap(
             'dot1dTpFdbTable', '1.3.6.1.2.1.17.4.3.1', {
-                '.1': 'tpFdbAddress',
                 '.2': 'tpFdbPort',
                 '.3': 'tpFdbStatus',
             }),
@@ -295,7 +329,6 @@ class ClientMACsSnmpPlugin(SnmpPlugin):
         # Q-BRIDGE: Physical ports to MAC addresses of clients.
         GetTableMap(
             'dot1qTpFdbTable', '1.3.6.1.2.1.17.7.1.2.2.1', {
-                '.1': 'tpFdbAddress',
                 '.2': 'tpFdbPort',
                 '.3': 'tpFdbStatus',
             }),
