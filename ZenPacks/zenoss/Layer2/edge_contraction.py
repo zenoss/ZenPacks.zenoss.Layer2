@@ -13,9 +13,6 @@ so it became more human-readable, but do not loose it's main meaning -
 to show what is connected.
 '''
 
-from collections import defaultdict
-from itertools import chain
-
 
 def contract_edges(nodes, links, reduced):
     '''
@@ -49,9 +46,8 @@ class EdgeContractor(object):
             t = self.nodes[link['target']]
             append_incident(s, i, 'outbound')
             append_incident(t, i, 'inbound')
-            if not link['directed']:
-                append_incident(t, i, 'outbound')
-                append_incident(s, i, 'inbound')
+            append_incident(t, i, 'outbound')
+            append_incident(s, i, 'inbound')
 
     def get_adjacent(self, node_id, direction=None):
         ''' Returns ids of adjacent nodes '''
@@ -117,15 +113,15 @@ class EdgeContractor(object):
             self.nodes[t]['inbound'].remove(i)
         except ValueError:
             pass
-        if not self.links[i]['directed']:
-            try:
-                self.nodes[t]['outbound'].remove(i)
-            except ValueError:
-                pass
-            try:
-                self.nodes[s]['inbound'].remove(i)
-            except ValueError:
-                pass
+
+        try:
+            self.nodes[t]['outbound'].remove(i)
+        except ValueError:
+            pass
+        try:
+            self.nodes[s]['inbound'].remove(i)
+        except ValueError:
+            pass
 
         del self.links[i]
 

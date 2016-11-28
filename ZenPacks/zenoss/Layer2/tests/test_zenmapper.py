@@ -8,16 +8,13 @@
 #
 ######################################################################
 
-from mock import Mock, sentinel
-
 from Products.Five import zcml
 
 import Products.ZenTestCase
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
-from Products.ZenUtils.Utils import monkeypatch
 
 import ZenPacks.zenoss.Layer2
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+from ZenPacks.zenoss.Layer2 import connections
 from ZenPacks.zenoss.Layer2.zenmapper import ZenMapper
 
 from .create_fake_devices import create_topology, router
@@ -28,8 +25,6 @@ class TestUpdateCatalog(BaseTestCase):
         super(TestUpdateCatalog, self).afterSetUp()
 
         self.dmd.Devices.createOrganizer('/Network/Router/Cisco')
-
-        self.cat = CatalogAPI(self.dmd.zport)
 
         class TestableZenMapper(ZenMapper):
             def __init__(self):
@@ -49,6 +44,7 @@ class TestUpdateCatalog(BaseTestCase):
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+        connections.clear()
 
     def topology(self, topology):
         create_topology(topology, self.dmd, update_catalog=False)
@@ -56,10 +52,10 @@ class TestUpdateCatalog(BaseTestCase):
     def test_pair(self):
         self.topology('a b')
         self.zenmapper.main_loop()
-        self.assertIn(router('b'), self.cat.get_connected(
-            router('a'),
-            method=self.cat.get_two_way_connected
-        ))
+        a = self.dmd.getObjByPath(router("a"))
+        b = self.dmd.getObjByPath(router("b"))
+        a_neighbors = connections.get_layer2_neighbor_devices(a)
+        self.assertIn(b, a_neighbors)
 
 
 def test_suite():

@@ -20,6 +20,6 @@
 # sudo rabbitmqctl -p /zenoss list_queues
 
 # read -p "<enter> if queue is empty, <ctrl-c> otherwise."
-# ./create-events.py
+# ./create-events.py performance-test
 # sudo rabbitmqctl -p /zenoss list_queues
-# zeneventd run --logperfasinfo --metricsinterval=10 --usemetrology 2>&1 | tee zeneventd.run
+# zeneventd run 2>&1 | tee zeneventd.run

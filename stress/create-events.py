@@ -46,10 +46,10 @@ s2_switch_dc.setZenProperty("zL2PotentialRootCause", True)
 s2_switch_dc.setZenProperty("zL2Gateways", [])
 
 s2_host_dc = dmd.Devices.getOrganizer("/Test/Layer2/Site-s2/Host")
-s2_switch_dc.setZenProperty("zL2SuppressIfDeviceDown", True)
-s2_switch_dc.setZenProperty("zL2SuppressPathsDown", False)
-s2_switch_dc.setZenProperty("zL2PotentialRootCause", False)
-s2_switch_dc.setZenProperty("zL2Gateways", [])
+s2_host_dc.setZenProperty("zL2SuppressIfDeviceDown", True)
+s2_host_dc.setZenProperty("zL2SuppressPathsDown", False)
+s2_host_dc.setZenProperty("zL2PotentialRootCause", False)
+s2_host_dc.setZenProperty("zL2Gateways", [])
 
 print "  - first-hop suppression: /Test/Layer2/Site-s3"
 s3_switch_dc = dmd.Devices.getOrganizer("/Test/Layer2/Site-s3/Switch")

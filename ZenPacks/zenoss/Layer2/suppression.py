@@ -34,7 +34,7 @@ from zenoss.protocols.protobufs.zep_pb2 import (
     SEVERITY_CLEAR, SEVERITY_CRITICAL,
     )
 
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+from . import connections
 
 from metrology import Metrology
 s_meter = Metrology.meter("events-suppressed")
@@ -77,7 +77,6 @@ class Suppressor(object):
 
     def __init__(self, dmd):
         self.dmd = dmd
-        self.catalog = CatalogAPI(self.dmd.zport)
         self.layers = ["layer2"]
         self.clear_caches()
 
@@ -102,7 +101,7 @@ class Suppressor(object):
         if not device or not settings.enabled:
             return
 
-        device_entity = device.getPrimaryUrlPath()
+        device_entity = device.getPrimaryId()
 
         if event.eventClass == ZenEventClasses.Status_Ping:
             if event.severity == SEVERITY_CRITICAL:
@@ -343,7 +342,7 @@ class Suppressor(object):
         if isinstance(thing, types.StringTypes):
             if thing.startswith("/"):
                 try:
-                    return self.dmd.getObjByPath(thing)
+                    return self.dmd.getObjByPath(str(thing))
                 except Exception:
                     return None
             else:
@@ -366,12 +365,12 @@ class Suppressor(object):
             else:
                 obj = self.dmd.Devices.findDeviceByIdExact(thing)
                 if obj:
-                    return obj.getPrimaryUrlPath()
+                    return obj.getPrimaryId()
                 else:
                     return None
         else:
             try:
-                return thing.getPrimaryUrlPath()
+                return thing.getPrimaryId()
             except AttributeError:
                 return None
 
@@ -441,7 +440,7 @@ class Suppressor(object):
         """
         status = self.status_cache.get(entity)
         if status is None:
-            status = self.catalog.get_status(entity)
+            status = connections.get_status(self.dmd, entity)
             self.set_status(entity, bool(status))
 
         return status
@@ -484,10 +483,8 @@ class Suppressor(object):
     def get_neighbors(self, entity):
         """Return iterator of neighbors for entity.
 
-        This behaves as a standard read-through cache to the l2
-        catalog's get_reverse_connected method. The only deviation is
-        that results prefixed with a ! are stripped because we're only
-        interested in MAC adderss or device neighbors.
+        This behaves as a standard read-through cache to
+        connections.get_neighbors().
 
         Cached entries expire after a certain amount of time. See
         neighbors_cache in the clear_caches method for how long.
@@ -495,12 +492,7 @@ class Suppressor(object):
         """
         neighbors = self.neighbors_cache.get(entity)
         if neighbors is None:
-            neighbors = [
-                x for x in self.catalog.get_reverse_connected(
-                    entity_id=entity,
-                    layers=self.layers)
-                if not x.startswith("!")]
-
+            neighbors = connections.get_neighbors(entity, self.layers)
             self.neighbors_cache.set(entity, neighbors)
 
         return iter(neighbors)

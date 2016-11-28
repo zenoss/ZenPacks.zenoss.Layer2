@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2014-2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -13,15 +13,10 @@ from collections import defaultdict
 
 import Globals
 
-from zope.i18n.negotiator import negotiator
-
 from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
 from Products.ZenModel.PerformanceConf import PerformanceConf
 from Products.ZenRelations.RelSchema import ToOne, ToManyCont
-from Products.ZenUI3.navigation import getSelectedNames
-from Products.ZenUI3.tooltips.tooltips import PageLevelHelp, TooltipCatalog
-from Products.ZenUtils.Utils import edgesToXML
 from Products.ZenUtils.Utils import monkeypatch
 from Products.ZenUtils.Utils import unused
 from Products.Zuul.form import schema
@@ -29,9 +24,8 @@ from Products.Zuul.infos import ProxyProperty
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
 
-
-from .connections_catalog import CatalogAPI
-from .network_tree import get_connections_json, serialize
+from . import connections
+from . import network_tree
 
 unused(Globals)
 
@@ -56,20 +50,16 @@ def get_ifinfo_for_layer2(self):
     return res
 
 
-def format_macs(macs, get_device_by_mac):
-    """
-    Gets list of macs in macs argument, and mapping from mac
-    to containing device in function get_device_by_mac.
-
-    Renders data to use in UI panel
-    """
-    if not macs:
+def get_clients_links(self):
+    ''' Returns page of links to client devices '''
+    if not self._object.clientmacs:
         return ""
 
+    dmd = self._object.dmd
     links = defaultdict(lambda: defaultdict(dict))
 
-    for mac in macs:
-        device = get_device_by_mac(mac)
+    for mac in self._object.clientmacs:
+        device = connections.get_device_by_mac(dmd, mac)
 
         if device:
             template = '<a href="{}">{}</a>'
@@ -110,51 +100,19 @@ def format_macs(macs, get_device_by_mac):
     return result
 
 
-def get_clients_links(self):
-    ''' Returns page of links to client devices '''
-    return format_macs(
-        self._object.clientmacs,
-        CatalogAPI(self._object.zport).get_device_by_mac
-    )
-
-
 @monkeypatch('Products.ZenModel.Device.Device')
 def setLastChange(self, value=None):
-    original(self, value)
+    original(self, value)  # NoQA: injected by monkeypatch decorator
 
     try:
-        cat = CatalogAPI(self.zport)
-    except Exception as e:
-        # On remote hub redis is not avaialable.
-        # Do nothing and let zenmapper index this device.
-        return
-
-    try:
-        if cat.is_changed(self):
-            cat.add_node(self)
-    except TypeError as e:
-        log.error(e)
-
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def get_reindex_maps(self):
-    ''' Should return something distinct from value passed to
-        set_reindex_maps for set_reindex_maps to run
-    '''
-    return set(
-        x.upper()
-        for i in self.os.interfaces()
-        if getattr(i, 'clientmacs')
-        for x in i.clientmacs
-        if x
-    )
-
-
-@monkeypatch('Products.ZenModel.Device.Device')
-def set_reindex_maps(self, value):
-    self.index_object()
-    if value == 'reindex please':
-        self.macs_indexed = True
+        # If this impacts modeling performance too much we could remove it, and
+        # let zenmapper handle it on its next cycle. All this buys us is more
+        # immediate updating of Layer2 data after devices are remodeled.
+        connections.add_node(self)
+    except Exception:
+        # Redis might not be available. We'll just let zenmapper add
+        # this node on its next cycle.
+        pass
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -204,7 +162,7 @@ def getJSONEdges(self, root_id='', depth='2', layers=None, full_map='false'):
     ''' Get JSON representation of network nodes '''
 
     if not root_id:
-        return serialize("Set the UID of device or component")
+        return network_tree.serialize("Set the UID of device or component")
     root_id = urllib.unquote(root_id)
 
     full_map = (full_map == 'true')  # make it boolean
@@ -212,29 +170,23 @@ def getJSONEdges(self, root_id='', depth='2', layers=None, full_map='false'):
         if layers:
             layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
-        return get_connections_json(
+        return network_tree.get_connections_json(
             self, root_id, int(depth),
             layers=layers, full_map=full_map
         )
     except Exception as e:
         log.exception(e)
-        return serialize(e)
-
-
-@monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getNetworkLayers(self):
-    ''' Return existing network layers on network map '''
-    cat = CatalogAPI(self.zport)
-    return cat.get_existing_layers()
+        return network_tree.serialize(e)
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getNetworkLayersList(self):
     ''' Return existing network layers list for checkboxes options '''
-    return serialize([
+    return network_tree.serialize([
         dict(boxLabel=x, inputValue='layer_' + x, id='layer_' + x)
-        for x in self.getNetworkLayers()
+        for x in connections.get_layers()
     ])
+
 
 # -- IP Interfaces overrides --------------------------------------------------
 
@@ -242,7 +194,7 @@ def getNetworkLayersList(self):
 IpInterface.clientmacs = []
 IpInterface.baseport = 0
 IpInterface._properties = IpInterface._properties + (
-    {'id': 'clientmacs', 'type': 'string', 'mode': 'w'},
+    {'id': 'clientmacs', 'type': 'lines', 'mode': 'w'},
     {'id': 'baseport', 'type': 'int', 'mode': 'w'},
 )
 

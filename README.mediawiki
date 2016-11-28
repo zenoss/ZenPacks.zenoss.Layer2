@@ -218,45 +218,6 @@ installation.
 === Empty map/links for device ===
 In case index for certain device is broken, one may force zenmapper to reindex this specific device. Daemon should be runed with <code>--force</code> option.
 
-=== Debugging network map ===
-This ZenPack gathers information about connections on different layers
-of network, and displays it on network map.  If you see some connections
-that should not be there, or are missing, first you could check if network
-map is rendered from proper model - connections catalog.
-
-To do that, install <code>tabulate</code> python package
-(<code>pip install tabulate</code>), start <code>zendmd</code> shell and run:
-
-<syntaxhighlight lang=bash>
-    from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
-    cat = CatalogAPI(zport)
-
-    # example queries
-    cat.show_content() # show all catalog
-    cat.show_content(entity_id='/zport/dmd/Devices/Network/Switch/devices/192.168.1.1') # show only connections for given entity
-    cat.show_content(connected_to='/zport/dmd/Devices/Network/Switch/devices/192.168.1.1') # show what is connected to this entity
-    cat.show_content(layers=['layer2']) # show only connections on some layer
-</syntaxhighlight>
-
-If you don't see connections you expecting to see, you could check
-if <code>zenmapper</code> builds network map properly by running it with
-high verbosity:
-
-<syntaxhighlight lang=bash>
-zenmapper run -v10
-zenmapper run -v10 2> zenmapper.log # to redirect it to file
-</syntaxhighlight>
-
-Then you will see following log entries:
-
-<pre>
-2015-09-14 13:14:58,521 DEBUG zen.Layer2: Connection from ... to ... on layers ... added to connections_catalog
-</pre>
-
-When connections that reported by that log are erroneous, then probably there
-are errors in connections providers for your device, or in device model
-itself.
-
 === Layer2 forwarding table ===
 Let's discuss Layer2 connections in particular.
 

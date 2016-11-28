@@ -1,28 +1,16 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2014, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2014-2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
 
-from itertools import chain
+from . import connections
 
-import logging
-
-import Globals
-from Products.ZenUtils.Utils import unused
-
-from .connections_catalog import CatalogAPI
-
-unused(Globals)
-
-
+# constants
 MAX_LINKS = 100
-
-
-log = logging.getLogger('zen.Layer2')
 
 
 class DeviceLinkProvider(object):
@@ -34,25 +22,23 @@ class DeviceLinkProvider(object):
 
     def getExpandedLinks(self):
         links = set()
-        # Upstream devices
-        cat = CatalogAPI(self.device.zport)
-        this_id = self.device.getPrimaryUrlPath()
-        suffix = []
-        for id in cat.get_connected(
-            entity_id=this_id,
-            layers=['layer2'],
-            method=cat.get_two_way_connected,
-            depth=3,
-        ):
-            if id.startswith('/zport/dmd/Devices/Network/') and id != this_id:
-                # The list of links might be huge, limit the output.
-                if len(links) > MAX_LINKS:
-                    suffix = ['(list of switches was truncated to '
-                              '%s items)' % MAX_LINKS]
-                    break
+        links_suffix = []
 
-                links.add('Switch: <a href="{}">{}</a>'.format(
-                    id, id.split('/')[-1]
-                ))
+        for neighbor in connections.get_layer2_neighbor_devices(self.device):
+            if not connections.is_switch(neighbor):
+                # We're only providing links to switches.
+                continue
 
-        return ['<br />'] + list(links) + suffix
+            # The list of links might be huge, limit the output.
+            if len(links) > MAX_LINKS:
+                links_suffix.append(
+                    '(list truncated to {} switches)'.format(MAX_LINKS))
+
+                break
+
+            links.add(
+                'Switch: <a href="{}">{}</a>'.format(
+                    neighbor.getPrimaryUrlPath(),
+                    neighbor.titleOrId()))
+
+        return ['<br />'] + sorted(links) + links_suffix
