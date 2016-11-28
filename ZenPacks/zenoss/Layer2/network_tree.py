@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2007, 2014, 2015 all rights reserved.
+# Copyright (C) Zenoss, Inc. 2007, 2014-2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -12,35 +12,24 @@ Contains function get_connections_json, which returns JSON string with
 links and nodes of network map, for d3.js to render.
 '''
 
-import copy
 import json
-from functools import partial
-import re
-
 import logging
+import re
 
 from zExceptions import NotFound
 
 from Products.Zuul import getFacade
 from zenoss.protocols.services.zep import ZepConnectionError
 
-from .connections_catalog import CatalogAPI
+from . import connections
 from .edge_contraction import contract_edges
 
 log = logging.getLogger('zen.Layer2')
 
 # TODO: To find optimal batch size values.
 ZEP_BATCH_SIZE = 400
-CATALOG_BATCH_SIZE = 400
 
 MAX_NODES_COUNT = 2000
-
-
-class StopTraversing(Exception):
-
-    """Raised when max nodes count is reached to stop network map generation."""
-
-    pass
 
 
 def get_connections_json(
@@ -85,242 +74,87 @@ def serialize(*args, **kwargs):
         return serialize(kwargs)
 
 
-SEVERITY_TO_COLOR = {
-    1: 'severity_debug',
-    2: 'severity_info',
-    3: 'severity_warning',
-    4: 'severity_error',
-    5: 'severity_critical'}
-
-
-def _convert_severity_to_color(severity):
-    return SEVERITY_TO_COLOR.get(severity, 'severity_none')
-
-
 def get_connections(rootnode, depth=1, layers=None):
-    zport = rootnode.zport
-    cat = CatalogAPI(zport)
+    # Include layer2 if any VLANs are selected.
+    layers = set(layers) or set()
+    if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
+        layers.add(u"layer2")
+
+    g = connections.networkx_graph(
+        root=rootnode.getPrimaryId(),
+        layers=layers,
+        depth=depth)
 
     nodes = []
-    links = {}
-    colors = {}  # mapping from pair of nodes to their layers
-    nodenums = {}
-    uuids = []
+    node_indexes = {}
+    links = []
+    reduced = False
 
-    # VLAN -> VLAN, Layer2 (search by vlan,
-    # but include also vlan unaware sections of network)
-    # Layer2 -> Layer2      (no search by vlans)
-    # VLAN, Layer2 -> Layer2 (no search by vlans)
-    if layers:
-        # copy so we not mutate function argument
-        layers = map(str, layers)  # and also coerce to str (unicode happens)
-        if 'layer2' in layers:
-            layers = [l for l in layers if not l.startswith('vlan')]
-        else:
-            if any((l.startswith('vlan') for l in layers)):
-                layers.append('layer2')
+    for i, node in enumerate(g.nodes()):
+        if i > MAX_NODES_COUNT:
+            reduced = True
+            break
 
-    def add_node(n):
-        if len(nodes) >= MAX_NODES_COUNT:
-            raise StopTraversing()
+        node_indexes[node] = i
+        adapter = NodeAdapter(node=str(node), dmd=rootnode.dmd)
+        nodes.append({
+            "name": adapter.titleOrId(),
+            "image": adapter.getIconPath(),
+            "path": adapter.get_link(),
+            "color": "severity_none",
+            "highlight": adapter.id == rootnode.id,
+            "important": adapter.important,
+            "uuid": adapter.getUUID(),
+            })
 
-        if n.id in nodenums:
-            return
+    for source, target, data in g.edges(data=True):
+        if source not in node_indexes or target not in node_indexes:
+            # This edge is missing one of its terminating nodes, and is
+            # therefore invalid. This could happen if we limited the
+            # nodes due to MAX_NODES_COUNT.
+            continue
 
-        nodenums[n.id] = len(nodes)
-        record = dict(
-            name=n.titleOrId(),
-            image=n.getIconPath(),
-            path=n.get_link(),
-            color='severity_none',
-            highlight=n.id == rootnode.id,
-            important=n.important,
-        )
-        nodes.append(record)
+        links.append({
+            "source": node_indexes[source],
+            "target": node_indexes[target],
+            "color": list(data.get("layers", []))
+            })
 
-        uuid = n.getUUID()
-        if n.important and uuid:
-            uuids.append((uuid, record))
+    # Add severity color to nodes.
+    color_nodes(nodes)
 
-    def add_link(a, b):
-        color = colors[(a.get_path(), b.get_path())]
-        s = nodenums[a.id]
-        t = nodenums[b.id]
+    return {
+        "nodes": nodes,
+        "links": links,
+        "reduced": reduced,
+        }
 
-        key = tuple(sorted([s, t]))
-        if key in links:
-            if s == links[key]['source']:
-                return  # already added
-            else:
-                links[key]['directed'] = False
-                return
 
-        links[key] = dict(
-            source=s,
-            target=t,
-            directed=True,
-            color=color,
-        )
-
-    adapt_node = partial(NodeAdapter, dmd=zport.dmd)
-
-    visited = set()
-
-    def get_connections(nodes, depth):
-        """ Depth-first search of the network tree emanating from nodes """
-        if depth == 0:
-            return set()
-
-        adapted_nodes = {}
-        for node in nodes:
-            adapted_node = adapt_node(node)
-            if adapted_node.id in visited:
-                continue
-            visited.add(adapted_node.id)
-            adapted_nodes[adapted_node.get_path()] = adapted_node
-
-        if not adapted_nodes:
-            return set()
-
-        # leafs of current node in graph
-        impacted = get_impacted(adapted_nodes.keys())
-        impactors = get_impactors(adapted_nodes.keys())
-
-        related = copy.deepcopy(impacted)
-        for node_path, links in impactors.iteritems():
-            related[node_path] = set(related.get(node_path, [])) | set(links)
-
-        # some of leaf may contain a component (usualy IpInterface) uid
-        # prefixed with asterix (!)
-        for node_path, links in related.iteritems():
-            adapted_node = adapted_nodes[node_path]
-            for link_node in links:
-                if this_is_link(link_node):
-                    adapted_node.link = link_node[1:]
-                    break
-
-        for node in adapted_nodes.itervalues():
-            add_node(node)
-
-        nodes_to_check = set()
-        for node_path, links in related.iteritems():
-            adapted_node = adapted_nodes[node_path]
-
-            interesting_links = [link_node for link_node in links
-                                 if not this_is_link(link_node)]
-
-            reverse_connections = get_reverse_connected(interesting_links)
-
-            for link_node in interesting_links:
-                link_adapted_node = adapt_node(link_node)
-                # need to check for uid in leafs before adding node to graph
-                # as next time it will be skipped due to optimization
-                for node_b in reverse_connections.get(link_node, []):
-                    if this_is_link(node_b):
-                        link_adapted_node.link = node_b[1:]
-                        break
-
-                add_node(link_adapted_node)
-                if link_node in impacted.get(node_path, []):
-                    add_link(adapted_node, link_adapted_node)
-                if link_node in impactors.get(node_path, []):
-                    add_link(link_adapted_node, adapted_node)
-
-                nodes_to_check.add(link_node)
-
-        return nodes_to_check
-
-    def get_reverse_connected(nodes):
-        q = dict(connected_to=nodes)
-        if layers:
-            q['layers'] = layers
-
-        result = {}
-        for b in cat.search(**q):
-            result.setdefault(b.entity_id, []).append(b.connected_to)
-
-        return result
-
-    def connection_not_in_this_vlans(edge, filter_layers):
-        return (
-            # check that we filter by vlans at all
-            any((l.startswith('vlan') for l in filter_layers))
-            # and check that this edge is vlan-aware (has some vlans)
-            and any((l.startswith('vlan') for l in edge.layers))
-            # all of the vlans of edge are not vlans we are interested in
-            and all((
-                l not in filter_layers
-                for l in edge.layers
-                if l.startswith('vlan')
-            ))
-        )
-
-    def get_impacted(nodes):
-        q = dict(entity_id=nodes)
-        if layers:
-            q['layers'] = layers
-
-        result = {}
-        for b in cat.search(**q):
-            if connection_not_in_this_vlans(b, layers):
-                continue
-            for c in b.connected_to:
-                colors[(b.entity_id, c)] = b.layers
-                result.setdefault(b.entity_id, []).append(c)
-
-        return result
-
-    def get_impactors(nodes):
-        q = dict(connected_to=nodes)
-        if layers:
-            q['layers'] = layers
-        result = {}
-        for b in cat.search(**q):
-            if connection_not_in_this_vlans(b, layers):
-                continue
-            colors[(b.connected_to, b.entity_id)] = b.layers
-            result.setdefault(b.entity_id, []).append(b.connected_to)
-
-        return result
-
-    def this_is_link(node):
-        if isinstance(node, str) and node[0] == "!":
-            return node[1:]
-
-    nodes_queue = [rootnode]
-    iteration_depth = depth
-    reduced_result = False
+def color_nodes(nodes):
+    """Add "color" property to each NodeAdapter in nodes."""
+    zep = getFacade("zep")
+    nodes_by_uuid = {x["uuid"]: x for x in nodes if x["important"]}
     try:
-        while nodes_queue:
-            nodes_to_check = set()
-            for pos in xrange(0, len(nodes_queue), CATALOG_BATCH_SIZE):
-                nodes_to_check.update(
-                    get_connections(nodes_queue[pos:pos + CATALOG_BATCH_SIZE],
-                                    iteration_depth))
+        for uuids_chunk in chunks(nodes_by_uuid.keys(), ZEP_BATCH_SIZE):
+            severities_by_uuid = zep.getWorstSeverity(uuids_chunk)
+            for uuid, severity in severities_by_uuid.iteritems():
+                if uuid in nodes_by_uuid:
+                    nodes_by_uuid[uuid]["color"] = {
+                        1: 'severity_debug',
+                        2: 'severity_info',
+                        3: 'severity_warning',
+                        4: 'severity_error',
+                        5: 'severity_critical',
+                        }.get(severity, 'severity_none')
 
-            nodes_queue = list(nodes_to_check)
-            iteration_depth -= 1
-    except StopTraversing:
-        reduced_result = True
+    except ZepConnectionError as e:
+        log.warning("Couldn't connect to ZEP: %s", e)
 
-    zep = getFacade('zep', zport)
 
-    try:
-        for pos in xrange(0, len(uuids), ZEP_BATCH_SIZE):
-            sevs = zep.getWorstSeverity(
-                [uuid for uuid, _ in uuids[pos:pos + ZEP_BATCH_SIZE]])
-
-            for uuid, record in uuids[pos:pos + ZEP_BATCH_SIZE]:
-                if uuid in sevs:
-                    record['color'] = _convert_severity_to_color(sevs[uuid])
-    except ZepConnectionError as err:
-        log.warning('Could not connect to ZEP: %s', err)
-
-    return dict(
-        links=links.values(),
-        nodes=nodes,
-        reduced=reduced_result
-    )
+def chunks(s, n):
+    """Generate lists of size n from iterable s."""
+    for chunk in (s[i:i + n] for i in range(0, len(s), n)):
+        yield chunk
 
 
 class NodeAdapter(object):
@@ -341,14 +175,6 @@ class NodeAdapter(object):
             return self.node.getNetworkName()
         elif hasattr(self.node, 'id'):
             return self.node.id
-        else:
-            return self.node
-
-    def get_path(self):
-        if hasattr(self.node, 'macaddress'):
-            return self.node.macaddress
-        elif hasattr(self.node, 'getPrimaryUrlPath'):
-            return self.node.getPrimaryUrlPath()
         else:
             return self.node
 
@@ -393,24 +219,6 @@ class NodeAdapter(object):
             return self.node.getUUID()
 
         return None
-
-    def getColor(self):
-        summary = self.getEventSummary()
-        if summary is None:
-            return 'severity_none'
-        colors = 'critical error warning info debug'.split()
-        color = 'debug'
-        for i in range(5):
-            if summary[i][2] > 0:
-                color = colors[i]
-                break
-        return 'severity_%s' % color
-
-    def getEventSummary(self):
-        if not self.important:
-            return None
-        if hasattr(self.node, 'getEventSummary'):
-            return self.node.getEventSummary()
 
     @property
     def important(self):

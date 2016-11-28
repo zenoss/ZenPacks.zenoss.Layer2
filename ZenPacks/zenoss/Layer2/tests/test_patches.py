@@ -11,7 +11,7 @@ from mock import Mock, sentinel
 
 from Products.ZenTestCase.BaseTestCase import BaseTestCase
 
-from ZenPacks.zenoss.Layer2.patches import get_ifinfo_for_layer2, format_macs
+from ZenPacks.zenoss.Layer2.patches import get_ifinfo_for_layer2
 
 
 class TestPatches(BaseTestCase):
@@ -34,24 +34,6 @@ class TestPatches(BaseTestCase):
                 'baseport': 0,
             }
         })
-
-    def test_format_macs(self):
-        self.assertEqual(
-            format_macs(
-                ['aasdf', 'b', 'c'],
-                lambda mac: None
-            ),
-            [{
-                'text': 'Other',
-                'expanded': False,
-                'children': [
-                    {'text': 'aasdf', 'leaf': True},
-                    {'text': 'b', 'leaf': True},
-                    {'text': 'c', 'leaf': True}
-                ],
-                'cls': 'folder'
-            }]
-        )
 
 
 def test_suite():

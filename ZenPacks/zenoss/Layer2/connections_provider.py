@@ -75,11 +75,11 @@ class InterfaceConnections(object):
 
     @property
     def clientmacs(self):
-        return [
-            x.upper()
-            for x in getattr(self.interface, 'clientmacs', [])
-            if x
-        ]
+        macs = getattr(self.interface, 'clientmacs')
+        if macs:
+            return [x.upper() for x in macs if x]
+        else:
+            return []
 
     @property
     def layers(self):
@@ -124,8 +124,8 @@ def connection_hash(c):
 
 def to_path(obj):
     ''' If object has path, replace it by that path, else do nothing '''
-    if hasattr(obj, 'getPrimaryUrlPath'):
-        return obj.getPrimaryUrlPath()
+    if hasattr(obj, 'getPrimaryId'):
+        return obj.getPrimaryId()
     else:
         return obj
 
@@ -190,8 +190,8 @@ class MACObject(object):
     def __init__(self, context):
         self.context = context
 
-    def getPrimaryUrlPath(self):
-        return "!" + self.context.getPrimaryUrlPath()
+    def getPrimaryId(self):
+        return "!" + self.context.getPrimaryId()
 
 
 class DeviceConnectionsProvider(BaseConnectionsProvider):
@@ -229,8 +229,14 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
 
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
-                ip._p_invalidate()
-            interface._p_invalidate()
+
+                # Invalidation saves memory, but undoes uncommitted changes.
+                if not ip._p_changed:
+                    ip._p_invalidate()
+
+            # Invalidation saves memory, but undoes uncommitted changes.
+            if not interface._p_changed:
+                interface._p_invalidate()
 
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):
@@ -242,7 +248,10 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             net = self.context
             yield Connection(net, (dev, ), ['layer3', ])
             yield Connection(dev, (net, ), ['layer3', ])
-            ip._p_invalidate()
+
+            # Invalidation saves memory, but undoes uncommitted changes.
+            if not ip._p_changed:
+                ip._p_invalidate()
 
 
 def get_vlans(iface):

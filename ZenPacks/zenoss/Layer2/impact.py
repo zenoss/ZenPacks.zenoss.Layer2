@@ -19,15 +19,11 @@ In the same way, devices are impacted by network devices, if they have that
 network devices three links upstream in their network map.
 '''
 
-from Products.ZenModel.IpInterface import IpInterface
-from Products.ZenModel.Device import Device
-from Products.ZenRelations.ToManyRelationship import ToManyRelationshipBase
-from Products.ZenRelations.ToOneRelationship import ToOneRelationship
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 from ZenPacks.zenoss.Impact.impactd.relations import ImpactEdge
 
-from .connections_catalog import CatalogAPI
+from . import connections
 
 import logging
 log = logging.getLogger('zen.Layer2')
@@ -71,55 +67,21 @@ class BaseRelationsProvider(object):
         return self._guid
 
 
-class ImpactCatalogAPI(CatalogAPI):
-
-    def getNlayer2(self, entity_id, method, N):
-        ''' Yield objects that are N hops (forward or backward) from given '''
-        for id in self.get_bfs_connected(
-            entity_id=entity_id,
-            layers=['layer2'],
-            method=method,
-            depth=N
-        ):
-            if id == entity_id or id.startswith('!'):
-                continue
-            obj = self.get_link(id) or self.get_obj(id)
-            if obj:
-                yield obj
-
-    def impacts(self, entity_id, depth):
-        for obj in self.getNlayer2(
-            entity_id, self.get_directly_connected, depth
-        ):
-            yield obj
-
-    def impacted_by(self, entity_id, depth):
-        for obj in self.getNlayer2(
-            entity_id, self.get_reverse_connected, depth
-        ):
-            yield obj
-
-
-def is_switch(obj):
-    return obj.getPrimaryUrlPath().startswith('/zport/dmd/Devices/Network/')
-
-
 class DeviceRelationsProvider(BaseRelationsProvider):
     ''' Adds upstream router(s) as dependency to device on impact graph '''
     def getEdges(self):
-        cat = ImpactCatalogAPI(self._object.zport)
+        device = self._object
         try:
-            this_id = self._object.getPrimaryUrlPath()
+            neighbors = connections.get_layer2_neighbor_devices(device)
 
-            if is_switch(self._object):
-                for obj in cat.impacts(this_id, 3):
-                    if is_switch(obj):
-                        continue
-                    yield edge(self.guid(), guid(obj))
+            if connections.is_switch(device):
+                for neighbor in neighbors:
+                    if not connections.is_switch(neighbor):
+                        yield edge(self.guid(), guid(neighbor))
             else:
-                for obj in cat.impacted_by(this_id, 3):
-                    if is_switch(obj) and isinstance(obj, Device):
-                        yield edge(guid(obj), self.guid())
+                for neighbor in neighbors:
+                    if connections.is_switch(neighbor):
+                        yield edge(guid(neighbor), self.guid())
 
         except Exception as e:
             log.exception(e)

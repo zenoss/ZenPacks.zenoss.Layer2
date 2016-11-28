@@ -20,7 +20,7 @@ from .create_fake_devices import get_device, add_interface, random_mac
 import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.network_tree import\
     (get_connections, serialize, NodeAdapter, get_connections_json)
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+from ZenPacks.zenoss.Layer2 import connections
 
 
 class TestSerialize(BaseTestCase):
@@ -40,6 +40,7 @@ class TestGetConnections(BaseTestCase):
     def afterSetUp(self):
         super(TestGetConnections, self).afterSetUp()
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+        connections.clear()
 
     @patch('ZenPacks.zenoss.Layer2.network_tree.get_connections')
     @patch('ZenPacks.zenoss.Layer2.network_tree.serialize')
@@ -67,15 +68,12 @@ class TestGetConnections(BaseTestCase):
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], vlans=[])
 
-        catapi = CatalogAPI(self.dmd.zport)
-        catapi.add_node(a)
-        catapi.add_node(b)
+        connections.add_node(a)
+        connections.add_node(b)
 
         res = get_connections(a, depth=3, layers=['vlan1'])
         links = str(res['links'])
-        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': False", links)
-        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': True", links)
-        self.assertIn("{'color': ('layer2',), 'directed': False", links)
+        self.assertIn("{'color': [u'layer2', u'vlan1']", links)
 
 
 class TestNodeAdapter(BaseTestCase):
@@ -95,15 +93,9 @@ class TestNodeAdapter(BaseTestCase):
     def test_instance_attributes(self):
         self.assertIn('id', self.properties)
         self.assertFalse(callable(self.instance.important))
-        self.assertTrue(callable(self.instance.get_path))
         self.assertTrue(callable(self.instance.get_link))
         self.assertTrue(callable(self.instance.titleOrId))
         self.assertTrue(callable(self.instance.getIconPath))
-        self.assertTrue(callable(self.instance.getEventSummary))
-        self.assertTrue(callable(self.instance.getColor))
-
-    def test_get_path(self):
-        self.assertEqual(self.instance.get_path(), 'TE:ST:12:34:56:78')
 
     def test_get_link(self):
         self.assertEqual(self.instance.get_link(), '/zport/dmd/Devices/Test')
@@ -117,12 +109,6 @@ class TestNodeAdapter(BaseTestCase):
     def test_getIconPath(self):
         self.assertEqual(self.instance.getIconPath(),
                          '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
-
-    def test_getColor(self):
-        self.assertEqual(self.instance.getColor(), 'severity_critical')
-
-    def test_getEventSummary(self):
-        self.assertEqual(len(self.instance.getEventSummary()), 5)
 
     def test_important(self):
         self.assertEqual(self.instance.important, True)

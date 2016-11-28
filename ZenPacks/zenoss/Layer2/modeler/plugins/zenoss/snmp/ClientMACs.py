@@ -65,7 +65,6 @@ class ClientMACs(PythonPlugin):
     localDeviceProperties = (
         'get_ifinfo_for_layer2',
         'getHWManufacturerName',
-        'macs_indexed',
         'zLocalMacAddresses',
     )
 
@@ -85,9 +84,10 @@ class ClientMACs(PythonPlugin):
             if not is_valid_macaddr802(mac):
                 log.warn("Invalid MAC Address '%s' found in %s", mac, 'zLocalMacAddresses')
 
+        iftable = copy.deepcopy(getattr(device, 'get_ifinfo_for_layer2', {}))
         state = ClientMACsState(
             device=device,
-            iftable=getattr(device, 'get_ifinfo_for_layer2', {}),
+            iftable=iftable,
             log=log)
 
         results = []
@@ -118,16 +118,13 @@ class ClientMACs(PythonPlugin):
         for tabledata in results:
             state.update_iftable(tabledata)
 
-        clientmacs = set()
         maps = []
 
         for iface_id, data in state.iftable.items():
-            # zLocalMacAddresses are usually internal MACS with no external use
-            # hence remove the zLocalMacAddresses from device.clientmacs
-
-            filtered_macs = filterMacSet(data['clientmacs'],
-                                         device.zLocalMacAddresses)
-            clientmacs.update(filtered_macs)
+            # zLocalMacAddresses are known to not be unique or useful.
+            filtered_macs = filterMacSet(
+                data['clientmacs'],
+                device.zLocalMacAddresses)
 
             maps.append(
                 ObjectMap({
@@ -137,12 +134,6 @@ class ClientMACs(PythonPlugin):
                     'clientmacs': sorted(filtered_macs),
                     'baseport': data['baseport'],
                 }))
-
-        # Also remove zLocalMacAddresses from device.set_reindex_maps()
-        macs_indexed = getattr(device, 'macs_indexed', False)
-        if not macs_indexed and state.iftable:
-            reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
-            maps.insert(0, reindex_map)
 
         return maps
 

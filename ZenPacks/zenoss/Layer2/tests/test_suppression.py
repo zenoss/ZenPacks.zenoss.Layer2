@@ -29,9 +29,9 @@ from Products.Zuul.catalog.events import IndexingEvent
 from zenoss.protocols.protobufs.zep_pb2 import STATUS_SUPPRESSED
 
 import ZenPacks.zenoss.Layer2
+from ZenPacks.zenoss.Layer2 import connections
 from ZenPacks.zenoss.Layer2 import progresslog
 from ZenPacks.zenoss.Layer2 import suppression
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
 from ZenPacks.zenoss.Layer2.zep import Layer2PostEventPlugin
 
 TEST_TOPOLOGY_YUML = """
@@ -284,16 +284,11 @@ class TestSuppression(BaseTestCase):
         self.dmd.Devices._setProperty("zL2PotentialRootCause", True, "boolean")
         self.dmd.Devices._setProperty("zL2Gateways", [], "lines")
 
-        # Clear catalog.
-        catalog = CatalogAPI(self.dmd.zport)
-        catalog.clear()
+        # Clear connections database.
+        connections.clear()
 
         # Create devices.
-        stresser = Stresser(self.dmd)
-        devices = stresser.from_yuml(TEST_TOPOLOGY_YUML)
-
-        # Populate catalog.
-        [catalog.add_node(d, force=True) for d in devices.values()]
+        Stresser(self.dmd).from_yuml(TEST_TOPOLOGY_YUML)
 
     def _assert_suppression(self, event, suppressed, root_causes):
         """Assert that event has been correctly suppressed."""
@@ -388,9 +383,9 @@ class MockEvent(object):
 
 @contextlib.contextmanager
 def downed_devices(devices):
-    original_get_status = copy.copy(CatalogAPI.get_status)
+    original_get_status = copy.copy(connections.get_status)
 
-    def patched_get_status(self, node):
+    def patched_get_status(dmd, node):
         for device in devices:
             if node.endswith("/{}".format(device)):
                 return False
@@ -398,14 +393,14 @@ def downed_devices(devices):
         return True
 
     # Patch get_status to return False for devices.
-    CatalogAPI.get_status = patched_get_status
+    connections.get_status = patched_get_status
 
     # Execute context manager's body.
     try:
         yield
     finally:
         # Unpatch get_status.
-        CatalogAPI.get_status = original_get_status
+        connections.get_status = original_get_status
 
 
 # -- Performance Testing -----------------------------------------------------
@@ -413,7 +408,6 @@ def downed_devices(devices):
 class Stresser(object):
     def __init__(self, dmd, starting_mac=None, starting_ip=None):
         self.dmd = dmd
-        self.catalog = CatalogAPI(dmd.zport)
         self.log = logging.getLogger("zen.Layer2.stresser")
         self.macs = collections.defaultdict(dict)
         self.mac_counter = int_from_mac(starting_mac or "01:00:00:00:00:00")
@@ -537,6 +531,9 @@ class Stresser(object):
             for node, connected_nodes in nodes.items():
                 devices[node] = self.create_device(node, connected_nodes)
                 progress.increment()
+
+        # Update all nodes in Redis graph.
+        [connections.add_node(d, force=True) for d in devices.values()]
 
         self.log.info("finished creating %s devices", len(nodes))
         return devices

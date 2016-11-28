@@ -22,8 +22,7 @@ from Products.ZenUtils.CmdBase import remove_args
 from Products.ZenUtils.CyclingDaemon import CyclingDaemon, DEFAULT_MONITOR
 from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
-from ZenPacks.zenoss.Layer2.connections_provider import IConnectionsProvider
+from ZenPacks.zenoss.Layer2 import connections
 
 log = logging.getLogger('zen.ZenMapper')
 
@@ -175,13 +174,13 @@ class ZenMapper(CyclingDaemon):
             log.info('Worker %i: updating catalog' % offset)
             nodes = self.get_nodes_list(sort=True)[offset*chunk:offset*chunk + chunk]
             for node in nodes:
-                self.cat.add_node(node, force=self.options.force)
+                connections.add_node(node, force=self.options.force)
                 node._p_invalidate()
             log.info('Worker %i: finished job.' % offset)
         else:
             log.info('Updating catalog.')
             for node in self.get_nodes_list(sort=True):
-                self.cat.add_node(node, force=self.options.force)
+                connections.add_node(node, force=self.options.force)
                 node._p_invalidate()
 
     def _compact_catalog(self):
@@ -197,17 +196,15 @@ class ZenMapper(CyclingDaemon):
 
         guids = [IGlobalIdentifier(x).getGUID() for x in self.get_nodes_list()]
         log.info('Compacting catalog')
-        self.cat.compact_catalog(guids)
+        connections.compact(guids)
 
     def main_loop(self):
         """
         zenmapper main loop
         """
-        self.cat = CatalogAPI(self.dmd.zport, redis_url=self.options.redis_url)
-
         if self.options.clear:
             log.info('Clearing catalog')
-            self.cat.clear()
+            connections.clear()
         elif self.options.cycle and self.options.workers > 0:
             self._compact_catalog()
             chunk = len(self.get_nodes_list()) / self.options.workers + 1
