@@ -11,10 +11,15 @@ Custom ZenPack initialization code. All code defined in this module will be
 executed at startup time in all Zope clients.
 """
 
+import logging
+LOG = logging.getLogger('zen.Layer2')
+
 import Globals
 
+from Products.ZenModel.Device import Device
 from Products.ZenUtils.Utils import unused
 from Products.ZenModel.ZenPack import ZenPackBase
+from Products.ZenRelations.RelSchema import ToManyCont, ToOne
 from Products.ZenRelations.zPropertyCategory import setzPropertyCategory
 
 import ZenPacks.zenoss.Layer2.patches
@@ -29,6 +34,11 @@ setzPropertyCategory('zL2PotentialRootCause', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zL2Gateways', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zZenossGateway', ZPROPERTY_CATEGORY)
 setzPropertyCategory('zLocalMacAddresses', ZPROPERTY_CATEGORY)
+
+# Relationships to patch onto Device.
+DEVICE_RELATIONS = {
+    'neighbor_switches': 'ZenPacks.zenoss.Layer2.NeighborSwitch',
+    }
 
 
 class ZenPack(ZenPackBase):
@@ -87,17 +97,75 @@ class ZenPack(ZenPackBase):
         }
 
     def install(self, app):
-        super(ZenPack, self).install(app)
-        self._buildDeviceRelations()
+        """Install ZenPack.
 
-    def _buildDeviceRelations(self):
-        # TODO: figure out how this is usefull and remove if it is not.
+        This method is called when the ZenPack is installed or upgraded.
+
+        Overrides Products.ZenModel.ZenPack.ZenPack.
+
+        """
+        super(ZenPack, self).install(app)
+        self.install_relationships()
+
+    def install_relationships(self):
+        LOG.info('Adding relationships to existing devices')
         for d in self.dmd.Devices.getSubDevicesGen():
+            add_relationships(d.__class__)
             d.buildRelations()
 
     def remove(self, app, leaveObjects=False):
-        super(ZenPack, self).remove(app, leaveObjects)
+        """Remove ZenPack.
+
+        This method is called when the ZenPack is upgraded or removed.
+        The leaveObjects argument is True during upgrade, and False
+        during removal.
+
+        Overrides Products.ZenModel.ZenPack.ZenPack.
+
+        """
+        if not leaveObjects:
+            self.remove_relationships()
+            self.remove_catalogs()
+
+        super(ZenPack, self).remove(app, leaveObjects=leaveObjects)
+
+    def remove_relationships(self):
+        """Remove our relationship schema and instances from all devices."""
+        LOG.info('Removing relationships from devices')
+        for d in self.dmd.Devices.getSubDevicesGen():
+            remove_relationships(d.__class__)
+            d.buildRelations()
+
+    def remove_catalogs(self):
+        """Remove our catalogs."""
         try:
-            app.zport._delObject('macs_catalog')
+            self.zport._delObject('macs_catalog')
         except AttributeError:
-            pass  # already deleted
+            # already deleted
+            pass
+
+
+def add_relationships(cls):
+    """Add our relationships to cls._relations."""
+    our_relnames = set(DEVICE_RELATIONS)
+    existing_relnames = {x[0] for x in cls._relations}
+    new_reltuples = tuple(
+        (relname, ToManyCont(ToOne, DEVICE_RELATIONS[relname], 'switch'))
+        for relname in our_relnames.difference(existing_relnames))
+
+    if new_reltuples:
+        cls._relations += new_reltuples
+
+
+def remove_relationships(cls):
+    """Remove our relationships from cls._relations."""
+    our_relnames = set(DEVICE_RELATIONS)
+    existing_relnames = {x[0] for x in cls._relations}
+    if our_relnames.intersection(existing_relnames):    
+        cls._relations = tuple(
+            (relname, relspec) for relname, relspec in cls._relations
+            if relname not in our_relnames)
+
+
+# Patch Device._relations with our relationships.
+add_relationships(Device)

@@ -148,15 +148,6 @@ def get_l2_gateways(self):
     return []
 
 
-Device._relations += (
-    ('neighbor_switches', ToManyCont(
-        ToOne,
-        'ZenPacks.zenoss.Layer2.NeighborSwitch.NeighborSwitch',
-        'switch'
-    )),
-)
-
-
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
 def getJSONEdges(self, root_id='', depth='2', layers=None, full_map='false'):
     ''' Get JSON representation of network nodes '''
