@@ -76,7 +76,7 @@ def serialize(*args, **kwargs):
 
 def get_connections(rootnode, depth=1, layers=None):
     # Include layer2 if any VLANs are selected.
-    layers = set(layers) or set()
+    layers = set(layers) or connections.get_layers()
     if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
         layers.add(u"layer2")
 
