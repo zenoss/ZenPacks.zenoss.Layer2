@@ -233,7 +233,7 @@ Ext.onReady(function(){
             type: 'fit',
         },
         config: {
-            title: 'Network map',
+            title: 'Network Map',
             viewName: 'network_map_view',
         },
         onRender: function () {
@@ -247,7 +247,7 @@ Ext.onReady(function(){
 
     Zenoss.nav.appendTo('Device', [{
         id: 'network_map',
-        text: _t('Network map'),
+        text: _t('Network Map'),
         xtype: 'network_map',
         viewName: 'network_map_view',
     }]);
