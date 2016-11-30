@@ -35,8 +35,8 @@ class ZenPack(ZenPackBase):
     """ Layer2 zenpack loader """
 
     packZProperties = [
-        ('zL2SuppressIfDeviceDown', True, 'boolean'),
-        ('zL2SuppressIfPathsDown', True, 'boolean'),
+        ('zL2SuppressIfDeviceDown', False, 'boolean'),
+        ('zL2SuppressIfPathsDown', False, 'boolean'),
         ('zL2PotentialRootCause', True, 'boolean'),
         ('zL2Gateways', [], 'lines'),
         ('zZenossGateway', '', 'string'),

@@ -293,12 +293,12 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * zenoss.snmp.ClientMACs
 
 '''zProperties'''
-* zL2Gateways
-* zL2PotentialRootCause
-* zL2SuppressIfDeviceDown
-* zL2SuppressIfPathsDown
-* zLocalMacAddresses
-* zZenossGateway
+* zL2Gateways (default: [])
+* zL2PotentialRootCause (default: True)
+* zL2SuppressIfDeviceDown (default: False)
+* zL2SuppressIfPathsDown (default: False)
+* zLocalMacAddresses (default: ["00:00:00:00:00:00"])
+* zZenossGateway (deprecated by zL2Gateways)
 
 '''Daemons'''
 * zenmapper
