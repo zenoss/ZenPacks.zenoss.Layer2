@@ -316,6 +316,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 * Improved event suppression performance and reliability.
 * Added zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)
 * Added client discovery support using Q-BRIDGE MIB. (ZEN-25336)
+* Fix "NeighborSwitch" errors after removing the ZenPack. (ZEN-26189)
 
 ;1.2.2
 * Fix potential 2 minute modeling delay in Zenoss 4.
