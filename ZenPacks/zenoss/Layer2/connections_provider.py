@@ -200,6 +200,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
         zep = getFacade('zep', device.getDmd())
         event_filter = zep.createEventFilter(
             tags=[device.getUUID()],
+            element_sub_identifier=[""],
             event_class=[ZenEventClasses.Status_Ping],
             severity=[SEVERITY_CRITICAL],
             status=[STATUS_NEW, STATUS_ACKNOWLEDGED, STATUS_SUPPRESSED])

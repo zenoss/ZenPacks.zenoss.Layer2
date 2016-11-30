@@ -377,6 +377,7 @@ class MockEvent(object):
         self.agent = "stresser"
         self.monitor = "localhost"
         self.summary = "defaul summary"
+        self.component = ""
         for k, v in kwargs.items():
             setattr(self, k, v)
 
