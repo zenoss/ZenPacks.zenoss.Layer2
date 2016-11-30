@@ -39,10 +39,12 @@
 
 p.message {
     background: none repeat scroll 0 0 #F6E17B;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 300px;
     color: #282828;
-    font-size: 30px;
+    font-size: 13pt;
     padding: 30px;
 
     margin: auto;
