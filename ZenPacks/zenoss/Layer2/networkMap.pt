@@ -13,7 +13,7 @@ Uses code from Products/ZenUI3/browser/templates/networkMap.pt
 -->
 
 <tal:block metal:use-macro="context/page_macros/base-new">
-    <tal:block metal:fill-slot="title">Network map</tal:block>
+    <tal:block metal:fill-slot="title">Network Map</tal:block>
 
     <tal:block metal:fill-slot="head-local">
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />

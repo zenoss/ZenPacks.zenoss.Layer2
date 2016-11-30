@@ -86,8 +86,10 @@
 
             if (rec.boxLabel.indexOf('vlan') == 0) {
                 obj.text = obj.text.replace(/vlan/gi, '');
+                obj.checked = (checked_data == '') ? false : obj.checked,
                 vlans.push(obj);
             } else if (rec.boxLabel.indexOf('vxlan') == 0) {
+                obj.checked = (checked_data == '') ? false : obj.checked,
                 obj.text = obj.text.replace(/vxlan/gi, '');
                 vxlans.push(obj);
             } else {

@@ -67,7 +67,7 @@ In worst case scenario testing the overhead for processing non-ping events with 
 
 All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be simply scaled by adding more workers/instances, this additional event processing overhead can be offset by running one or more zeneventd instances as event processing throughput needs require.
 
-== Network map ==
+== Network Map ==
 [[File:Network map.png|thumb|320px|Network map]]
 
 To inspect interconnections between devices it is possible to use a network map page which is accessed by "Infrastructure" -> "Network Map" tab or "Network Map" menu item of the opened device. It shows connections between devices, interfaces, networks and other entities. In addition, it shows device status (Color of the event with the highest severity for that device).
