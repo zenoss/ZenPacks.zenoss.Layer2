@@ -27,7 +27,7 @@ import collections
 import time
 import types
 
-from Products.ZenEvents import ZenEventClasses
+from Products.ZenEvents.ZenEventClasses import Status_Ping
 
 from zenoss.protocols.protobufs.zep_pb2 import (
     STATUS_SUPPRESSED,
@@ -103,7 +103,7 @@ class Suppressor(object):
 
         device_entity = device.getPrimaryId()
 
-        if event.eventClass == ZenEventClasses.Status_Ping:
+        if event.eventClass == Status_Ping and not event.component:
             if event.severity == SEVERITY_CRITICAL:
                 # Ping down. Cache DOWN status.
                 self.set_status(device_entity, DOWN)
