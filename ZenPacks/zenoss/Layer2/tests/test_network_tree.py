@@ -48,7 +48,7 @@ class TestGetConnections(BaseTestCase):
         self.data_root = Mock()
         self.data_root.Devices.findDevice.return_value = 'TEST'
         self.data_root.dmd.getObjByPath.return_value = None
-        get_connections_json(self.data_root, 'TEST', full_map=True)
+        get_connections_json(self.data_root, 'TEST')
         self.assertTrue(mock_get_connections.called)
         mock_get_connections.assert_called_with('TEST', 1, None)
         self.assertTrue(mock_serialize.called)
@@ -92,7 +92,6 @@ class TestNodeAdapter(BaseTestCase):
 
     def test_instance_attributes(self):
         self.assertIn('id', self.properties)
-        self.assertFalse(callable(self.instance.important))
         self.assertTrue(callable(self.instance.get_link))
         self.assertTrue(callable(self.instance.titleOrId))
         self.assertTrue(callable(self.instance.getIconPath))
@@ -109,9 +108,6 @@ class TestNodeAdapter(BaseTestCase):
     def test_getIconPath(self):
         self.assertEqual(self.instance.getIconPath(),
                          '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
-
-    def test_important(self):
-        self.assertEqual(self.instance.important, True)
 
 
 def test_suite():
