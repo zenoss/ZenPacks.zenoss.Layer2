@@ -183,8 +183,7 @@
         var newToken = format_hash({
             root_id: params.root_id,
             depth: params.depth,
-            layers: params.layers,
-            full_map: params.full_map,
+            layers: params.layers
         });
         if (newToken !== oldToken) {
             Ext.History.add(newToken);
@@ -279,12 +278,6 @@
                 value: 3,
                 maxValue: 10,
                 minValue: 1
-            }, {
-                id: 'sidebar_full_map',
-                fieldLabel: 'Show full map',
-                name: 'full_map',
-                xtype: 'checkbox',
-                checked: false
             }, {
                 xtype: 'treepanel',
                 id: 'layers_group',

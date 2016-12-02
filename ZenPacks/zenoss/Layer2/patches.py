@@ -149,22 +149,20 @@ def get_l2_gateways(self):
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth='2', layers=None, full_map='false'):
+def getJSONEdges(self, root_id='', depth='2', layers=None):
     ''' Get JSON representation of network nodes '''
 
     if not root_id:
         return network_tree.serialize("Set the UID of device or component")
     root_id = urllib.unquote(root_id)
 
-    full_map = (full_map == 'true')  # make it boolean
     try:
         if layers:
             layers = [l_name[len('layer_'):] for l_name in layers.split(',')]
 
         return network_tree.get_connections_json(
             self, root_id, int(depth),
-            layers=layers, full_map=full_map
-        )
+            layers=layers)
     except Exception as e:
         log.exception(e)
         return network_tree.serialize(e)

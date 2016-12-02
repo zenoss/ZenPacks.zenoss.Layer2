@@ -12,6 +12,7 @@ Contains function get_connections_json, which returns JSON string with
 links and nodes of network map, for d3.js to render.
 '''
 
+import collections
 import json
 import logging
 import re
@@ -22,7 +23,6 @@ from Products.Zuul import getFacade
 from zenoss.protocols.services.zep import ZepConnectionError
 
 from . import connections
-from .edge_contraction import contract_edges
 
 log = logging.getLogger('zen.Layer2')
 
@@ -32,9 +32,7 @@ ZEP_BATCH_SIZE = 400
 MAX_NODES_COUNT = 2000
 
 
-def get_connections_json(
-    data_root, root_id, depth=1, layers=None, full_map=False
-):
+def get_connections_json(data_root, root_id, depth=1, layers=None):
     '''
         Main function which is used from device to get responce text with
         connections data for graph.
@@ -48,11 +46,7 @@ def get_connections_json(
     if not obj:
         return serialize('Node %r was not found' % root_id)
 
-    connections = get_connections(obj, depth, layers)
-    if not full_map:
-        connections = contract_edges(**connections)
-
-    return serialize(connections)
+    return serialize(get_connections(obj, depth, layers))
 
 
 def serialize(*args, **kwargs):
@@ -74,6 +68,75 @@ def serialize(*args, **kwargs):
         return serialize(kwargs)
 
 
+def collapse_mac_clouds(g):
+    """Collapse subgraphs of MAC address nodes.
+
+    Removes all MAC address nodes from (g: networkx.Graph) and replaces
+    them with a "l2-cloud-#" cloud that terminates all of the edges that
+    previously terminated in a contiguous subgraph of one or more MAC
+    address nodes. In the case that the L2 cloud node would have only
+    had two neighbors, no L2 cloud node will be created. An edge will be
+    created directly between those two neighbors.
+
+    """
+    def collapse_from_mac(mac):
+        to_remove = set([mac])
+        to_connect = set()
+        combined_layers = set()
+
+        visited = set([mac])
+        queue = collections.deque([g.edge[mac].items()])
+        while queue:
+            targets = queue.popleft()
+            for target, data in targets:
+                if target in visited:
+                    continue
+
+                visited.add(target)
+                combined_layers.update(data["layers"])
+
+                if target.startswith("/"):
+                    to_connect.add(target)
+                else:
+                    to_remove.add(target)
+                    queue.append(g.edge[target].items())
+
+        return to_remove, to_connect, combined_layers
+
+    l2_cloud_index = 0
+
+    queue = collections.deque(x for x in g.nodes() if not x.startswith("/"))
+    while queue:
+        starting_mac = queue.popleft()
+        remove, connect, layers = collapse_from_mac(starting_mac)
+
+        # Remove the MAC address nodes in starting_mac's cluster.
+        g.remove_nodes_from(remove)
+        for node in remove:
+            if node != starting_mac:
+                queue.remove(node)
+
+        # Create a direct link when connecting exactly 2 nodes.
+        if len(connect) == 2:
+            g.add_edge(*connect, layers=layers)
+
+        # Create a cloud when connecting 3 or more nodes.
+        elif len(connect) >= 3:
+            l2_cloud = "l2-cloud-{}".format(l2_cloud_index)
+            l2_cloud_index += 1
+
+            for connect_node in connect:
+                g.add_edge(l2_cloud, connect_node, layers=layers)
+
+
+def prune_dead_end_networks(g):
+    """Remove IpNetwork nodes from graph that only have one neighbor."""
+    for node in g.nodes():
+        if node.startswith("/zport/dmd/Networks/"):
+            if len(g.edge[node]) < 2:
+                g.remove_node(node)
+
+
 def get_connections(rootnode, depth=1, layers=None):
     # Include layer2 if any VLANs are selected.
     layers = set(layers) or connections.get_layers()
@@ -84,6 +147,15 @@ def get_connections(rootnode, depth=1, layers=None):
         root=rootnode.getPrimaryId(),
         layers=layers,
         depth=depth)
+
+    # Users don't want to see nodes for individual MAC addresses. So we
+    # collapse all subgraphs of contiguous MAC address nodes into a
+    # single L2 cloud node that corresponds roughly to a bridge domain.
+    collapse_mac_clouds(g)
+
+    # L3 network (IpNetwork) nodes that are only connected to a single
+    # other node add a lot of useless visual clutter. So we prune them.
+    prune_dead_end_networks(g)
 
     nodes = []
     node_indexes = {}
@@ -103,7 +175,6 @@ def get_connections(rootnode, depth=1, layers=None):
             "path": adapter.get_link(),
             "color": "severity_none",
             "highlight": adapter.id == rootnode.id,
-            "important": adapter.important,
             "uuid": adapter.getUUID(),
             })
 
@@ -133,7 +204,7 @@ def get_connections(rootnode, depth=1, layers=None):
 def color_nodes(nodes):
     """Add "color" property to each NodeAdapter in nodes."""
     zep = getFacade("zep")
-    nodes_by_uuid = {x["uuid"]: x for x in nodes if x["important"]}
+    nodes_by_uuid = {x["uuid"]: x for x in nodes if x["uuid"]}
     try:
         for uuids_chunk in chunks(nodes_by_uuid.keys(), ZEP_BATCH_SIZE):
             severities_by_uuid = zep.getWorstSeverity(uuids_chunk)
@@ -181,8 +252,6 @@ class NodeAdapter(object):
     def get_link(self):
         if hasattr(self.node, 'getPrimaryUrlPath'):
             return self.node.getPrimaryUrlPath()
-        elif hasattr(self, 'link'):
-            return self.link
         else:
             return self.node
 
@@ -201,6 +270,9 @@ class NodeAdapter(object):
         elif hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
         else:
+            if self.id.startswith('l2-cloud-'):
+                return ""
+
             title = self.id
             if title.startswith('/zport/dmd/'):
                 title = title.split('/')[-1]
@@ -219,15 +291,3 @@ class NodeAdapter(object):
             return self.node.getUUID()
 
         return None
-
-    @property
-    def important(self):
-        if isinstance(self.node, str):
-            return False
-        from Products.ZenModel.IpNetwork import IpNetwork
-        if (
-            hasattr(self.node, 'aq_base') and
-            isinstance(self.node.aq_base, IpNetwork)
-        ):
-            return False
-        return True
