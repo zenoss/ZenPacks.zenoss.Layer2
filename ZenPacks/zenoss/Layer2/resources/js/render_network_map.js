@@ -125,9 +125,7 @@
                     data.path.replace(/\//g, '.'),
                     blank
                 );
-            } else {
-                show_error(data.path + ' has no additional info attached.');
-            };
+            }
         };
     };
 
