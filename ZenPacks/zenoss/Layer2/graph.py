@@ -124,10 +124,6 @@ class Graph(object):
         edges = collections.defaultdict(set)
         for layer, targets in pipe.execute().iteritems():
             for target in targets:
-                if target.startswith("!"):
-                    # Ignoring interface nodes.
-                    continue
-
                 edges[(node, target)].add(layer)
 
         return [(s, t, l) for (s, t), l in edges.iteritems()]

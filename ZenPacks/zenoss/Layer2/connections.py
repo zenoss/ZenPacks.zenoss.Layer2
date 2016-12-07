@@ -67,6 +67,13 @@ def get_layers():
     return g.get_layers()
 
 
+def get_default_layers():
+    """Return set of layers to use by default."""
+    return {
+        x for x in get_layers()
+        if not (x.startswith("vlan") or x.startswith("vxlan"))}
+
+
 @log_redis_errors(default=networkx.Graph())
 def networkx_graph(root, layers, depth=None):
     """Return NetworkX graph of layers at depth starting from root."""
@@ -75,10 +82,12 @@ def networkx_graph(root, layers, depth=None):
 
 
 @log_redis_errors(default=[])
-def get_neighbors(node, layers):
+def get_neighbors(node, layers, components=False):
     """Return list of all of nodes neighbors."""
     g = graph.Graph(GRAPH_NAMESPACE)
-    return [target for _, target, _ in g.get_edges(node, layers)]
+    return [
+        target for _, target, _ in g.get_edges(node, layers)
+        if not (components or target.startswith("!"))]
 
 
 @log_redis_errors(default=None)
@@ -103,6 +112,10 @@ def get_layer2_neighbor_devices(device):
         depth=LAYER2_NEIGHBOR_DEVICE_DEPTH)
 
     for node in nxg.nodes():
+        if node.startswith("!"):
+            # Component nodes aren't devices.
+            continue
+
         if node == device_uid:
             # The device can't be its own neighbor.
             continue

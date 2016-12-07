@@ -63,30 +63,115 @@ This suppression can be used together with ping event suppression for the most c
 
 All forms of event suppression as described above have a cost in terms of event processing performance. When zL2SuppressIfDeviceDown is enabled, there is a small additional overhead for processing all events. When zL2SuppressIfPathsDown is enabled and first-hop suppression is performed using either automatic gateway discovery or manual gateway configuration, there is another small overhead for processing ping failure events.
 
-In worst case scenario testing the overhead for processing non-ping events with the zL2SuppressIfDeviceDown configuration is approximately TODO percent, and the overhead for processing ping failure events is approximately TODO percent in the case of a first-hop switch failure, and TODO percent in the case of a fourth-hop gateway failure.
+In worst case scenario testing the effective processing rate for non-ping events with the zL2SuppressIfDeviceDown configuration is approximately 80%, 75% for processing ping failure events in the case of a first-hop switch failure, and 70% in the case of a third-hop gateway failure.
 
-All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be simply scaled by adding more workers/instances, this additional event processing overhead can be offset by running one or more zeneventd instances as event processing throughput needs require.
+All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be scaled by adding more workers/instances, this additional event processing overhead can be offset by running more zeneventd instances as event processing throughput needs require.
 
 == Network Map ==
-[[File:Network map.png|thumb|320px|Network map]]
+[[File:layer2_network_map.png|thumb|320px|Network map]]
 
-To inspect interconnections between devices it is possible to use a network map page which is accessed by "Infrastructure" -> "Network Map" tab or "Network Map" menu item of the opened device. It shows connections between devices, interfaces, networks and other entities. In addition, it shows device status (Color of the event with the highest severity for that device).
+The network map can be used to see connections between devices. The network map can be found in two places. The first is under Infrastructure -> Network Map where you can manually select the device from which to draw the network map, or from individual devices by clicking on ''Network Map'' from the device's left navigation pane. This will present a network map centered on the current device.
 
-To display a network map the form on the left side of network map should be filled. "Device ID" field with name or ID of the device starting from which the map will be explored. The depth of the map means how many hops to do when exploring the map. Also, it is possible to select network layers which should be visible on the map. By default all of them will be displayed. To apply changes or create new network map, press "Apply" button at the bottom of the form.
+=== Filtering ===
 
-Right mouse click above node opens context menu with options available. 'Pin down' option allows to unpin chosen node.
-Detailed information about device is available by clicking on 'Device Info' option from context menu. To draw network map in scope of another node please choose 'Put map root here' option from context menu. It is possible to open device or device component by clicking on corresponding target of network map.
+There are several controls that can be used to filter and otherwise control what you see on the network map. You must click the "Apply" button after adjusting any of these controls to see the resulting network map.
 
-Map could be zoomed using mouse wheel, and panned using mouse. If it disappears from the view, it could be brought back, using "Center" button in the top right corner of the map. There is also zoom level indicator, and color legend.
+* Root device or component
+* Maximum hops from root
+* Show MAC addresses
+* Show dangling connections
+* Layers
 
-Please note: for performance reasons map displays only first 1000 nodes found. If this case occurs, filters can help to refine results.
+The network map must start with a node from which connections can be followed. Setting the "Root device or component" is what allows that starting node to be chosen.
 
-Also note: Sometimes devices will have non-routable MAC interfaces that are not useful. To remove these unwanted or internal MAC addresses from the map, you can add entries to the zLocalMacAddresses property and remodel your network devices.
+The maximum number of hops controls how many hops outward from the root node will be followed. This is the primary mechanism to reduce the size of the resulting network map.
 
-=== VLANs ===
-Network map could have edges that belong not only to Layer2 in general, but to some VLAN. This is links from VLAN-aware switch to its interfaces, and to it's client MAC addresses. This edges could be filtered by their VLAN.
+The "Show MAC addresses" option allows more detail to be seen about layer2 connections at the expense of a much busier map. When "Show MAC addresses" is not selected, the map will attempt to consolidate bridge domains into a single cloud node that connects all nodes in the bridge domain. This emulates what you see with layer3 networks. When "Show MAC addresses" isn't selected, individual MAC address nodes used to make connections from node to node will be shown. These MAC addresses can often be clicked to link directly to the network interface associated with the MAC address.
 
-When you select some VLANs on Layers panel, edges that belong to VLANs not included in selection will be removed from map. Layer2 edges without VLAN or edges that have VLAN that is selected will be shown.
+The "Show dangling connections" option allows connector-type nodes such as MAC addresses and IP networks that don't connect other nodes to be displayed. By default these are filtered out to prevent the network map from being cluttered by MAC addresses and IP networks that are only connected to a single device.
+
+==== Layers ====
+
+The network map can be filtered by layers. Layers are tags that Zenoss automatically adds to each link between devices and components. For example, when Zenoss identifies that host is connected to a switch, it will create nodes and links such as the following.
+
+    (host) -> (host MAC address) -> (switch MAC address) -> (switch)
+
+Each of the arrows above represents a link, and in this case each of those links will have the "layer2" tag.
+
+In the same way, if Zenoss identifies that a host is on the same IP network as a router that's its default gateway, it will create nodes and links such as the following.
+
+    (host) -> (192.0.2.0/24) -> (router)
+
+Each of the arrows above represents a link, and in this case each of those links will have the "layer3" tag.
+
+These layers can be used to filter the network map to just the kind of links you're interested in.
+
+The VLAN and VXLAN layers have special handling. If any VLAN or VXLAN layer is selected, the layer2 layer will automatically be included. This is done because you likely wouldn't see the VLAN or VXLAN layer(s) chosen without also following layer2 links.
+
+=== Colors and Shapes ===
+
+Different colors and shapes are used on the network map to convey information about the nodes and links on the map.
+
+The fill color of each node's circle depends on the highest severity event currently open on the node. The colors only differ from Zenoss' normal event colors for info, debug, and clear severity events for higher clarity on the map.
+
+;Node Colors
+* Critical = Red
+* Error = Orange
+* Warning = Yellow
+* Info = Bright Green
+* Debug = Dark Green
+* Clear = White
+
+The map's current root node will be circled with a purple band.
+
+The links between nodes each have a color and a shape.
+
+;Link Color
+* Blue = layer3
+* Green = layer2
+* Yellow = VLAN
+* Gray = Default
+
+;Link Shape
+* Circle = Default
+* Diamond = VLAN
+
+=== Interaction ===
+
+You can interact with the map using your pointer in a number of ways.
+
+* Clicking and Dragging
+* Scrolling
+* Left-Clicking
+* Right-Clicking
+
+The map can be panned by clicking and dragging on the map's background. Each
+node can be moved by clicking and dragging the node. Panning the map won't cause nodes to reorganize, but moving nodes will.
+
+Scrolling, pinching, or mouse-wheeling can all be used to zoom in and out.
+
+Left-clicking on a node will navigate to that node's default page in Zenoss. This only works for nodes that have a page in Zenoss such as devices, components, IP networks, and some MAC addresses. Nothing will happen if a node with no default page is left-clicked.
+
+Right-clicking a node will open its context menu. See below for node context menu details.
+
+==== Context Menu ====
+
+Each node on the network map can be right-clicked to open its context menu. Some of the following options may be available depending on the node.
+
+* Pin Down
+* Put Map Root Here
+* Device Info
+* Open Node in New Tab
+
+The "Pin Down" option freezes the selected node in place on the network map. It will stay wherever you place it, and any unpinned nodes will reorganize around it.
+
+Choosing "Put Map Root Here" is equivalent to changing the "Root device or component" option, but saves typing when you see the node you want to be the center on the map. Some types of nodes such as MAC addresses can't be the root.
+
+The "Device Info" option opens a small pop-up over the network map with more
+information about the selected node. This option is only available for device
+and component nodes.
+
+The "Open Node in a New Tab" option will open another tab in your browser to the default Zenoss page for the selected device, component, or IP network. Some types of nodes such as MAC addresses can't be opened in a new tab.
 
 == zenmapper daemon ==
 To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.
@@ -210,12 +295,11 @@ services that contain one or more of the explicitly mentioned entities.
 === Europa ===
 If you are re-installing or updating this ZenPack on Europa, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.
 
-=== Open vSwitch zenpack ===
-Open vSwitch zenpack version prior to 1.1.1 should be updated or removed before Layer2 zenpack
-installation.
+=== Open vSwitch ZenPack ===
+Open vSwitch ZenPack version prior to 1.1.1 should be updated or removed before Layer2 ZenPack installation.
 
 === Empty map/links for device ===
-In case index for certain device is broken, one may force zenmapper to reindex this specific device. Daemon should be runed with <code>--force</code> option.
+In case index for certain device is broken, one may force zenmapper to reindex this specific device. Daemon should be run with <code>--force</code> option.
 
 === Layer2 forwarding table ===
 Let's discuss Layer2 connections in particular.
@@ -306,16 +390,18 @@ Installing this ZenPack will add the following items to your Zenoss system.
 == Changes ==
 
 ;1.3.0
+* Add "Show MAC addresses" and "Show dangling connectors" to network map.
+* VLAN and VXLAN layers no longer selected by default on network map.
 * Support for multiple gateways per device or device class. (ZEN-24767)
-* Added zL2Gateways property. (ZEN-24767)
-* Deprecated zZenossGateway property. (ZEN-24767)
-* Added zL2PotentialRootCause to allow automatic gateways discovery.
-* Added zL2SuppressIfPathsDown to toggle ping event suppression.
-* Added zL2SuppressIfDeviceDown to toggle non-ping event suppression.
-* Added rootCauses event field for suppressed events.
-* Improved event suppression performance and reliability.
-* Added zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)
-* Added client discovery support using Q-BRIDGE MIB. (ZEN-25336)
+* Add zL2Gateways property. (ZEN-24767)
+* Deprecate zZenossGateway property. (ZEN-24767)
+* Add zL2PotentialRootCause to allow automatic gateways discovery.
+* Add zL2SuppressIfPathsDown to toggle ping event suppression.
+* Add zL2SuppressIfDeviceDown to toggle non-ping event suppression.
+* Add rootCauses event field for suppressed events.
+* Improve event suppression performance and reliability.
+* Add zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)
+* Add client discovery support using Q-BRIDGE MIB. (ZEN-25336)
 * Fix "NeighborSwitch" errors after removing the ZenPack. (ZEN-26189)
 
 ;1.2.2

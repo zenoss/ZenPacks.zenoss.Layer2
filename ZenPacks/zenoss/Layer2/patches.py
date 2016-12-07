@@ -13,10 +13,8 @@ from collections import defaultdict
 
 import Globals
 
-from Products.ZenModel.Device import Device
 from Products.ZenModel.IpInterface import IpInterface
 from Products.ZenModel.PerformanceConf import PerformanceConf
-from Products.ZenRelations.RelSchema import ToOne, ToManyCont
 from Products.ZenUtils.Utils import monkeypatch
 from Products.ZenUtils.Utils import unused
 from Products.Zuul.form import schema
@@ -149,12 +147,16 @@ def get_l2_gateways(self):
 
 
 @monkeypatch('Products.ZenModel.DataRoot.DataRoot')
-def getJSONEdges(self, root_id='', depth='2', layers=None):
+def getJSONEdges(self, root_id='', depth='3', layers=None, macs='', dangling=''):
     ''' Get JSON representation of network nodes '''
 
     if not root_id:
-        return network_tree.serialize("Set the UID of device or component")
+        return network_tree.serialize("Set the root device or component.")
     root_id = urllib.unquote(root_id)
+
+    # Make these boolean.
+    macs = (macs == 'true')
+    dangling = (dangling == 'true')
 
     try:
         if layers:
@@ -162,7 +164,9 @@ def getJSONEdges(self, root_id='', depth='2', layers=None):
 
         return network_tree.get_connections_json(
             self, root_id, int(depth),
-            layers=layers)
+            layers=layers,
+            macs=macs,
+            dangling=dangling)
     except Exception as e:
         log.exception(e)
         return network_tree.serialize(e)

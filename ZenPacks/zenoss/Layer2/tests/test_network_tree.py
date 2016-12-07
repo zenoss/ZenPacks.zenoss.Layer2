@@ -50,7 +50,7 @@ class TestGetConnections(BaseTestCase):
         self.data_root.dmd.getObjByPath.return_value = None
         get_connections_json(self.data_root, 'TEST')
         self.assertTrue(mock_get_connections.called)
-        mock_get_connections.assert_called_with('TEST', 1, None)
+        mock_get_connections.assert_called_with('TEST', 1, None, False, False)
         self.assertTrue(mock_serialize.called)
 
     def test_get_vlan_connections_with_unaware_node(self):
@@ -87,27 +87,28 @@ class TestNodeAdapter(BaseTestCase):
             ['zenevents_3_noack noack', 0, 0],
             ['zenevents_2_noack noack', 0, 0],
             ['zenevents_1_noack noack', 0, 0]]
-        self.instance = NodeAdapter(obj, '')
+        self.instance = NodeAdapter(obj, '', {})
         self.properties = dir(self.instance)
 
     def test_instance_attributes(self):
         self.assertIn('id', self.properties)
-        self.assertTrue(callable(self.instance.get_link))
-        self.assertTrue(callable(self.instance.titleOrId))
-        self.assertTrue(callable(self.instance.getIconPath))
+        self.assertIn('path', self.properties)
+        self.assertIn('name', self.properties)
+        self.assertIn('image', self.properties)
 
-    def test_get_link(self):
-        self.assertEqual(self.instance.get_link(), '/zport/dmd/Devices/Test')
+    def test_path(self):
+        self.assertEqual(self.instance.path, '/zport/dmd/Devices/Test')
 
-    def test_titleOrId(self):
-        self.assertEqual(self.instance.titleOrId(), 'TE:ST:12:34:56:78')
+    def test_name(self):
+        self.assertEqual(self.instance.name, 'TE:ST:12:34:56:78')
         obj = Mock(spec=['getNetworkName'])
         obj.getNetworkName.return_value = 'network'
-        self.assertEqual(NodeAdapter(obj, '').titleOrId(), 'network')
+        self.assertEqual(NodeAdapter(obj, '', {}).name, 'network')
 
-    def test_getIconPath(self):
-        self.assertEqual(self.instance.getIconPath(),
-                         '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
+    def test_image(self):
+        self.assertEqual(
+            self.instance.image,
+            '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
 
 
 def test_suite():

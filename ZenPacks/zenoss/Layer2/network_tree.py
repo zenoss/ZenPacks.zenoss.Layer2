@@ -13,6 +13,7 @@ links and nodes of network map, for d3.js to render.
 '''
 
 import collections
+import itertools
 import json
 import logging
 import re
@@ -21,6 +22,8 @@ from zExceptions import NotFound
 
 from Products.Zuul import getFacade
 from zenoss.protocols.services.zep import ZepConnectionError
+
+import networkx
 
 from . import connections
 
@@ -32,7 +35,9 @@ ZEP_BATCH_SIZE = 400
 MAX_NODES_COUNT = 2000
 
 
-def get_connections_json(data_root, root_id, depth=1, layers=None):
+def get_connections_json(
+            data_root, root_id, depth=1, layers=None,
+            macs=False, dangling=False):
     '''
         Main function which is used from device to get responce text with
         connections data for graph.
@@ -46,7 +51,7 @@ def get_connections_json(data_root, root_id, depth=1, layers=None):
     if not obj:
         return serialize('Node %r was not found' % root_id)
 
-    return serialize(get_connections(obj, depth, layers))
+    return serialize(get_connections(obj, depth, layers, macs, dangling))
 
 
 def serialize(*args, **kwargs):
@@ -66,6 +71,100 @@ def serialize(*args, **kwargs):
         return serialize(error=msg)
     else:
         return serialize(kwargs)
+
+
+def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
+    # Include layer2 if any VLANs are selected.
+    layers = set(layers) or connections.get_default_layers()
+    if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
+        layers.add(u"layer2")
+
+    g = connections.networkx_graph(
+        root=rootnode.getPrimaryId(),
+        layers=layers,
+        depth=depth)
+
+    # This makes clicking MAC nodes navigate to their associated interface.
+    add_path_to_macs(g)
+
+    if not macs:
+        # Users may not want to see nodes for individual MAC addresses. So
+        # we collapse all subgraphs of contiguous MAC address nodes into a
+        # single L2 cloud node that corresponds roughly to a bridge domain.
+        collapse_mac_clouds(g)
+
+    # Some nodes such as MAC addresses and L3 networks (IpNetwork) are only
+    # shown on the map to connect important nodes. We want to remove any of
+    # these connector nodes if they don't connect anything.
+    if not dangling:
+        remove_dangling_connectors(g)
+
+    nodes = []
+    node_indexes = {}
+    links = []
+    reduced = False
+
+    for i, node in enumerate(g.nodes()):
+        if i > MAX_NODES_COUNT:
+            reduced = True
+            break
+
+        node_indexes[node] = i
+        adapter = NodeAdapter(
+            node=str(node),
+            data=g.node[node],
+            dmd=rootnode.dmd)
+
+        nodes.append({
+            "name": adapter.name,
+            "image": adapter.image,
+            "path": adapter.path,
+            "uuid": adapter.uuid,
+            "color": "severity_none",
+            "highlight": adapter.id == rootnode.id,
+        })
+
+    for source, target, data in g.edges(data=True):
+        if source not in node_indexes or target not in node_indexes:
+            # This edge is missing one of its terminating nodes, and is
+            # therefore invalid. This could happen if we limited the
+            # nodes due to MAX_NODES_COUNT.
+            continue
+
+        links.append({
+            "source": node_indexes[source],
+            "target": node_indexes[target],
+            "color": list(data.get("layers", []))
+        })
+
+    # Add severity color to nodes.
+    color_nodes(nodes)
+
+    return {
+        "nodes": nodes,
+        "links": links,
+        "reduced": reduced,
+    }
+
+
+def add_path_to_macs(g):
+    """Add "path" data to MAC address nodes in g.
+
+    Also removes component nodes from g.
+
+    """
+    mac_match = re.compile(r'(:?[0-9A-F]:?){12}', re.IGNORECASE).match
+    component_nodes = {x for x in g.nodes() if x.startswith("!")}
+    mac_nodes = {x for x in g.nodes() if mac_match(x)}
+
+    for component_node in component_nodes:
+        for potential_mac in g.edge[component_node]:
+            if potential_mac in mac_nodes:
+                g.node[potential_mac]["path"] = component_node[1:]
+                break
+
+    # Remove component nodes from graph
+    g.remove_nodes_from(component_nodes)
 
 
 def collapse_mac_clouds(g):
@@ -129,76 +228,39 @@ def collapse_mac_clouds(g):
                 g.add_edge(l2_cloud, connect_node, layers=layers)
 
 
-def prune_dead_end_networks(g):
-    """Remove IpNetwork nodes from graph that only have one neighbor."""
-    for node in g.nodes():
-        if node.startswith("/zport/dmd/Networks/"):
-            if len(g.edge[node]) < 2:
-                g.remove_node(node)
+def remove_dangling_connectors(g):
+    """Remove connector nodes from g that don't connect anything important."""
+    def is_connector(n):
+        """Return True if n (node) is a connector."""
+        return (
+            not n.startswith("/")
+            or n.startswith("/zport/dmd/Networks/")
+            or n.startswith("/zport/dmd/IPv6Networks/"))
 
+    def is_dangling(n):
+        """Return True if n (node) is dangling (has 1 or less edges.)"""
+        return len(g.edge[n]) < 2
 
-def get_connections(rootnode, depth=1, layers=None):
-    # Include layer2 if any VLANs are selected.
-    layers = set(layers) or connections.get_layers()
-    if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
-        layers.add(u"layer2")
+    all_connectors = {x for x in g.nodes() if is_connector(x)}
+    dangling_connectors = {x for x in all_connectors if is_dangling(x)}
+    connecting_connectors = all_connectors.difference(dangling_connectors)
 
-    g = connections.networkx_graph(
-        root=rootnode.getPrimaryId(),
-        layers=layers,
-        depth=depth)
+    # Remove connector nodes from graph if they don't connect anything.
+    g.remove_nodes_from(dangling_connectors)
 
-    # Users don't want to see nodes for individual MAC addresses. So we
-    # collapse all subgraphs of contiguous MAC address nodes into a
-    # single L2 cloud node that corresponds roughly to a bridge domain.
-    collapse_mac_clouds(g)
+    # Useful nodes are nodes on a shortest path from an important node
+    # to another important node.
+    useful_nodes = itertools.chain.from_iterable(
+        td
+        for s, sd in networkx.all_pairs_shortest_path(g).iteritems()
+        for t, td in sd.iteritems()
+        if not (is_connector(s) or is_connector(t)))
 
-    # L3 network (IpNetwork) nodes that are only connected to a single
-    # other node add a lot of useless visual clutter. So we prune them.
-    prune_dead_end_networks(g)
+    # Redundant connectors are connector nodes not in useful_nodes.
+    redundant_connectors = connecting_connectors.difference(useful_nodes)
 
-    nodes = []
-    node_indexes = {}
-    links = []
-    reduced = False
-
-    for i, node in enumerate(g.nodes()):
-        if i > MAX_NODES_COUNT:
-            reduced = True
-            break
-
-        node_indexes[node] = i
-        adapter = NodeAdapter(node=str(node), dmd=rootnode.dmd)
-        nodes.append({
-            "name": adapter.titleOrId(),
-            "image": adapter.getIconPath(),
-            "path": adapter.get_link(),
-            "color": "severity_none",
-            "highlight": adapter.id == rootnode.id,
-            "uuid": adapter.getUUID(),
-            })
-
-    for source, target, data in g.edges(data=True):
-        if source not in node_indexes or target not in node_indexes:
-            # This edge is missing one of its terminating nodes, and is
-            # therefore invalid. This could happen if we limited the
-            # nodes due to MAX_NODES_COUNT.
-            continue
-
-        links.append({
-            "source": node_indexes[source],
-            "target": node_indexes[target],
-            "color": list(data.get("layers", []))
-            })
-
-    # Add severity color to nodes.
-    color_nodes(nodes)
-
-    return {
-        "nodes": nodes,
-        "links": links,
-        "reduced": reduced,
-        }
+    # Remove connector nodes from graph if they're redundant.
+    g.remove_nodes_from(redundant_connectors)
 
 
 def color_nodes(nodes):
@@ -229,7 +291,7 @@ def chunks(s, n):
 
 
 class NodeAdapter(object):
-    def __init__(self, node, dmd):
+    def __init__(self, node, data, dmd):
         if isinstance(node, str):
             try:
                 self.node = dmd.getObjByPath(node)
@@ -237,6 +299,8 @@ class NodeAdapter(object):
                 self.node = node
         else:
             self.node = node
+
+        self.data = data
 
     @property
     def id(self):
@@ -249,13 +313,17 @@ class NodeAdapter(object):
         else:
             return self.node
 
-    def get_link(self):
-        if hasattr(self.node, 'getPrimaryUrlPath'):
+    @property
+    def path(self):
+        if "path" in self.data:
+            return self.data["path"]
+        elif hasattr(self.node, 'getPrimaryUrlPath'):
             return self.node.getPrimaryUrlPath()
         else:
             return self.node
 
-    def titleOrId(self):
+    @property
+    def name(self):
         if hasattr(self.node, 'macaddress'):
             return self.node.macaddress
         elif hasattr(self.node, 'getNetworkName'):
@@ -278,7 +346,8 @@ class NodeAdapter(object):
                 title = title.split('/')[-1]
             return title
 
-    def getIconPath(self):
+    @property
+    def image(self):
         if hasattr(self.node, 'macaddress'):
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
         elif hasattr(self.node, 'getIconPath'):
@@ -286,7 +355,8 @@ class NodeAdapter(object):
         else:
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
-    def getUUID(self):
+    @property
+    def uuid(self):
         if hasattr(self.node, 'getUUID'):
             return self.node.getUUID()
 
