@@ -181,7 +181,8 @@
         var newToken = format_hash({
             root_id: params.root_id,
             depth: params.depth,
-            layers: params.layers
+            layers: params.layers,
+            macs: params.macs
         });
         if (newToken !== oldToken) {
             Ext.History.add(newToken);
@@ -242,9 +243,9 @@
         },
         items: [
             {
-                id: 'sidebar_root_id_lable',
-                name: 'root_id_lable',
-                value: 'UID of device or component',
+                id: 'sidebar_root_id_label',
+                name: 'root_id_label',
+                value: 'Root device or component',
                 xtype: 'displayfield'
             }, {
                 id: 'sidebar_root_id',
@@ -270,12 +271,27 @@
                 pageSize: 10
             }, {
                 id: 'sidebar_depth',
-                fieldLabel: 'Depth',
+                fieldLabel: 'Maximum hops from root',
+                labelWidth: 180,
                 name: 'depth',
                 xtype: 'numberfield',
                 value: 3,
-                maxValue: 10,
+                maxValue: 15,
                 minValue: 1
+            }, {
+                id: 'sidebar_macs',
+                fieldLabel: 'Show MAC addresses',
+                labelWidth: 180,
+                name: 'macs',
+                xtype: 'checkbox',
+                checked: false
+            }, {
+                id: 'sidebar_dangling',
+                fieldLabel: 'Show dangling connectors',
+                labelWidth: 180,
+                name: 'dangling',
+                xtype: 'checkbox',
+                checked: false
             }, {
                 xtype: 'treepanel',
                 id: 'layers_group',
@@ -349,7 +365,7 @@
             var navigatable = ((data.path) && (data.path.indexOf('/') == 0));
 
             var pin_down = Ext.create('Ext.menu.CheckItem', {
-                text: 'Pin down',
+                text: 'Pin Down',
                 handler: function() {
                     obj.data.fixed = this.checked;
                 }
@@ -372,25 +388,25 @@
             };
 
             var device_info = Ext.create('Ext.menu.Item', {
-                text: 'Device info',
+                text: 'Device Info',
                 handler: show_inspector,
                 listeners: get_tooltip_listeners(is_device ?
-                    'Show device info' :
-                    'Will not display device info because this is not a device'
+                    'Show device info.' :
+                    "Can't show device info because this is not a device."
                 )
             });
             var change_root_menu = Ext.create('Ext.menu.Item', {
-                text: 'Put map root here',
+                text: 'Put Map Root Here',
                 handler: function () {
                     window.form_panel.change_root(obj.data.path);
                 },
                 listeners: get_tooltip_listeners(navigatable ?
-                    'Rebuild network map starting from this node' :
-                    'Currently it is impossible to navigate to this node'
+                    'Rebuild network map starting from this node.' :
+                    'Currently it is impossible to navigate to this node.'
                 )
             });
             var open_in_new_tab = Ext.create('Ext.menu.Item', {
-                text: 'Open node in new tab',
+                text: 'Open Node in New Tab',
                 handler: function () {
                     navigate_node(obj.data, '_blank');
                 },
