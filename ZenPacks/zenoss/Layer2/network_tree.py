@@ -84,6 +84,9 @@ def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
         layers=layers,
         depth=depth)
 
+    # Remove nodes that should have objects, but don't.
+    remove_missing_object_nodes(g, rootnode.dmd)
+
     # This makes clicking MAC nodes navigate to their associated interface.
     add_path_to_macs(g)
 
@@ -145,6 +148,32 @@ def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
         "links": links,
         "reduced": reduced,
     }
+
+
+def remove_missing_object_nodes(g, dmd):
+    """Remove nodes from g with a uid, but no object exists for the uid.
+
+    This is required because the Redis database backing the network map is
+    not consistent with ZODB. Specifically, devices and component entries in
+    the Redis database don't immediately get cleaned up when the devices and
+    components are deleted from ZODB.
+
+    The zenmapper service ultimately cleans these up on its next run, but we
+    have to work around stale entries regularly.
+
+    """
+    nodes_to_remove = []
+
+    for node in g.nodes():
+        if node.startswith("/zport/"):
+            try:
+                dmd.getObjByPath(node)
+            except (NotFound, KeyError):
+                nodes_to_remove.append(node)
+
+    if nodes_to_remove:
+        g.remove_nodes_from(nodes_to_remove)
+
 
 
 def add_path_to_macs(g):
