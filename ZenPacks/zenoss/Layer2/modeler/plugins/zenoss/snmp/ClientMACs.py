@@ -284,7 +284,7 @@ def mac_from_snmpindex(snmpindex):
             raise ValueError("snmpindex has fewer than 6 bytes")
 
         # Convert from "." delimited decimal to ":" delimited hex.
-        return ':'.join('%02X' % int(x) for x in mac_parts)
+        return ':'.join('%02X' % int(x) for x in mac_parts).upper()
     except Exception:
         raise ValueError("no MAC address in {!r}".format(snmpindex))
 
