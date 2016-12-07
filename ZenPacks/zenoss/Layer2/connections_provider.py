@@ -232,11 +232,11 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 yield Connection(net, (self.context, ), ['layer3', ])
 
                 # Invalidation saves memory, but undoes uncommitted changes.
-                if not ip._p_changed:
+                if ip._p_jar and not ip._p_changed:
                     ip._p_invalidate()
 
             # Invalidation saves memory, but undoes uncommitted changes.
-            if not interface._p_changed:
+            if interface._p_jar and not interface._p_changed:
                 interface._p_invalidate()
 
 
@@ -251,7 +251,7 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             yield Connection(dev, (net, ), ['layer3', ])
 
             # Invalidation saves memory, but undoes uncommitted changes.
-            if not ip._p_changed:
+            if ip._p_jar and not ip._p_changed:
                 ip._p_invalidate()
 
 
