@@ -42,12 +42,12 @@ def filterMacSet(existing, excluded):
        * 'excluded' are MAC addresses to be removed from existing
        * 'existing' is assumed to be a valid MAC iterable
     """
-    existing_macs = set(x.lower() for x in existing)
+    existing_macs = set(x.upper() for x in existing)
     excluded_macs = set()
     for mac in excluded:
         # Ensure each element of excluded is valid MAC
         if is_valid_macaddr802(mac):
-            excluded_macs.add(mac.lower())
+            excluded_macs.add(mac.upper())
 
     return existing_macs - excluded_macs
 

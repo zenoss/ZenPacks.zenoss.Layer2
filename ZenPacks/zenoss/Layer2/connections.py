@@ -93,7 +93,10 @@ def get_neighbors(node, layers, components=False):
 @log_redis_errors(default=None)
 def get_device_by_mac(dmd, macaddress):
     """Return first neighbor of macaddress that's a device."""
-    nxg = networkx_graph(macaddress, [LAYER2_LAYER], depth=1)
+    if not macaddress:
+        return
+
+    nxg = networkx_graph(macaddress.upper(), [LAYER2_LAYER], depth=1)
     for node in nxg.nodes():
         if node.startswith(DEVICES_PREFIX):
             try:
