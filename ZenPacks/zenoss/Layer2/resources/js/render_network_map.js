@@ -199,12 +199,6 @@
                 var graph = graph_renderer('#' + map.body.id, click_node);
                 choose_colors(res);
                 graph.draw(res);
-                
-                if (res.reduced) {
-                    return show_warning('Resulting network map is to big and '+
-                                        'number of nodes was reduced. ' +
-                                        'Please try to narrow map parameters.');
-                }
             },
             failure: function(error) {
                 if(error.statusText) {

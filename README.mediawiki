@@ -99,6 +99,8 @@ The "Show MAC addresses" option allows more detail to be seen about layer2 conne
 
 The "Show dangling connections" option allows connector-type nodes such as MAC addresses and IP networks that don't connect other nodes to be displayed. By default these are filtered out to prevent the network map from being cluttered by MAC addresses and IP networks that are only connected to a single device.
 
+{{note}} The network map will only display a maximum of 1,000 nodes to avoid performance issues both on the Zenoss server, and in the web browser. If you attempt to view a network map with more than 1,000 nodes, a error message will appear to inform you that the map contains too many nodes, and to adjust the filters.
+
 ==== Layers ====
 
 The network map can be filtered by layers. Layers are tags that Zenoss automatically adds to each link between devices and components. For example, when Zenoss identifies that host is connected to a switch, it will create nodes and links such as the following.
@@ -116,6 +118,8 @@ Each of the arrows above represents a link, and in this case each of those links
 These layers can be used to filter the network map to just the kind of links you're interested in.
 
 The VLAN and VXLAN layers have special handling. If any VLAN or VXLAN layer is selected, the layer2 layer will automatically be included. This is done because you likely wouldn't see the VLAN or VXLAN layer(s) chosen without also following layer2 links.
+
+The selected layers operate as an "OR" filter on the map. Choosing the layer2 and layer3 layers will cause all nodes to be displayed that have at least one of the selected filters. There is currently no support for "AND" filters, or negations.
 
 === Colors and Shapes ===
 
