@@ -2,9 +2,11 @@ This ZenPack provides support to model OSI Layer 2 (or data link layer) topology
 
 == Gallery ==
 <gallery widths=250px heights=127px>
-CDPLLDPDiscover.PNG
-ClientMACs.PNG
-NeighborSwitches.PNG
+layer2_network_map.png
+layer2_client_mac_addresses.png
+layer2_neighbor_switches.png
+layer2_modeler_plugins.png
+layer2_configuration_properties.png
 </gallery>
 
 == Features ==
@@ -66,6 +68,13 @@ All forms of event suppression as described above have a cost in terms of event 
 In worst case scenario testing the effective processing rate for non-ping events with the zL2SuppressIfDeviceDown configuration is approximately 80%, 75% for processing ping failure events in the case of a first-hop switch failure, and 70% in the case of a third-hop gateway failure.
 
 All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be scaled by adding more workers/instances, this additional event processing overhead can be offset by running more zeneventd instances as event processing throughput needs require.
+
+In order to achieve acceptable event processing performance, a variety of caches are used within zeneventd processes. These caches can lead to events not being suppressed in some cases when the configuration, model, or status of devices is coming from stale cache information. The following types of caches are used with different timeouts.
+
+;Caches
+* Device status changes can take up to 50 seconds to affect suppression.
+* Configuration changes can take up to 10 minutes to affect suppression.
+* Modeling changes can take up to 55 minutes to affect suppression.
 
 == Network Map ==
 [[File:layer2_network_map.png|thumb|320px|Network map]]
