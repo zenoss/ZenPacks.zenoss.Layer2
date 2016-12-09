@@ -78,8 +78,9 @@ def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
     if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
         layers.add(u"layer2")
 
+    rootnode_uid = rootnode.getPrimaryId()
     g = connections.networkx_graph(
-        root=rootnode.getPrimaryId(),
+        root=rootnode_uid,
         layers=layers,
         depth=depth)
 
@@ -105,6 +106,11 @@ def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
         # collapse all subgraphs of contiguous MAC address nodes into a
         # single L2 cloud node that corresponds roughly to a bridge domain.
         collapse_mac_clouds(g)
+
+    # Remove all nodes from the graph not reachable from the root node. This
+    # is necessary because we remove various nodes from the graph above,
+    # and we may have disconnected parts of the graph in doing so.
+    remove_unreachable_nodes(g, rootnode_uid)
 
     node_count = len(g.nodes())
     if node_count > MAX_NODES_COUNT:
@@ -181,9 +187,10 @@ def remove_missing_object_nodes(g, dmd):
     nodes_to_remove = []
 
     for node in g.nodes():
-        if node.startswith("/zport/"):
+        uid = node if node.startswith("/zport/") else g.node[node].get("path")
+        if uid:
             try:
-                dmd.getObjByPath(node)
+                dmd.getObjByPath(uid)
             except (NotFound, KeyError):
                 nodes_to_remove.append(node)
 
@@ -323,6 +330,24 @@ def remove_dangling_connectors(g):
         x
         for x in g.nodes()
         if is_connector(x) and is_dangling(x))
+
+
+def remove_unreachable_nodes(g, rootnode_uid):
+    """Remove nodes in g that aren't reachable from the root node."""
+    if hasattr(networkx, "dfs_postorder_nodes"):
+        # networkx >= 1.7 (Zenoss 5)
+        dfs_postorder_nodes = networkx.dfs_postorder_nodes
+    elif hasattr(networkx, "dfs_postorder"):
+        # networkx <= 1.3 (Zenoss 4)
+        dfs_postorder_nodes = networkx.dfs_postorder
+    else:
+        log.warning("failed to remove unreachable nodes from network map")
+        return
+
+    all_nodes = set(g.nodes())
+    reachable_nodes = set(dfs_postorder_nodes(g, rootnode_uid))
+    unreachable_nodes = all_nodes.difference(reachable_nodes)
+    g.remove_nodes_from(unreachable_nodes)
 
 
 def color_nodes(nodes):
