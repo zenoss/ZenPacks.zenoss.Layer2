@@ -2,9 +2,11 @@ This ZenPack provides support to model OSI Layer 2 (or data link layer) topology
 
 == Gallery ==
 <gallery widths=250px heights=127px>
-CDPLLDPDiscover.PNG
-ClientMACs.PNG
-NeighborSwitches.PNG
+layer2_network_map.png
+layer2_client_mac_addresses.png
+layer2_neighbor_switches.png
+layer2_modeler_plugins.png
+layer2_configuration_properties.png
 </gallery>
 
 == Features ==
