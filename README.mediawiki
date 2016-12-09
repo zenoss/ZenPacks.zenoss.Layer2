@@ -69,6 +69,13 @@ In worst case scenario testing the effective processing rate for non-ping events
 
 All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be scaled by adding more workers/instances, this additional event processing overhead can be offset by running more zeneventd instances as event processing throughput needs require.
 
+In order to achieve acceptable event processing performance, a variety of caches are used within zeneventd processes. These caches can lead to events not being suppressed in some cases when the configuration, model, or status of devices is coming from stale cache information. The following types of caches are used with different timeouts.
+
+;Caches
+* Device status changes can take up to 50 seconds to affect suppression.
+* Configuration changes can take up to 10 minutes to affect suppression.
+* Modeling changes can take up to 55 minutes to affect suppression.
+
 == Network Map ==
 [[File:layer2_network_map.png|thumb|320px|Network map]]
 
