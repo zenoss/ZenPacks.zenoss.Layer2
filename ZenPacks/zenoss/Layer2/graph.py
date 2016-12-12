@@ -335,7 +335,7 @@ class Origin(object):
             if not ns_layer_json:
                 ns_layers_map[layer] = [self.key]
             else:
-                ns_layer_origins = json.loads(ns_layer_json)
+                ns_layer_origins = from_json(ns_layer_json, [])
                 if self.key not in ns_layer_origins:
                     ns_layer_origins.append(self.key)
                     ns_layers_map[layer] = ns_layer_origins
@@ -358,7 +358,7 @@ class Origin(object):
                     if not target_json:
                         targets_map[target] = [self.key]
                     else:
-                        target_origins = json.loads(target_json)
+                        target_origins = from_json(target_json, [])
                         if self.key not in target_origins:
                             target_origins.append(self.key)
                             targets_map[target] = target_origins
@@ -437,7 +437,7 @@ class Origin(object):
                 source_layer,
                 "HMGET",
                 self.ns_key(EDGES_KEY, source_layer),
-                *json.loads(targets_json))
+                *from_json(targets_json, []))
 
         # execute 2nd read pipeline
         results = pipe.execute()
@@ -446,7 +446,7 @@ class Origin(object):
         ns_layers_map = {}
         ns_layers_jsons = results.get("ns_layers_jsons", [])
         for i, layer in enumerate(o_layers):
-            layer_origins = json.loads(ns_layers_jsons[i])
+            layer_origins = from_json(ns_layers_jsons[i], [])
             ns_layers_map[layer] = [
                 x for x in layer_origins
                 if x != self.key]
@@ -455,10 +455,10 @@ class Origin(object):
         ns_edges_map = {}
         for i, (source_layer, targets_json) in enumerate(o_edges_map.iteritems()):
             ns_edges_map[source_layer] = {}
-            targets = json.loads(targets_json)
+            targets = from_json(targets_json, [])
             targets_origin_jsons = results[source_layer]
             for j, target in enumerate(targets):
-                target_origins = json.loads(targets_origin_jsons[j])
+                target_origins = from_json(targets_origin_jsons[j], [])
                 ns_edges_map[source_layer][target] = [
                     x for x in target_origins
                     if x != self.key]
@@ -574,6 +574,14 @@ def discover_redis_url():
 def json_values(mapping):
     """Return mapping with JSON-encoded values."""
     return {k: json.dumps(v) for k, v in mapping.iteritems()}
+
+
+def from_json(json_string, default=None):
+    """Return Python object from JSON string or default if not possible."""
+    try:
+        return json.loads(json_string)
+    except Exception:
+        return default
 
 
 def hmclear(pipe, key, mapping):
