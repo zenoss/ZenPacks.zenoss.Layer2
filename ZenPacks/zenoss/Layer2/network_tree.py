@@ -96,12 +96,13 @@ def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
     if not dangling:
         remove_dangling_connectors(g)
 
-    if macs:
-        # User chose to see MAC addresses, but showing all MAC addresses
-        # results in a big hairy ball of MACs. We'll try to remove the less
-        # important ones to keep it somewhat useful.
-        remove_redundant_macs(g)
-    else:
+        if macs:
+            # User chose to see MAC addresses, but showing all MAC addresses
+            # results in a big hairy ball of MACs. We'll try to remove the
+            # less important ones to keep it somewhat useful.
+            remove_redundant_macs(g)
+
+    if not macs:
         # User chose not to see nodes for individual MAC addresses. So we
         # collapse all subgraphs of contiguous MAC address nodes into a
         # single L2 cloud node that corresponds roughly to a bridge domain.
