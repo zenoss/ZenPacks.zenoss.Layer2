@@ -334,6 +334,11 @@ def remove_dangling_connectors(g):
 
 def remove_unreachable_nodes(g, rootnode_uid):
     """Remove nodes in g that aren't reachable from the root node."""
+    if rootnode_uid not in g.node:
+        # Remove all nodes if the root node isn't in the graph.
+        g.remove_nodes_from(g.nodes())
+        return
+
     if hasattr(networkx, "dfs_postorder_nodes"):
         # networkx >= 1.7 (Zenoss 5)
         dfs_postorder_nodes = networkx.dfs_postorder_nodes
