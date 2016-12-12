@@ -221,7 +221,7 @@
                 svg.style('display', 'none');
                 panel.append('p')
                     .attr('class', 'message')
-                    .text('No map for resource.');
+                    .text('No map for selection.');
                 return;
             };
 
