@@ -9,6 +9,9 @@
 
 """Models MAC address of connected clients using BRIDGE-MIB via SNMP."""
 
+import collections
+import copy
+
 from Products.DataCollector.plugins.CollectorPlugin import GetTableMap
 from Products.DataCollector.plugins.CollectorPlugin import PythonPlugin
 from Products.DataCollector.plugins.CollectorPlugin import SnmpPlugin
@@ -18,43 +21,7 @@ from Products.ZenUtils.Driver import drive
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from ZenPacks.zenoss.Layer2.utils import asmac
-
-
-# ftp://ftp.cisco.com/pub/mibs/v1/BRIDGE-MIB.my
-dot1dTpFdbTable = '1.3.6.1.2.1.17.4.3'
-#     "A table that contains information about unicast
-#     entries for which the bridge has forwarding and/or
-#     filtering information. This information is used
-#     by the transparent bridging function in
-#     determining how to propagate a received frame."
-
-dot1dTpFdbEntry = dot1dTpFdbTable + '.1'
-#     "Information about a specific unicast MAC address
-#     for which the bridge has some forwarding and/or
-#     filtering information."
-
-dot1dTpFdbAddress = dot1dTpFdbEntry + '.1'
-#     "A unicast MAC address for which the bridge has
-#     forwarding and/or filtering information."
-
-dot1dTpFdbPort = dot1dTpFdbEntry + '.2'
-#     "Either the value '0', or the port number of the
-#     port on which a frame having a source address
-#     equal to the value of the corresponding instance
-#     of dot1dTpFdbAddress has been seen. A value of
-#     '0' indicates that the port number has not been
-#     learned but that the bridge does have some
-#     forwarding/filtering information about this
-#     address (e.g. in the dot1dStaticTable).
-#     Implementors are encouraged to assign the port
-#     value to this object whenever it is learned even
-#     for addresses for which the corresponding value of
-#     dot1dTpFdbStatus is not learned(3)."
-
-dot1dTpFdbStatus = dot1dTpFdbEntry + '.3'
-#   The status of this entry. The meanings of the values are:
-#   one of the attributes of ForwardingEntryStatus class
+from ZenPacks.zenoss.Layer2.utils import filterMacSet, is_valid_macaddr802
 
 
 class ForwardingEntryStatus(object):
@@ -85,20 +52,6 @@ class ForwardingEntryStatus(object):
     mgmt = 5
 
 
-dot1dBasePortEntry = '1.3.6.1.2.1.17.1.4.1'
-#     "A list of information for each port of the
-#     bridge."
-
-dot1dBasePort = dot1dBasePortEntry + '.1'
-#   "The port number of the port for which this entry
-#     contains bridge management information."
-
-dot1dBasePortIfIndex = dot1dBasePortEntry + '.2'
-#     "The value of the instance of the ifIndex object,
-#     defined in MIB-II, for the interface corresponding
-#     to this port."
-
-
 class ClientMACs(PythonPlugin):
 
     """Client MAC address modeler plugin.
@@ -112,7 +65,7 @@ class ClientMACs(PythonPlugin):
     localDeviceProperties = (
         'get_ifinfo_for_layer2',
         'getHWManufacturerName',
-        'macs_indexed',
+        'zLocalMacAddresses',
     )
 
     deviceProperties = (
@@ -126,17 +79,21 @@ class ClientMACs(PythonPlugin):
         """Return deferred with results of collection."""
         log.info("%s: collecting client MAC addresses", device.id)
 
-        self.log = log
+        # Inspect MAC addresses format in zLocalMacAddresses
+        for mac in device.zLocalMacAddresses:
+            if not is_valid_macaddr802(mac):
+                log.warn("Invalid MAC Address '%s' found in %s", mac, 'zLocalMacAddresses')
 
+        iftable = copy.deepcopy(getattr(device, 'get_ifinfo_for_layer2', {}))
         state = ClientMACsState(
             device=device,
-            iftable=getattr(device, 'get_ifinfo_for_layer2', {}),
-            macs_indexed=getattr(device, 'macs_indexed', False))
+            iftable=iftable,
+            log=log)
 
         results = []
 
-        for community in state.snmp_communities():
-            snmp_client = state.snmp_client(community=community)
+        for community in state.all_communities:
+            snmp_client = state.get_snmp_client(community=community)
             try:
                 yield drive(snmp_client.doRun)
             except Exception:
@@ -149,32 +106,34 @@ class ClientMACs(PythonPlugin):
                         {x.name: x.mapdata(y) for x, y in tabledata.items()})
             finally:
                 snmp_client.stop()
+
         returnValue((state, results))
 
     def process(self, device, results, log):
         """Process collect's results. Return iterable of datamaps."""
+        log.info("%s: processing client MAC addresses", device.id)
+
         state, results = results
 
         for tabledata in results:
             state.update_iftable(tabledata)
 
-        clientmacs = set()
         maps = []
 
         for iface_id, data in state.iftable.items():
-            clientmacs.update(data['clientmacs'])
+            # zLocalMacAddresses are known to not be unique or useful.
+            filtered_macs = filterMacSet(
+                data['clientmacs'],
+                device.zLocalMacAddresses)
+
             maps.append(
                 ObjectMap({
                     'compname': 'os',
                     'relname': 'interfaces',
                     'id': iface_id,
-                    'clientmacs': list(set(data['clientmacs'])),
+                    'clientmacs': sorted(filtered_macs),
                     'baseport': data['baseport'],
                 }))
-
-        if not state.macs_indexed and state.iftable:
-            reindex_map = ObjectMap({'set_reindex_maps': clientmacs})
-            maps.insert(0, reindex_map)
 
         return maps
 
@@ -192,58 +151,64 @@ class ClientMACsState(object):
 
     device = None
     iftable = None
-    macs_indexed = None
 
-    def __init__(self, device=None, iftable=None, macs_indexed=None):
+    def __init__(self, device=None, iftable=None, log=None):
         self.device = device
         self.iftable = iftable
-        self.macs_indexed = macs_indexed
+        self.log = log
 
     @property
     def is_cisco(self):
         manufacturer = getattr(self.device, 'getHWManufacturerName', 'Unknown')
         return 'cisco' in manufacturer.lower()
 
-    def vlans(self):
-        """Generate VLAN IDs as strings extracted from keys in iftable."""
-        yield ''  # for query without VLAN id
+    @property
+    def primary_community(self):
+        """Return device's primary SNMP community string."""
+        return self.device.zSnmpCommunity
 
-        # Only Cisco devices support community@VLAN SNMP contexts.
-        if self.is_cisco:
-            # TODO: find a better way to get a list of vlans
-            # not parsing from interface ids
-            for ifid, info in self.iftable.iteritems():
-                vlan_id = info.get('vlan_id')
+    @property
+    def other_communities(self):
+        """Return list of SNMP community strings other than the primary."""
+        if not self.is_cisco:
+            return []
 
-                if not vlan_id and 'vlan' in ifid.lower():
-                    vlan_id = ifid.lower().replace('vlan', '')
+        communities = []
 
-                if vlan_id:
-                    # https://jira.zenoss.com/browse/ZEN-16951
-                    # vlan_id should be integer, not any string
-                    try:
-                        yield str(int(vlan_id))
-                    except ValueError:
-                        pass
+        for ifid, info in self.iftable.iteritems():
+            vlan_id = info.get('vlan_id')
 
-    def snmp_communities(self):
-        """Generate SNMP community strings."""
-        for vlan in self.vlans():
-            community = self.device.zSnmpCommunity.split('@')[0]
-            if vlan:
-                yield '{}@{}'.format(community, vlan)
-            else:
-                yield community
+            if not vlan_id and 'vlan' in ifid.lower():
+                vlan_id = ifid.lower().replace('vlan', '')
 
-    def snmp_client(self, community='public'):
+            if vlan_id:
+                # https://jira.zenoss.com/browse/ZEN-16951
+                # vlan_id should be integer, not any string
+                try:
+                    communities.append(
+                        "{}@{}".format(
+                            self.primary_community,
+                            int(vlan_id)))
+                except Exception:
+                    pass
+
+        return communities
+
+    @property
+    def all_communities(self):
+        """Return list of all SNMP communities to try."""
+        return [self.primary_community] + self.other_communities
+
+    def get_snmp_client(self, community):
         """Return an SnmpClient instance."""
-        self.device.zSnmpCommunity = community
+        device_copy = copy.deepcopy(self.device)
+        device_copy.zSnmpCommunity = community
 
         snmp_client = SnmpClient(
-            hostname=self.device.id,
-            ipaddr=self.device.manageIp,
+            hostname=device_copy.id,
+            ipaddr=device_copy.manageIp,
             options=SnmpClientOptions(),
-            device=self.device,
+            device=device_copy,
             datacollector=None,
             plugins=[ClientMACsSnmpPlugin()])
 
@@ -253,25 +218,75 @@ class ClientMACsState(object):
 
     def update_iftable(self, tabledata):
         """Update iftable with queried SNMP table data."""
-        dot1dTpFdbTable = tabledata.get("dot1dTpFdbTable", {})
-        dot1dBasePortEntry = tabledata.get("dot1dBasePortEntry", {})
+        port_table = tabledata.get('dot1dBasePortTable', {})
+        portid_to_ifindex = {
+            x.get('dot1dBasePort'): x.get('dot1dBasePortIfIndex')
+            for x in port_table.itervalues()}
 
-        for iface in self.iftable.values():
-            ifindex = int(iface["ifindex"])
+        ifindex_to_portid = {v: k for k, v in portid_to_ifindex.iteritems()}
+        ifindex_to_macs = collections.defaultdict(list)
 
-            for row in dot1dBasePortEntry.values():
-                if ifindex == row.get('dot1dBasePortIfIndex'):
-                    iface['baseport'] = row.get('dot1dBasePort')
+        for tp_fdb_tablename in ('dot1dTpFdbTable', 'dot1qTpFdbTable'):
+            tp_fdb_table = tabledata.get(tp_fdb_tablename, {})
 
-                    for item in dot1dTpFdbTable.values():
-                        mac = item.get('dot1dTpFdbAddress')
-                        learned = item.get('dot1dTpFdbStatus') \
-                            == ForwardingEntryStatus.learned
-                        matched_baseport = iface['baseport'] \
-                            == item.get('dot1dTpFdbPort')
+            for idx, tp_fdb_entry in tp_fdb_table.iteritems():
+                entry_status = tp_fdb_entry.get('tpFdbStatus')
+                if entry_status != ForwardingEntryStatus.learned:
+                    continue
 
-                        if mac and learned and matched_baseport:
-                            iface['clientmacs'].append(asmac(mac))
+                entry_port = tp_fdb_entry.get('tpFdbPort')
+                if not entry_port:
+                    continue
+
+                ifindex = portid_to_ifindex.get(entry_port)
+                if not ifindex:
+                    continue
+
+                try:
+                    ifindex_to_macs[ifindex].append(mac_from_snmpindex(idx))
+                except ValueError as e:
+                    self.log.warning("%s: %s", self.device.id, e)
+
+        for iface in self.iftable.itervalues():
+            ifindex = int(iface['ifindex'])
+            iface['clientmacs'].extend(ifindex_to_macs.get(ifindex, []))
+            baseport = ifindex_to_portid.get(ifindex)
+            if baseport:
+                iface['baseport'] = baseport
+
+
+def mac_from_snmpindex(snmpindex):
+    """Return "01:23:45:67:89:ab" formatted MAC address string.
+
+    The snmpindex argument is expected to be the index from a
+    GetTableMap of BRIDGE-MIB::dot1dTpFdbEntry such as the following:
+
+        .1.35.69.103.137.174
+
+    Or the index from Q-BRIDGE::dot1qTpFdbEntry such as the following:
+
+        .20.1.35.69.103.137.175
+
+    Note that the Q-BRIDGE version has a leading value that doesn't
+    exist in the BRIDGE-MIB version that must be ignored to get to the 6
+    bytes of a MAC address.
+
+    These input strings should result in the following returned strings
+    respectively.
+
+        01:23:45:67:89:AE
+        01:23:45:67:89:AF
+
+    """
+    try:
+        mac_parts = snmpindex.strip('.').split('.')[-6:]
+        if len(mac_parts) != 6:
+            raise ValueError("snmpindex has fewer than 6 bytes")
+
+        # Convert from "." delimited decimal to ":" delimited hex.
+        return ':'.join('%02X' % int(x) for x in mac_parts).upper()
+    except Exception:
+        raise ValueError("no MAC address in {!r}".format(snmpindex))
 
 
 class SnmpClientOptions(object):
@@ -288,18 +303,24 @@ class ClientMACsSnmpPlugin(SnmpPlugin):
 
     snmpGetTableMaps = (
 
-        # Layer2: physical ports to MACs of clients
+        # BRIDGE-MIB: Map of ports to interfaces.
         GetTableMap(
-            'dot1dTpFdbTable', dot1dTpFdbEntry, {
-                '.1': 'dot1dTpFdbAddress',
-                '.2': 'dot1dTpFdbPort',
-                '.3': 'dot1dTpFdbStatus',
-            }),
-
-        # Ports to Interfaces
-        GetTableMap(
-            'dot1dBasePortEntry', dot1dBasePortEntry, {
+            'dot1dBasePortTable', '1.3.6.1.2.1.17.1.4.1', {
                 '.1': 'dot1dBasePort',
                 '.2': 'dot1dBasePortIfIndex',
+            }),
+
+        # BRIDGE-MIB: Physical ports to MAC addresses of clients.
+        GetTableMap(
+            'dot1dTpFdbTable', '1.3.6.1.2.1.17.4.3.1', {
+                '.2': 'tpFdbPort',
+                '.3': 'tpFdbStatus',
+            }),
+
+        # Q-BRIDGE: Physical ports to MAC addresses of clients.
+        GetTableMap(
+            'dot1qTpFdbTable', '1.3.6.1.2.1.17.7.1.2.2.1', {
+                '.2': 'tpFdbPort',
+                '.3': 'tpFdbStatus',
             }),
     )

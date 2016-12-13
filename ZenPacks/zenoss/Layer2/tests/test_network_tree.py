@@ -20,7 +20,7 @@ from .create_fake_devices import get_device, add_interface, random_mac
 import ZenPacks.zenoss.Layer2
 from ZenPacks.zenoss.Layer2.network_tree import\
     (get_connections, serialize, NodeAdapter, get_connections_json)
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
+from ZenPacks.zenoss.Layer2 import connections
 
 
 class TestSerialize(BaseTestCase):
@@ -40,6 +40,7 @@ class TestGetConnections(BaseTestCase):
     def afterSetUp(self):
         super(TestGetConnections, self).afterSetUp()
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
+        connections.clear()
 
     @patch('ZenPacks.zenoss.Layer2.network_tree.get_connections')
     @patch('ZenPacks.zenoss.Layer2.network_tree.serialize')
@@ -47,9 +48,9 @@ class TestGetConnections(BaseTestCase):
         self.data_root = Mock()
         self.data_root.Devices.findDevice.return_value = 'TEST'
         self.data_root.dmd.getObjByPath.return_value = None
-        get_connections_json(self.data_root, 'TEST', full_map=True)
+        get_connections_json(self.data_root, 'TEST')
         self.assertTrue(mock_get_connections.called)
-        mock_get_connections.assert_called_with('TEST', 1, None)
+        mock_get_connections.assert_called_with('TEST', 1, None, False, False)
         self.assertTrue(mock_serialize.called)
 
     def test_get_vlan_connections_with_unaware_node(self):
@@ -67,15 +68,12 @@ class TestGetConnections(BaseTestCase):
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], vlans=[])
 
-        catapi = CatalogAPI(self.dmd.zport)
-        catapi.add_node(a)
-        catapi.add_node(b)
+        connections.add_node(a)
+        connections.add_node(b)
 
         res = get_connections(a, depth=3, layers=['vlan1'])
         links = str(res['links'])
-        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': False", links)
-        self.assertIn("{'color': ('layer2', u'vlan1'), 'directed': True", links)
-        self.assertIn("{'color': ('layer2',), 'directed': False", links)
+        self.assertIn("{'color': [u'layer2', u'vlan1']", links)
 
 
 class TestNodeAdapter(BaseTestCase):
@@ -89,43 +87,28 @@ class TestNodeAdapter(BaseTestCase):
             ['zenevents_3_noack noack', 0, 0],
             ['zenevents_2_noack noack', 0, 0],
             ['zenevents_1_noack noack', 0, 0]]
-        self.instance = NodeAdapter(obj, '')
+        self.instance = NodeAdapter(obj, '', {})
         self.properties = dir(self.instance)
 
     def test_instance_attributes(self):
         self.assertIn('id', self.properties)
-        self.assertFalse(callable(self.instance.important))
-        self.assertTrue(callable(self.instance.get_path))
-        self.assertTrue(callable(self.instance.get_link))
-        self.assertTrue(callable(self.instance.titleOrId))
-        self.assertTrue(callable(self.instance.getIconPath))
-        self.assertTrue(callable(self.instance.getEventSummary))
-        self.assertTrue(callable(self.instance.getColor))
+        self.assertIn('path', self.properties)
+        self.assertIn('name', self.properties)
+        self.assertIn('image', self.properties)
 
-    def test_get_path(self):
-        self.assertEqual(self.instance.get_path(), 'TE:ST:12:34:56:78')
+    def test_path(self):
+        self.assertEqual(self.instance.path, '/zport/dmd/Devices/Test')
 
-    def test_get_link(self):
-        self.assertEqual(self.instance.get_link(), '/zport/dmd/Devices/Test')
-
-    def test_titleOrId(self):
-        self.assertEqual(self.instance.titleOrId(), 'TE:ST:12:34:56:78')
+    def test_name(self):
+        self.assertEqual(self.instance.name, 'TE:ST:12:34:56:78')
         obj = Mock(spec=['getNetworkName'])
         obj.getNetworkName.return_value = 'network'
-        self.assertEqual(NodeAdapter(obj, '').titleOrId(), 'network')
+        self.assertEqual(NodeAdapter(obj, '', {}).name, 'network')
 
-    def test_getIconPath(self):
-        self.assertEqual(self.instance.getIconPath(),
-                         '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
-
-    def test_getColor(self):
-        self.assertEqual(self.instance.getColor(), 'severity_critical')
-
-    def test_getEventSummary(self):
-        self.assertEqual(len(self.instance.getEventSummary()), 5)
-
-    def test_important(self):
-        self.assertEqual(self.instance.important, True)
+    def test_image(self):
+        self.assertEqual(
+            self.instance.image,
+            '/++resource++ZenPacks_zenoss_Layer2/img/link.png')
 
 
 def test_suite():

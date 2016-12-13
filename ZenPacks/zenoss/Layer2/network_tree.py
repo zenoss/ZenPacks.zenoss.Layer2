@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2007, 2014, 2015 all rights reserved.
+# Copyright (C) Zenoss, Inc. 2007, 2014-2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -12,40 +12,31 @@ Contains function get_connections_json, which returns JSON string with
 links and nodes of network map, for d3.js to render.
 '''
 
-import copy
+import collections
+import itertools
 import json
-from functools import partial
-import re
-
 import logging
+import re
 
 from zExceptions import NotFound
 
 from Products.Zuul import getFacade
 from zenoss.protocols.services.zep import ZepConnectionError
 
-from .connections_catalog import CatalogAPI
-from .edge_contraction import contract_edges
+import networkx
+
+from . import connections
 
 log = logging.getLogger('zen.Layer2')
 
-# TODO: To find optimal batch size values.
 ZEP_BATCH_SIZE = 400
-CATALOG_BATCH_SIZE = 400
-
-MAX_NODES_COUNT = 2000
-
-
-class StopTraversing(Exception):
-
-    """Raised when max nodes count is reached to stop network map generation."""
-
-    pass
+MAX_NODES_COUNT = 1000
+MAC_REGEX = re.compile(r'(:?[0-9A-F]:?){12}', re.IGNORECASE)
 
 
 def get_connections_json(
-    data_root, root_id, depth=1, layers=None, full_map=False
-):
+            data_root, root_id, depth=1, layers=None,
+            macs=False, dangling=False):
     '''
         Main function which is used from device to get responce text with
         connections data for graph.
@@ -59,11 +50,7 @@ def get_connections_json(
     if not obj:
         return serialize('Node %r was not found' % root_id)
 
-    connections = get_connections(obj, depth, layers)
-    if not full_map:
-        connections = contract_edges(**connections)
-
-    return serialize(connections)
+    return serialize(get_connections(obj, depth, layers, macs, dangling))
 
 
 def serialize(*args, **kwargs):
@@ -85,246 +72,319 @@ def serialize(*args, **kwargs):
         return serialize(kwargs)
 
 
-SEVERITY_TO_COLOR = {
-    1: 'severity_debug',
-    2: 'severity_info',
-    3: 'severity_warning',
-    4: 'severity_error',
-    5: 'severity_critical'}
+def get_connections(rootnode, depth=1, layers=None, macs=False, dangling=False):
+    # Include layer2 if any VLANs are selected.
+    layers = set(layers) or connections.get_default_layers()
+    if "layer2" not in layers and any((l.startswith("vlan") for l in layers)):
+        layers.add(u"layer2")
 
+    rootnode_uid = rootnode.getPrimaryId()
+    g = connections.networkx_graph(
+        root=rootnode_uid,
+        layers=layers,
+        depth=depth)
 
-def _convert_severity_to_color(severity):
-    return SEVERITY_TO_COLOR.get(severity, 'severity_none')
+    # This makes clicking MAC nodes navigate to their associated interface.
+    add_path_to_macs(g)
 
+    # Remove nodes that should have objects, but don't.
+    remove_missing_object_nodes(g, rootnode.dmd)
 
-def get_connections(rootnode, depth=1, layers=None):
-    zport = rootnode.zport
-    cat = CatalogAPI(zport)
+    # Some nodes such as MAC addresses and L3 networks (IpNetwork) are only
+    # shown on the map to connect important nodes. We want to remove any of
+    # these connector nodes if they don't connect anything.
+    if not dangling:
+        remove_dangling_connectors(g)
 
+        if macs:
+            # User chose to see MAC addresses, but showing all MAC addresses
+            # results in a big hairy ball of MACs. We'll try to remove the
+            # less important ones to keep it somewhat useful.
+            remove_redundant_macs(g)
+
+    if not macs:
+        # User chose not to see nodes for individual MAC addresses. So we
+        # collapse all subgraphs of contiguous MAC address nodes into a
+        # single L2 cloud node that corresponds roughly to a bridge domain.
+        collapse_mac_clouds(g)
+
+    # Remove all nodes from the graph not reachable from the root node. This
+    # is necessary because we remove various nodes from the graph above,
+    # and we may have disconnected parts of the graph in doing so.
+    remove_unreachable_nodes(g, rootnode_uid)
+
+    node_count = len(g.nodes())
+    if node_count > MAX_NODES_COUNT:
+        raise Exception(
+            "{} nodes exceed maximum of {}. Try adjusting filters."
+            .format(node_count, MAX_NODES_COUNT))
+
+    # Now that the networkx.Graph (g) has been shaped up, we need to convert it
+    # to something the d3 network map can use.
     nodes = []
-    links = {}
-    colors = {}  # mapping from pair of nodes to their layers
-    nodenums = {}
-    uuids = []
+    node_indexes = {}
+    links = []
 
-    # VLAN -> VLAN, Layer2 (search by vlan,
-    # but include also vlan unaware sections of network)
-    # Layer2 -> Layer2      (no search by vlans)
-    # VLAN, Layer2 -> Layer2 (no search by vlans)
-    if layers:
-        # copy so we not mutate function argument
-        layers = map(str, layers)  # and also coerce to str (unicode happens)
-        if 'layer2' in layers:
-            layers = [l for l in layers if not l.startswith('vlan')]
-        else:
-            if any((l.startswith('vlan') for l in layers)):
-                layers.append('layer2')
+    for i, node in enumerate(g.nodes()):
+        node_indexes[node] = i
+        adapter = NodeAdapter(
+            node=str(node),
+            data=g.node[node],
+            dmd=rootnode.dmd)
 
-    def add_node(n):
-        if len(nodes) >= MAX_NODES_COUNT:
-            raise StopTraversing()
+        nodes.append({
+            "name": adapter.name,
+            "image": adapter.image,
+            "path": adapter.path,
+            "uuid": adapter.uuid,
+            "color": "severity_none",
+            "highlight": adapter.id == rootnode.id,
+        })
 
-        if n.id in nodenums:
-            return
+    for source, target, data in g.edges(data=True):
+        if source not in node_indexes or target not in node_indexes:
+            # This edge is missing one of its terminating nodes, and is
+            # therefore invalid. This could happen if we limited the
+            # nodes due to MAX_NODES_COUNT.
+            continue
 
-        nodenums[n.id] = len(nodes)
-        record = dict(
-            name=n.titleOrId(),
-            image=n.getIconPath(),
-            path=n.get_link(),
-            color='severity_none',
-            highlight=n.id == rootnode.id,
-            important=n.important,
-        )
-        nodes.append(record)
+        links.append({
+            "source": node_indexes[source],
+            "target": node_indexes[target],
+            "color": list(data.get("layers", []))
+        })
 
-        uuid = n.getUUID()
-        if n.important and uuid:
-            uuids.append((uuid, record))
+    # Add severity color to nodes.
+    color_nodes(nodes)
 
-    def add_link(a, b):
-        color = colors[(a.get_path(), b.get_path())]
-        s = nodenums[a.id]
-        t = nodenums[b.id]
+    return {"nodes": nodes, "links": links}
 
-        key = tuple(sorted([s, t]))
-        if key in links:
-            if s == links[key]['source']:
-                return  # already added
-            else:
-                links[key]['directed'] = False
-                return
 
-        links[key] = dict(
-            source=s,
-            target=t,
-            directed=True,
-            color=color,
-        )
+def is_mac(n):
+    """Return True if n is a MAC address."""
+    return MAC_REGEX.match(n)
 
-    adapt_node = partial(NodeAdapter, dmd=zport.dmd)
 
-    visited = set()
+def is_connector(n):
+    """Return True if n (node) is a connector."""
+    return (
+        n.startswith("/zport/dmd/Networks/")
+        or n.startswith("/zport/dmd/IPv6Networks/")
+        or is_mac(n))
 
-    def get_connections(nodes, depth):
-        """ Depth-first search of the network tree emanating from nodes """
-        if depth == 0:
-            return set()
 
-        adapted_nodes = {}
-        for node in nodes:
-            adapted_node = adapt_node(node)
-            if adapted_node.id in visited:
-                continue
-            visited.add(adapted_node.id)
-            adapted_nodes[adapted_node.get_path()] = adapted_node
+def remove_missing_object_nodes(g, dmd):
+    """Remove nodes from g with a uid, but no object exists for the uid.
 
-        if not adapted_nodes:
-            return set()
+    This is required because the Redis database backing the network map is
+    not consistent with ZODB. Specifically, devices and component entries in
+    the Redis database don't immediately get cleaned up when the devices and
+    components are deleted from ZODB.
 
-        # leafs of current node in graph
-        impacted = get_impacted(adapted_nodes.keys())
-        impactors = get_impactors(adapted_nodes.keys())
+    The zenmapper service ultimately cleans these up on its next run, but we
+    have to work around stale entries regularly.
 
-        related = copy.deepcopy(impacted)
-        for node_path, links in impactors.iteritems():
-            related[node_path] = set(related.get(node_path, [])) | set(links)
+    """
+    nodes_to_remove = []
 
-        # some of leaf may contain a component (usualy IpInterface) uid
-        # prefixed with asterix (!)
-        for node_path, links in related.iteritems():
-            adapted_node = adapted_nodes[node_path]
-            for link_node in links:
-                if this_is_link(link_node):
-                    adapted_node.link = link_node[1:]
-                    break
+    for node in g.nodes():
+        uid = node if node.startswith("/zport/") else g.node[node].get("path")
+        if uid:
+            try:
+                dmd.getObjByPath(uid)
+            except (NotFound, KeyError):
+                nodes_to_remove.append(node)
 
-        for node in adapted_nodes.itervalues():
-            add_node(node)
+    if nodes_to_remove:
+        g.remove_nodes_from(nodes_to_remove)
 
-        nodes_to_check = set()
-        for node_path, links in related.iteritems():
-            adapted_node = adapted_nodes[node_path]
 
-            interesting_links = [link_node for link_node in links
-                                 if not this_is_link(link_node)]
+def add_path_to_macs(g):
+    """Add "path" data to MAC address nodes in g.
 
-            reverse_connections = get_reverse_connected(interesting_links)
+    Also removes component nodes from g.
 
-            for link_node in interesting_links:
-                link_adapted_node = adapt_node(link_node)
-                # need to check for uid in leafs before adding node to graph
-                # as next time it will be skipped due to optimization
-                for node_b in reverse_connections.get(link_node, []):
-                    if this_is_link(node_b):
-                        link_adapted_node.link = node_b[1:]
-                        break
+    """
+    component_nodes = {x for x in g.nodes() if x.startswith("!")}
+    mac_nodes = {x for x in g.nodes() if is_mac(x)}
 
-                add_node(link_adapted_node)
-                if link_node in impacted.get(node_path, []):
-                    add_link(adapted_node, link_adapted_node)
-                if link_node in impactors.get(node_path, []):
-                    add_link(link_adapted_node, adapted_node)
+    for component_node in component_nodes:
+        for potential_mac in g.edge[component_node]:
+            if potential_mac in mac_nodes:
+                g.node[potential_mac]["path"] = component_node[1:]
+                break
 
-                nodes_to_check.add(link_node)
+    # Remove component nodes from graph
+    g.remove_nodes_from(component_nodes)
 
-        return nodes_to_check
 
-    def get_reverse_connected(nodes):
-        q = dict(connected_to=nodes)
-        if layers:
-            q['layers'] = layers
+def collapse_mac_clouds(g):
+    """Collapse subgraphs of MAC address nodes.
 
-        result = {}
-        for b in cat.search(**q):
-            result.setdefault(b.entity_id, []).append(b.connected_to)
+    Removes all MAC address nodes from (g: networkx.Graph) and replaces
+    them with a "l2-cloud-#" cloud that terminates all of the edges that
+    previously terminated in a contiguous subgraph of one or more MAC
+    address nodes. In the case that the L2 cloud node would have only
+    had two neighbors, no L2 cloud node will be created. An edge will be
+    created directly between those two neighbors.
 
-        return result
+    """
+    def collapse_from_mac(mac):
+        to_remove = set([mac])
+        to_connect = set()
+        combined_layers = set()
 
-    def connection_not_in_this_vlans(edge, filter_layers):
-        return (
-            # check that we filter by vlans at all
-            any((l.startswith('vlan') for l in filter_layers))
-            # and check that this edge is vlan-aware (has some vlans)
-            and any((l.startswith('vlan') for l in edge.layers))
-            # all of the vlans of edge are not vlans we are interested in
-            and all((
-                l not in filter_layers
-                for l in edge.layers
-                if l.startswith('vlan')
-            ))
-        )
+        visited = set([mac])
+        queue = collections.deque([g.edge[mac].items()])
+        while queue:
+            targets = queue.popleft()
+            for target, data in targets:
+                if target in visited:
+                    continue
 
-    def get_impacted(nodes):
-        q = dict(entity_id=nodes)
-        if layers:
-            q['layers'] = layers
+                visited.add(target)
+                combined_layers.update(data["layers"])
 
-        result = {}
-        for b in cat.search(**q):
-            if connection_not_in_this_vlans(b, layers):
-                continue
-            for c in b.connected_to:
-                colors[(b.entity_id, c)] = b.layers
-                result.setdefault(b.entity_id, []).append(c)
+                if is_mac(target):
+                    to_remove.add(target)
+                    queue.append(g.edge[target].items())
+                else:
+                    to_connect.add(target)
 
-        return result
+        return to_remove, to_connect, combined_layers
 
-    def get_impactors(nodes):
-        q = dict(connected_to=nodes)
-        if layers:
-            q['layers'] = layers
-        result = {}
-        for b in cat.search(**q):
-            if connection_not_in_this_vlans(b, layers):
-                continue
-            colors[(b.connected_to, b.entity_id)] = b.layers
-            result.setdefault(b.entity_id, []).append(b.connected_to)
+    l2_cloud_index = 0
 
-        return result
+    queue = collections.deque(x for x in g.nodes() if is_mac(x))
+    while queue:
+        starting_mac = queue.popleft()
+        remove, connect, layers = collapse_from_mac(starting_mac)
 
-    def this_is_link(node):
-        if isinstance(node, str) and node[0] == "!":
-            return node[1:]
+        # Remove the MAC address nodes in starting_mac's cluster.
+        g.remove_nodes_from(remove)
+        for node in remove:
+            if node != starting_mac:
+                queue.remove(node)
 
-    nodes_queue = [rootnode]
-    iteration_depth = depth
-    reduced_result = False
+        # Create a direct link when connecting exactly 2 nodes.
+        if len(connect) == 2:
+            g.add_edge(*connect, layers=layers)
+
+        # Create a cloud when connecting 3 or more nodes.
+        elif len(connect) >= 3:
+            l2_cloud = "l2-cloud-{}".format(l2_cloud_index)
+            l2_cloud_index += 1
+
+            for connect_node in connect:
+                g.add_edge(l2_cloud, connect_node, layers=layers)
+
+
+def remove_redundant_macs(g):
+    def has_path(n):
+        """Return True if n (node) has a path key in its data."""
+        return "path" in g.node[n]
+
+    l2g = g.copy()
+    l2g.remove_edges_from(
+        (u, v)
+        for u, v, k in l2g.edges(data=True)
+        if "layer2" not in k["layers"])
+
+    all_nodes = {x for x in l2g.nodes()}
+    end_nodes = {x for x in all_nodes if not is_connector(x)}
+    connector_nodes = all_nodes.difference(end_nodes)
+    mac_nodes = {x for x in connector_nodes if is_mac(x)}
+    pathless_macs = {x for x in mac_nodes if not has_path(x)}
+
+    # Assign unfavorable weights to all MAC nodes with no path. Note that
+    # nodes without a specific weight set will be treated as though they
+    # have a weight of 1 by the Dijkstra algorithm.
+    #
+    # 4 is specifically chosen to be slightly greater than the maximum
+    # number of MAC address nodes (3) expected between endpoint nodes.
+    for pathless_mac in pathless_macs:
+        g.node[pathless_mac]["weight"] = 4
+
+    # Useful nodes are nodes on the shortest path from an endpoint node to
+    # another endpoint node on a graph with only layer2 edges remaining.
+    useful_nodes = set()
+    for source in end_nodes:
+        shortest_paths = networkx.single_source_dijkstra_path(l2g, source)
+        for target, path in shortest_paths.iteritems():
+            if target in end_nodes:
+                useful_nodes.update(path)
+
+    # Redundant MACs are MAC nodes not in useful nodes.
+    redundant_macs = mac_nodes.difference(useful_nodes)
+
+    # Remove redundant MAC nodes from the original graph.
+    g.remove_nodes_from(redundant_macs)
+
+
+def remove_dangling_connectors(g):
+    """Remove connector nodes from g that don't connect anything important."""
+    def is_dangling(n):
+        """Return True if n (node) is dangling (has 1 or less edges.)"""
+        return len(g.edge[n]) < 2
+
+    g.remove_nodes_from(
+        x
+        for x in g.nodes()
+        if is_connector(x) and is_dangling(x))
+
+
+def remove_unreachable_nodes(g, rootnode_uid):
+    """Remove nodes in g that aren't reachable from the root node."""
+    if rootnode_uid not in g.node:
+        # Remove all nodes if the root node isn't in the graph.
+        g.remove_nodes_from(g.nodes())
+        return
+
+    if hasattr(networkx, "dfs_postorder_nodes"):
+        # networkx >= 1.7 (Zenoss 5)
+        dfs_postorder_nodes = networkx.dfs_postorder_nodes
+    elif hasattr(networkx, "dfs_postorder"):
+        # networkx <= 1.3 (Zenoss 4)
+        dfs_postorder_nodes = networkx.dfs_postorder
+    else:
+        log.warning("failed to remove unreachable nodes from network map")
+        return
+
+    all_nodes = set(g.nodes())
+    reachable_nodes = set(dfs_postorder_nodes(g, rootnode_uid))
+    unreachable_nodes = all_nodes.difference(reachable_nodes)
+    g.remove_nodes_from(unreachable_nodes)
+
+
+def color_nodes(nodes):
+    """Add "color" property to each NodeAdapter in nodes."""
+    zep = getFacade("zep")
+    nodes_by_uuid = {x["uuid"]: x for x in nodes if x["uuid"]}
     try:
-        while nodes_queue:
-            nodes_to_check = set()
-            for pos in xrange(0, len(nodes_queue), CATALOG_BATCH_SIZE):
-                nodes_to_check.update(
-                    get_connections(nodes_queue[pos:pos + CATALOG_BATCH_SIZE],
-                                    iteration_depth))
+        for uuids_chunk in chunks(nodes_by_uuid.keys(), ZEP_BATCH_SIZE):
+            severities_by_uuid = zep.getWorstSeverity(uuids_chunk)
+            for uuid, severity in severities_by_uuid.iteritems():
+                if uuid in nodes_by_uuid:
+                    nodes_by_uuid[uuid]["color"] = {
+                        1: 'severity_debug',
+                        2: 'severity_info',
+                        3: 'severity_warning',
+                        4: 'severity_error',
+                        5: 'severity_critical',
+                        }.get(severity, 'severity_none')
 
-            nodes_queue = list(nodes_to_check)
-            iteration_depth -= 1
-    except StopTraversing:
-        reduced_result = True
+    except ZepConnectionError as e:
+        log.warning("Couldn't connect to ZEP: %s", e)
 
-    zep = getFacade('zep', zport)
 
-    try:
-        for pos in xrange(0, len(uuids), ZEP_BATCH_SIZE):
-            sevs = zep.getWorstSeverity(
-                [uuid for uuid, _ in uuids[pos:pos + ZEP_BATCH_SIZE]])
-
-            for uuid, record in uuids[pos:pos + ZEP_BATCH_SIZE]:
-                if uuid in sevs:
-                    record['color'] = _convert_severity_to_color(sevs[uuid])
-    except ZepConnectionError as err:
-        log.warning('Could not connect to ZEP: %s', err)
-
-    return dict(
-        links=links.values(),
-        nodes=nodes,
-        reduced=reduced_result
-    )
+def chunks(s, n):
+    """Generate lists of size n from iterable s."""
+    for chunk in (s[i:i + n] for i in range(0, len(s), n)):
+        yield chunk
 
 
 class NodeAdapter(object):
-    def __init__(self, node, dmd):
+    def __init__(self, node, data, dmd):
         if isinstance(node, str):
             try:
                 self.node = dmd.getObjByPath(node)
@@ -332,6 +392,8 @@ class NodeAdapter(object):
                 self.node = node
         else:
             self.node = node
+
+        self.data = data
 
     @property
     def id(self):
@@ -344,23 +406,17 @@ class NodeAdapter(object):
         else:
             return self.node
 
-    def get_path(self):
-        if hasattr(self.node, 'macaddress'):
-            return self.node.macaddress
+    @property
+    def path(self):
+        if "path" in self.data:
+            return self.data["path"]
         elif hasattr(self.node, 'getPrimaryUrlPath'):
             return self.node.getPrimaryUrlPath()
         else:
             return self.node
 
-    def get_link(self):
-        if hasattr(self.node, 'getPrimaryUrlPath'):
-            return self.node.getPrimaryUrlPath()
-        elif hasattr(self, 'link'):
-            return self.link
-        else:
-            return self.node
-
-    def titleOrId(self):
+    @property
+    def name(self):
         if hasattr(self.node, 'macaddress'):
             return self.node.macaddress
         elif hasattr(self.node, 'getNetworkName'):
@@ -375,12 +431,16 @@ class NodeAdapter(object):
         elif hasattr(self.node, 'titleOrId'):
             return self.node.titleOrId()
         else:
+            if self.id.startswith('l2-cloud-'):
+                return ""
+
             title = self.id
             if title.startswith('/zport/dmd/'):
                 title = title.split('/')[-1]
             return title
 
-    def getIconPath(self):
+    @property
+    def image(self):
         if hasattr(self.node, 'macaddress'):
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
         elif hasattr(self.node, 'getIconPath'):
@@ -388,38 +448,9 @@ class NodeAdapter(object):
         else:
             return '/++resource++ZenPacks_zenoss_Layer2/img/link.png'
 
-    def getUUID(self):
+    @property
+    def uuid(self):
         if hasattr(self.node, 'getUUID'):
             return self.node.getUUID()
 
         return None
-
-    def getColor(self):
-        summary = self.getEventSummary()
-        if summary is None:
-            return 'severity_none'
-        colors = 'critical error warning info debug'.split()
-        color = 'debug'
-        for i in range(5):
-            if summary[i][2] > 0:
-                color = colors[i]
-                break
-        return 'severity_%s' % color
-
-    def getEventSummary(self):
-        if not self.important:
-            return None
-        if hasattr(self.node, 'getEventSummary'):
-            return self.node.getEventSummary()
-
-    @property
-    def important(self):
-        if isinstance(self.node, str):
-            return False
-        from Products.ZenModel.IpNetwork import IpNetwork
-        if (
-            hasattr(self.node, 'aq_base') and
-            isinstance(self.node.aq_base, IpNetwork)
-        ):
-            return False
-        return True

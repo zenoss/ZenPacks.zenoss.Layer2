@@ -1,0 +1,14 @@
+/Devices/Network/Q-BRIDGE \
+    zCollectorPlugins=[ \
+        'zenoss.snmp.InterfaceMap', \
+        'zenoss.snmp.ClientMACs', \
+        ]
+q-bridge-sw-a setManageIp='10.181.128.1'
+q-bridge-sw-b setManageIp='10.181.128.2'
+
+/Devices/Server/Q-BRIDGE \
+    zCollectorPlugins=[ \
+        'zenoss.snmp.InterfaceMap', \
+        ]
+q-bridge-host-1 setManageIp='10.181.128.3'
+q-bridge-host-2 setManageIp='10.181.128.4'

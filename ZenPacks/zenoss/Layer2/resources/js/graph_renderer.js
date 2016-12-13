@@ -221,7 +221,7 @@
                 svg.style('display', 'none');
                 panel.append('p')
                     .attr('class', 'message')
-                    .text('No data. (See "Page Tips" for help).');
+                    .text('No map for selection.');
                 return;
             };
 

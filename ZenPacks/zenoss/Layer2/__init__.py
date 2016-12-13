@@ -12,78 +12,160 @@ executed at startup time in all Zope clients.
 """
 
 import logging
-
-import os.path
-import socket
-import struct
+LOG = logging.getLogger('zen.Layer2')
 
 import Globals
 
+from Products.ZenModel.Device import Device
 from Products.ZenUtils.Utils import unused
 from Products.ZenModel.ZenPack import ZenPackBase
+from Products.ZenRelations.RelSchema import ToManyCont, ToOne
 from Products.ZenRelations.zPropertyCategory import setzPropertyCategory
 
 import ZenPacks.zenoss.Layer2.patches
 
 unused(Globals)
 
-log = logging.getLogger('zen.Layer2')
+ZPROPERTY_CATEGORY = 'Layer 2'
 
+setzPropertyCategory('zL2SuppressIfDeviceDown', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2SuppressIfPathsDown', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2PotentialRootCause', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zL2Gateways', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zZenossGateway', ZPROPERTY_CATEGORY)
+setzPropertyCategory('zLocalMacAddresses', ZPROPERTY_CATEGORY)
 
-setzPropertyCategory('zZenossGateway', 'Misc')
+# Relationships to patch onto Device.
+DEVICE_RELATIONS = {
+    'neighbor_switches': 'ZenPacks.zenoss.Layer2.NeighborSwitch',
+    }
 
 
 class ZenPack(ZenPackBase):
     """ Layer2 zenpack loader """
 
     packZProperties = [
+        ('zL2SuppressIfDeviceDown', False, 'boolean'),
+        ('zL2SuppressIfPathsDown', False, 'boolean'),
+        ('zL2PotentialRootCause', True, 'boolean'),
+        ('zL2Gateways', [], 'lines'),
         ('zZenossGateway', '', 'string'),
-    ]
+        ('zLocalMacAddresses', ['00:00:00:00:00:00'], 'lines'),
+        ]
+
+    packZProperties_data = {
+        'zL2SuppressIfDeviceDown': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: Device Down',
+            'description': 'Suppresses non-ping events when it is down.',
+            'type': 'boolean',
+            },
+
+        'zL2SuppressIfPathsDown': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: All Paths to Gateways Down',
+            'description': 'Suppresses ping events when all paths to all gateways are down.',
+            'type': 'boolean',
+            },
+
+        'zL2PotentialRootCause': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Event Suppression: Can Device be a Root Cause?',
+            'description': 'Set to False only for endpoints like hosts.',
+            },
+
+        'zL2Gateways': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Device Gateways',
+            'description': 'Gateways for device. Must be Zenoss device IDs.',
+            'type': 'lines',
+            },
+
+        'zZenossGateway': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': '[DEPRECATED] Use zL2Gateways',
+            'description': '[DEPRECATED] Use zL2Gateways instead to support multiple gateways per device.',
+            'type': 'string',
+            },
+
+        'zLocalMacAddresses': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Local MAC Addresses',
+            'description': 'Suppress these MAC addresses when mapping interfaces.',
+            'type': 'string',
+            },
+        }
 
     def install(self, app):
-        super(ZenPack, self).install(app)
-        self._buildDeviceRelations()
-        self._getDefaultGateway(app.zport.dmd)
+        """Install ZenPack.
 
-    def _buildDeviceRelations(self):
-        # TODO: figure out how this is usefull and remove if it is not.
+        This method is called when the ZenPack is installed or upgraded.
+
+        Overrides Products.ZenModel.ZenPack.ZenPack.
+
+        """
+        super(ZenPack, self).install(app)
+        self.install_relationships()
+
+    def install_relationships(self):
+        LOG.info('Adding relationships to existing devices')
         for d in self.dmd.Devices.getSubDevicesGen():
+            add_relationships(d.__class__)
             d.buildRelations()
 
-    def _getDefaultGateway(self, dmd):
-        """
-        Try to determine zZenossGateway value from /proc/net/route information
-        """
-
-        if os.path.exists('/.dockerinit'):
-            log.warning(
-                'We are inside docker container. '
-                'Please set zZenossGateway manually.'
-            )
-            return
-
-        with open("/proc/net/route") as fh:
-            for line in fh:
-                fields = line.strip().split()
-                # Checks gateway value and flag if record actual
-                if fields[1] != '00000000' or not int(fields[3], 16) & 2:
-                    continue
-
-                # Converts packed value into IP address
-                val = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-                if not dmd.Devices.zZenossGateway:
-                    dmd.Devices.deleteZenProperty('zZenossGateway')
-                    log.info("Setting zZenossGateway value to {}".format(val))
-                    dmd.Devices.setZenProperty('zZenossGateway', val)
-                else:
-                    log.info(
-                        "zZenossGateway already has value %s",
-                        dmd.Devices.zZenossGateway
-                    )
-
     def remove(self, app, leaveObjects=False):
-        super(ZenPack, self).remove(app, leaveObjects)
+        """Remove ZenPack.
+
+        This method is called when the ZenPack is upgraded or removed.
+        The leaveObjects argument is True during upgrade, and False
+        during removal.
+
+        Overrides Products.ZenModel.ZenPack.ZenPack.
+
+        """
+        if not leaveObjects:
+            self.remove_relationships()
+            self.remove_catalogs()
+
+        super(ZenPack, self).remove(app, leaveObjects=leaveObjects)
+
+    def remove_relationships(self):
+        """Remove our relationship schema and instances from all devices."""
+        LOG.info('Removing relationships from devices')
+        for d in self.dmd.Devices.getSubDevicesGen():
+            remove_relationships(d.__class__)
+            d.buildRelations()
+
+    def remove_catalogs(self):
+        """Remove our catalogs."""
         try:
-            app.zport._delObject('macs_catalog')
+            self.zport._delObject('macs_catalog')
         except AttributeError:
-            pass  # already deleted
+            # already deleted
+            pass
+
+
+def add_relationships(cls):
+    """Add our relationships to cls._relations."""
+    our_relnames = set(DEVICE_RELATIONS)
+    existing_relnames = {x[0] for x in cls._relations}
+    new_reltuples = tuple(
+        (relname, ToManyCont(ToOne, DEVICE_RELATIONS[relname], 'switch'))
+        for relname in our_relnames.difference(existing_relnames))
+
+    if new_reltuples:
+        cls._relations += new_reltuples
+
+
+def remove_relationships(cls):
+    """Remove our relationships from cls._relations."""
+    our_relnames = set(DEVICE_RELATIONS)
+    existing_relnames = {x[0] for x in cls._relations}
+    if our_relnames.intersection(existing_relnames):    
+        cls._relations = tuple(
+            (relname, relspec) for relname, relspec in cls._relations
+            if relname not in our_relnames)
+
+
+# Patch Device._relations with our relationships.
+add_relationships(Device)

@@ -88,9 +88,9 @@
         />
 
     <utility
-        component=".zeplugins.L2SuppressEventsPlugin"
         provides="Products.ZenEvents.interfaces.IPostEventPlugin"
-        name="IL2SuppressEventsPlugin"
+        component=".zep.Layer2PostEventPlugin"
+        name="Layer2PostEventPlugin"
         />
 
     <adapter

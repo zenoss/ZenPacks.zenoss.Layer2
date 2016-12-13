@@ -30,9 +30,8 @@ import random
 import string
 
 from Products.ZenModel.IpInterface import IpInterface
+from ZenPacks.zenoss.Layer2 import connections
 from ZenPacks.zenoss.Layer2.utils import asmac
-from ZenPacks.zenoss.Layer2.connections_catalog import CatalogAPI
-
 
 def random_id(length=6):
     return ''.join(
@@ -173,9 +172,8 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], vlans=layers)
 
     if update_catalog:
-        catapi = CatalogAPI(dmd.zport)
-        catapi.add_node(d1)
-        catapi.add_node(d2)
+        connections.add_node(d1)
+        connections.add_node(d2)
 
 
 def add_interface(dev, macaddress='', clientmacs=[], vlans=None):

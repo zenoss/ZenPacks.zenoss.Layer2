@@ -124,8 +124,8 @@ class TestImpact(BaseTestCase):
         c(b, s)
 
         impacts, impacted_by = impacts_for(s)
-        self.assertTrue(len(impacts)==2)
-        self.assertTrue(len(impacted_by)==0)
+        self.assertEqual(len(impacts), 2)
+        self.assertItemsEqual(impacted_by, ['a', 'b'])
 
         impacts, impacted_by = impacts_for(a)
         self.assertNotIn('b', impacted_by)

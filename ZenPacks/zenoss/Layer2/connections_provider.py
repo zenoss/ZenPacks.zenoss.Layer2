@@ -35,8 +35,15 @@ import logging
 from zope.interface import Interface, implements, Attribute, invariant
 from zope.component import adapts
 
+from Products.ZenEvents import ZenEventClasses
+from Products.Zuul import getFacade
 from Products.Zuul.catalog.interfaces import IGloballyIndexed
 from Products.Zuul.catalog.interfaces import IIndexableWrapper
+
+from zenoss.protocols.protobufs.zep_pb2 import (
+    STATUS_NEW, STATUS_ACKNOWLEDGED, STATUS_SUPPRESSED,
+    SEVERITY_CRITICAL,
+    )
 
 
 log = logging.getLogger('zen.Layer2')
@@ -68,11 +75,11 @@ class InterfaceConnections(object):
 
     @property
     def clientmacs(self):
-        return [
-            x.upper()
-            for x in getattr(self.interface, 'clientmacs', [])
-            if x
-        ]
+        macs = getattr(self.interface, 'clientmacs')
+        if macs:
+            return [x.upper() for x in macs if x]
+        else:
+            return []
 
     @property
     def layers(self):
@@ -117,8 +124,8 @@ def connection_hash(c):
 
 def to_path(obj):
     ''' If object has path, replace it by that path, else do nothing '''
-    if hasattr(obj, 'getPrimaryUrlPath'):
-        return obj.getPrimaryUrlPath()
+    if hasattr(obj, 'getPrimaryId'):
+        return obj.getPrimaryId()
     else:
         return obj
 
@@ -183,13 +190,23 @@ class MACObject(object):
     def __init__(self, context):
         self.context = context
 
-    def getPrimaryUrlPath(self):
-        return "!" + self.context.getPrimaryUrlPath()
+    def getPrimaryId(self):
+        return "!" + self.context.getPrimaryId()
 
 
 class DeviceConnectionsProvider(BaseConnectionsProvider):
     def get_status(self):
-        return self.context.getStatus() == 0
+        device = self.context
+        zep = getFacade('zep', device.getDmd())
+        event_filter = zep.createEventFilter(
+            tags=[device.getUUID()],
+            element_sub_identifier=[""],
+            event_class=[ZenEventClasses.Status_Ping],
+            severity=[SEVERITY_CRITICAL],
+            status=[STATUS_NEW, STATUS_ACKNOWLEDGED, STATUS_SUPPRESSED])
+
+        result = zep.getEventSummaries(0, filter=event_filter, limit=0)
+        return int(result['total']) == 0
 
     def get_connections(self):
         for interface in self.context.os.interfaces():
@@ -213,8 +230,14 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
 
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
-                ip._p_invalidate()
-            interface._p_invalidate()
+
+                # Invalidation saves memory, but undoes uncommitted changes.
+                if ip._p_jar and not ip._p_changed:
+                    ip._p_invalidate()
+
+            # Invalidation saves memory, but undoes uncommitted changes.
+            if interface._p_jar and not interface._p_changed:
+                interface._p_invalidate()
 
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):
@@ -226,7 +249,10 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             net = self.context
             yield Connection(net, (dev, ), ['layer3', ])
             yield Connection(dev, (net, ), ['layer3', ])
-            ip._p_invalidate()
+
+            # Invalidation saves memory, but undoes uncommitted changes.
+            if ip._p_jar and not ip._p_changed:
+                ip._p_invalidate()
 
 
 def get_vlans(iface):
