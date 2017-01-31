@@ -402,6 +402,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.3.1
+* Improve modeling performance for devices with many component types. (ZPS-736)
+
 ;1.3.0
 * Add "Show MAC addresses" and "Show dangling connectors" to network map.
 * VLAN and VXLAN layers no longer selected by default on network map.
