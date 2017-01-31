@@ -98,19 +98,27 @@ def get_clients_links(self):
     return result
 
 
-@monkeypatch('Products.ZenModel.Device.Device')
-def setLastChange(self, value=None):
-    original(self, value)  # NoQA: injected by monkeypatch decorator
+@monkeypatch('Products.ZenHub.services.ModelerService.ModelerService')
+def remote_applyDataMaps(self, device, maps, *args, **kwargs):
+    # NoQA: "original" injected by monkeypatch.
+    changed = original(self, device, maps, *args, **kwargs)
 
-    try:
-        # If this impacts modeling performance too much we could remove it, and
-        # let zenmapper handle it on its next cycle. All this buys us is more
-        # immediate updating of Layer2 data after devices are remodeled.
-        connections.add_node(self)
-    except Exception:
-        # Redis might not be available. We'll just let zenmapper add
-        # this node on its next cycle.
-        pass
+    if changed:
+        try:
+            # If this impacts modeling performance too much we could remove
+            # it, and let zenmapper handle it on its next cycle. All this
+            # buys us is more immediate updating of Layer2 data after
+            # devices are remodeled.
+            device = self.getPerformanceMonitor().findDeviceByIdExact(device)
+            if device:
+                connections.add_node(device)
+
+        except Exception:
+            # Redis might not be available. We'll just let zenmapper add
+            # this node on its next cycle.
+            pass
+
+    return changed
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
