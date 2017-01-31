@@ -1,0 +1,544 @@
+<style>
+div.thumbnail {
+    clear: right;
+    float: right;
+    margin: 0 0 10px 10px;
+    padding: 0px;
+    width: 320px;
+    font-size: small;
+    font-style: italic;
+}
+
+br.clear {
+    clear: right;
+}
+
+dd {
+    font-size: smaller;
+}
+</style>
+<h1 id="title">Layer2 ZenPack</h1>
+<p>Monitoring of OSI Layer 2 networking infrastructure.</p>
+
+<h2 id="background">Background</h2>
+<p>This ZenPack provides support to model OSI Layer 2 (or data link layer) topology. That topology information is used to suppress events from devices connection to which was lost because they are connected to broken devices. Data collection is performed using SNMP.</p>
+
+<h2 id="releases">Releases</h2>
+<dl id="releases-1.3.1">
+    <dt>Version 1.3.1 <a class="external" href="http://wiki.zenoss.org/download/zenpacks/ZenPacks.zenoss.Layer2/1.3.1/ZenPacks.zenoss.Layer2-1.3.1.egg" rel="nofollow">Download</a></dt>
+    <dd>Released: 2017-01-31</dd>
+    <dd>Compatible with Zenoss 4.2 - 5.2.</dd>
+    <dd>Requires:
+        <a href="/product/zenpacks/pythoncollector">PythonCollector ZenPack >= 1.1</a>
+    </dd>
+</dl>
+
+<dl id="releases-1.2.2">
+    <dt>Version 1.2.2 <a class="external" href="http://wiki.zenoss.org/download/zenpacks/ZenPacks.zenoss.Layer2/1.2.2/ZenPacks.zenoss.Layer2-1.2.2.egg" rel="nofollow">Download</a></dt>
+    <dd>Released: 2016-12-13</dd>
+    <dd>Compatible with Zenoss 4.2 - 5.1.</dd>
+    <dd>Requires:
+        <a href="/product/zenpacks/pythoncollector">PythonCollector ZenPack >= 1.1</a>
+    </dd>
+</dl>
+
+<dl id="releases-1.0.3">
+    <dt>Version 1.0.3 <a class="external" href="http://wiki.zenoss.org/download/zenpacks/ZenPacks.zenoss.Layer2/1.0.3/ZenPacks.zenoss.Layer2-1.0.3.egg" rel="nofollow">Download</a></dt>
+    <dd>Released: 2015-07-31</dd>
+    <dd>Compatible with Zenoss 4.2 - 5.0.</dd>
+    <dd>Requires:
+        <a href="/product/zenpacks/pythoncollector">PythonCollector ZenPack >= 1.1</a>
+    </dd>
+</dl>
+
+<h2 id="contents">Contents</h2>
+<ol>
+    <li><a href="#features">Features</a>
+        <ol>
+            <li><a href="#discovered-components">Discovered Components</a></li>
+            <li><a href="#monitoring">Monitoring</a></li>
+            <li><a href="#event-suppression">Event Suppression</a></li>
+        </ol>
+    </li>
+    <li><a href="#network-map">Network Map</a>
+        <ol>
+            <li><a href="#filtering">Filtering</a></li>
+            <li><a href="#colors-and-shapes">Colors and Shapes</a></li>
+            <li><a href="#interaction">Interaction</a></li>
+        </ol>
+    </li>
+    <li><a href="#zenmapper-daemon">zenmapper Daemon</a></li>
+    <li><a href="#writing-your-own-connection-provider">Writing Your Own Connection Provider</a></li>
+    <li><a href="#usage">Usage</a>
+        <ol>
+            <li><a href="#collecting-switch-port-clients">Collecting Switch Port Clients</a></li>
+            <li><a href="#collecting-network-device-neighbors">Collecting Network Device Neighbors</a></li>
+        </ol>
+    </li>
+    <li><a href="#service-impact">Service Impact</a>
+        <ol>
+            <li><a href="#service-impact-relationships">Service Impact Relationships</a></li>
+        </ol>
+    </li>
+    <li><a href="#troubleshooting">Troubleshooting</a>
+        <ol>
+            <li><a href="#zenoss-5.0">Zenoss 5.0</a></li>
+            <li><a href="#open-vswitch-zenpack">Open vSwitch ZenPack</a></li>
+            <li><a href="#empty-map-links-for-device">Empty Map/Links for Device</a></li>
+            <li><a href="#layer2-forwarding-table">Layer2 Forwarding Table</a></li>
+            <li><a href="#impact">Impact</a></li>
+            <li><a href="#limitations">Limitations</a></li>
+            <li><a href="#more-information">More Information</a></li>
+        </ol>
+    </li>
+    <li><a href="#installed-items">Installed Items</a>
+        <ol>
+            <li><a href="#modeler-plugins">Modeler Plugins</a></li>
+            <li><a href="#configuration-properties">Configuration Properties</a></li>
+            <li><a href="#daemons">Daemons</a></li>
+        </ol>
+    </li>
+    <li><a href="#changes">Changes</a></li>
+</ol>
+
+<h2 id="features">Features</h2>
+<p>The features added by this ZenPack can be summarized as follows. They are each detailed further below.</p>
+
+<ul>
+    <li>Discovery and periodic remodeling of Neighbor Switches using CDP/LLDP.</li>
+    <li>Discovery and periodic remodeling of MAC address or forwarding tables.</li>
+    <li>Event suppression based on discovered forwarding table information.</li>
+</ul>
+
+<h3 id="discovered-components">Discovered Components</h3>
+<p>Assigning the <i>zenoss.snmp.CDPLLDPDiscover</i> modeler plugin to device(s) will result in SNMP discovery of neighbor switches using a combination of CISCO-CDP-MIB and LLDP-MIB. The discovered neighbor switch information will be shown as <i>Neighbor Switches</i> in the device's component list.</p>
+
+<p>Assigning the <i>zenoss.snmp.ClientMACs</i> modeler plugin to device(s) will result in SNMP discovery of the device's forwarding tables using BRIDGE-MIB. This information will be stored on existing <i>Network Interfaces</i>, and won't result in any new components being created.</p>
+
+<h3 id="monitoring">Monitoring</h3>
+<p>This ZenPack performs no monitoring.</p>
+
+<h3 id="event-suppression">Event Suppression</h3>
+<p>This ZenPack supports two types of event suppression.</p>
+
+<ul>
+    <li>Suppression of ping failures when one or more upstream ping failures can be identified as the reason for the failure.</li>
+    <li>Suppression of non-ping events on devices with open ping failure events.</li>
+</ul>
+
+<p>We will use the term <i>symptomatic event</i> to refer to events that are a symptom of a problem, but not the root cause.</p>
+
+<h4 id="ping-event-suppression">Ping Event Suppression</h4>
+<p>Suppression of ping events can be enabled on a per-device or device class basis by enabling the <i>zL2SuppressIfPathsDown</i> configuration property. This mode of suppression requires that the <i>zenoss.snmp.ClientMACs</i> modeler plugin be enabled and successfully functioning on all network devices such as switches and routers that you believe could be a root cause of other monitored devices becoming unreachable.</p>
+
+<p>There are two ways symptomatic ping events can be suppressed. By manually configuring the ultimate gateway(s) of the device(s) using the <i>zL2Gateways</i> property, or by leaving the <i>zL2Gateways</i> property empty and setting the <i>zL2PotentialRootCause</i> property appropriately so that the gateway(s) can be automatically discovered.</p>
+
+<img src="/sites/default/files/zenpack/Layer2/Layer2_datacenter_topology_diagram.png">
+
+<p>The diagram above depicts a common data center network topology where each rack has a redundant pair of access switches sometimes referred to as top-of-rack switches. Each of those top-of-rack switches connect to a redundant pair of end-of-row switches. Each of those end-of-row switches connect to a redundant pair of core switches for the data center. Then perhaps the pair of core switches connect to a pair of gateway routers to connect the data center to the Internet or other data centers over private links. In this kind of topology the layer 3 gateway for hosts is often the core switches.</p>
+
+<p>In this type of topology the gateways for host-1-1-1 can be automatically discovered to be rack-1-1a and rack-1-1b if zL2PotentialRootCause is enabled for the switches, and disabled for the hosts. zL2PotentialRootCause should be enabled for devices that could potentially be a root cause for other devices becoming unreachable, and disabled for devices that cannot be a root cause. This property is important to prevent root caused events from incorrectly being suppressed.</p>
+
+<p>By relying on this automatic discovery of gateways we can only achieve suppression of events from the hosts. We'd get all of the host events suppressed in the case of an entire data center outage, but all of the rack, row, core, and gateway events would remain unsuppressed and it would be left as manual identification of the gateways as the root cause.</p>
+
+<p>To achieve multi-hop suppression the zL2Gateways property must be configured. Despite the name of the property containing "L2", the configured gateways need not be restricted to the layer 2 gateways. In the example topology above, the best value for zL2Gateways would likely be gw-a and gw-b (one per line). It's important to use the Zenoss device id(s) for the gateways, and to enter one per line in zL2Gateways. There's no limit to the number of gateways, but more than two probably isn't realistic.</p>
+
+<p>With zL2Gateways set to gw-a and gw-b in the above topology, a complete failure of the data center would result in all events being suppressed except for two events: a ping failure on each of gw-a and gw-b. This is assuming that zL2SuppressIfDeviceDown is enabled. See ''Non-Ping Event Suppression' below for more information on zL2SuppressIfDeviceDown.</p>
+
+<h4 id="non-ping-event-suppression">Non-Ping Event Suppression</h4>
+<p>Suppression of non-ping events can be enabled on a per-device or device class basis by enabling the zL2SuppressIfDeviceDown configuration property. No other configuration or modeling is necessary. Events will only be suppressed for a device with this property enabled when they have a new, acknowledged, or suppressed critical event in the /Status/Ping event class. This suppression is effective at reducing the potential clutter of symptomatic events when a device is no longer reachable on the network either because it has failed, or because the Zenoss collector is no longer able to reach it.</p>
+
+<p>This suppression can be used together with ping event suppression for the most complete reduction of symptomatic event clutter.</p>
+
+<h4 id="event-suppression-performance">Event Suppression Performance</h4>
+<p>All forms of event suppression as described above have a cost in terms of event processing performance. When zL2SuppressIfDeviceDown is enabled, there is a small additional overhead for processing all events. When zL2SuppressIfPathsDown is enabled and first-hop suppression is performed using either automatic gateway discovery or manual gateway configuration, there is another small overhead for processing ping failure events.</p>
+
+<p>In worst case scenario testing the effective processing rate for non-ping events with the zL2SuppressIfDeviceDown configuration is approximately 80%, 75% for processing ping failure events in the case of a first-hop switch failure, and 70% in the case of a third-hop gateway failure.</p>
+
+<p>All suppression is performed by an event plugin executed within zeneventd processes. Given that zeneventd can be scaled by adding more workers/instances, this additional event processing overhead can be offset by running more zeneventd instances as event processing throughput needs require.</p>
+
+<p>In order to achieve acceptable event processing performance, a variety of caches are used within zeneventd processes. These caches can lead to events not being suppressed in some cases when the configuration, model, or status of devices is coming from stale cache information. The following types of caches are used with different timeouts.</p>
+
+<h5 id="caches">Caches</h5>
+<ul>
+    <li>Device status changes can take up to 50 seconds to affect suppression.</li>
+    <li>Configuration changes can take up to 10 minutes to affect suppression.</li>
+    <li>Modeling changes can take up to 55 minutes to affect suppression.</li>
+</ul>
+
+<h2 id="network-map">Network Map</h2>
+<div class="thumbnail"><a href="/sites/default/files/zenpack/Layer2/Layer2_network_map.png"><img src="/sites/default/files/zenpack/Layer2/Layer2_network_map.png"></a></div>
+
+<p>The network map can be used to see connections between devices. The network map can be found in two places. The first is under Infrastructure -> Network Map where you can manually select the device from which to draw the network map, or from individual devices by clicking on ''Network Map'' from the device's left navigation pane. This will present a network map centered on the current device.</p>
+
+<h3 id="filtering">Filtering</h3>
+<p>There are several controls that can be used to filter and otherwise control what you see on the network map. You must click the "Apply" button after adjusting any of these controls to see the resulting network map.</p>
+
+<ul>
+    <li>Root device or component</li>
+    <li>Maximum hops from root</li>
+    <li>Show MAC addresses</li>
+    <li>Show dangling connections</li>
+    <li>Layers</li>
+</ul>
+
+<p>The network map must start with a node from which connections can be followed. Setting the "Root device or component" is what allows that starting node to be chosen.</p>
+
+<p>The maximum number of hops controls how many hops outward from the root node will be followed. This is the primary mechanism to reduce the size of the resulting network map.</p>
+
+<p>The "Show MAC addresses" option allows more detail to be seen about layer2 connections at the expense of a much busier map. When "Show MAC addresses" is not selected, the map will attempt to consolidate bridge domains into a single cloud node that connects all nodes in the bridge domain. This emulates what you see with layer3 networks. When "Show MAC addresses" isn't selected, individual MAC address nodes used to make connections from node to node will be shown. These MAC addresses can often be clicked to link directly to the network interface associated with the MAC address.</p>
+
+<p>The "Show dangling connections" option allows connector-type nodes such as MAC addresses and IP networks that don't connect other nodes to be displayed. By default these are filtered out to prevent the network map from being cluttered by MAC addresses and IP networks that are only connected to a single device.</p>
+
+<p><strong>Note</strong>: The network map will only display a maximum of 1,000 nodes to avoid performance issues both on the Zenoss server, and in the web browser. If you attempt to view a network map with more than 1,000 nodes, a error message will appear to inform you that the map contains too many nodes, and to adjust the filters.</p>
+
+<h4 id="layers">Layers</h4>
+<p>The network map can be filtered by layers. Layers are tags that Zenoss automatically adds to each link between devices and components. For example, when Zenoss identifies that host is connected to a switch, it will create nodes and links such as the following.</p>
+
+<blockquote>
+    (host) -&gt; (host MAC address) -&gt; (switch MAC address) -&gt; (switch)
+</blockquote>
+
+<p>Each of the arrows above represents a link, and in this case each of those links will have the "layer2" tag.</p>
+
+<p>In the same way, if Zenoss identifies that a host is on the same IP network as a router that's its default gateway, it will create nodes and links such as the following.</p>
+
+<blockquote>
+    (host) -&gt; (192.0.2.0/24) -&gt; (router)
+</blockquote>
+
+<p>Each of the arrows above represents a link, and in this case each of those links will have the "layer3" tag.</p>
+
+<p>These layers can be used to filter the network map to just the kind of links you're interested in.</p>
+
+<p>The VLAN and VXLAN layers have special handling. If any VLAN or VXLAN layer is selected, the layer2 layer will automatically be included. This is done because you likely wouldn't see the VLAN or VXLAN layer(s) chosen without also following layer2 links.</p>
+
+<p>The selected layers operate as an "OR" filter on the map. Choosing the layer2 and layer3 layers will cause all nodes to be displayed that have at least one of the selected filters. There is currently no support for "AND" filters, or negations.</p>
+
+<h3 id="colors-and-shapes">Colors and Shapes</h3>
+
+<p>Different colors and shapes are used on the network map to convey information about the nodes and links on the map.</p>
+
+<p>The fill color of each node's circle depends on the highest severity event currently open on the node. The colors only differ from Zenoss' normal event colors for info, debug, and clear severity events for higher clarity on the map.</p>
+
+<h4 id="node-colors">Node Colors</h4>
+<ul>
+    <li>Critical = Red</li>
+    <li>Error = Orange</li>
+    <li>Warning = Yellow</li>
+    <li>Info = Bright Green</li>
+    <li>Debug = Dark Green</li>
+    <li>Clear = White</li>
+</ul>
+
+<p>The map's current root node will be circled with a purple band.</p>
+
+<p>The links between nodes each have a color and a shape.</p>
+
+<h4 id="link-color">Link Color</h4>
+<ul>
+    <li>Blue = layer3</li>
+    <li>Green = layer2</li>
+    <li>Yellow = VLAN</li>
+    <li>Gray = Default</li>
+</ul>
+
+<h4 id="link-shape">Link Shape</h4>
+<ul>
+    <li>Circle = Default</li>
+    <li>Diamond = VLAN</li>
+</ul>
+
+<h3 id="interaction">Interaction</h3>
+<p>You can interact with the map using your pointer in a number of ways.</p>
+
+<ul>
+    <li>Clicking and Dragging</li>
+    <li>Scrolling</li>
+    <li>Left-Clicking</li>
+    <li>Right-Clicking</li>
+</ul>
+
+<p>The map can be panned by clicking and dragging on the map's background. Each node can be moved by clicking and dragging the node. Panning the map won't cause nodes to reorganize, but moving nodes will.</p>
+
+<p>Scrolling, pinching, or mouse-wheeling can all be used to zoom in and out.</p>
+
+<p>Left-clicking on a node will navigate to that node's default page in Zenoss. This only works for nodes that have a page in Zenoss such as devices, components, IP networks, and some MAC addresses. Nothing will happen if a node with no default page is left-clicked.</p>
+
+<p>Right-clicking a node will open its context menu. See below for node context menu details.</p>
+
+<h4 id="context-menu">Context Menu</h4>
+<p>Each node on the network map can be right-clicked to open its context menu. Some of the following options may be available depending on the node.</p>
+
+<ul>
+    <li>Pin Down</li>
+    <li>Put Map Root Here</li>
+    <li>Device Info</li>
+    <li>Open Node in New Tab</li>
+</ul>
+
+<p>The "Pin Down" option freezes the selected node in place on the network map. It will stay wherever you place it, and any unpinned nodes will reorganize around it.</p>
+
+<p>Choosing "Put Map Root Here" is equivalent to changing the "Root device or component" option, but saves typing when you see the node you want to be the center on the map. Some types of nodes such as MAC addresses can't be the root.</p>
+
+<p>The "Device Info" option opens a small pop-up over the network map with more information about the selected node. This option is only available for device and component nodes.</p>
+
+<p>The "Open Node in a New Tab" option will open another tab in your browser to the default Zenoss page for the selected device, component, or IP network. Some types of nodes such as MAC addresses can't be opened in a new tab.</p>
+
+<h2 id="zenmapper-daemon">zenmapper daemon</h2>
+<p>To update catalog with connections for network map, zenmapper daemon is used. It runs every 5 minutes by default, but this option could be changed by passing desired number of seconds to the <code>--cycletime</code> argument.</p>
+
+<p>By default zenmapper configured to start 2 workers. This may be changed in config file by setting "workers" option value. Consider to use more than 2 workers in case you have >1000 devices monitored in Zenoss system. In small or test environment one may disable workers by setting it's value to 0. This affects memory used by zenmapper as well as speed of indexing L2 connections.</p>
+
+<p>zenmapper connects to the ZODB and indexes all the connections provided from providers in ZODB catalog. On 4.2.x RM, running zenmapper on the remote collectors will do nothing because zenmapper runs against the hub. If desired, the additional zenmapper can be disabled by updating <code>/opt/zenoss/etc/daemon.txt</code> on the remote collector.</p>
+
+<h2 id="writing-your-own-connection-provider">Writing Your Own Connection Provider</h2>
+<p>Imagine, for example that we want to display on the network map connections of VMware NSX components. They are modeled in NSX ZenPack.</p>
+
+<p>We need to create new class, called for example NSXConnectionsProvider, which inherit from BaseConnectionsProvider, like this:</p>
+
+<pre>
+# our provider will inherit from this:
+from ZenPacks.zenoss.Layer2.connections_provider import BaseConnectionsProvider
+
+# and will yield this:
+from ZenPacks.zenoss.Layer2.connections_provider import Connection
+
+class NSXConnectionsProvider(BaseConnectionsProvider):
+    def get_connections(self):
+        # self.context is a entity for which we will provide connections
+        for switch in self.context.nsxvirtualSwitchs():
+            # so, our device is called NSXManager, and it has switches
+            # yield connections to the switches
+            yield Connection(self.context, (switch, ), ('layer3', 'nsx'))
+
+            # each switch has interfaces:
+            for i in switch.nsxinterfaces():
+                # yield connection to the interfaces
+                yield Connection(switch, (i, ), ['layer3', 'nsx'])
+
+                # and each interface has many to one connection to edges:
+                yield Connection(i, (i.nsxedge(), ), ['layer3', 'nsx'])
+</pre>
+
+<p>So, we described how to get connections, now we need to tell zenoss, that this will be connections provider for any NSXManager devices. We do it by registering adapter in our ZenPack's <code>configure.zcml</code>:</p>
+
+<pre>
+&lt;configure zcml:condition=&quot;installed ZenPacks.zenoss.Layer2.connections_provider&quot;&gt;
+    &lt;!-- Add this adapters only when module connections_provider is possible to import
+         (Which means that there is installed recent version of Layer2). --&gt;
+    &lt;adapter
+        factory=&quot;.connections_provider.NSXConnectionsProvider&quot;
+        for=&quot;ZenPacks.zenoss.NSX.NSXManager.NSXManager&quot;
+        provides=&quot;ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider&quot;
+        /&gt;
+&lt;/configure&gt;
+</pre>
+
+<p>Another way to include adapters, is to put them in separate file, called for example <code>layer2.zcml</code>:</p>
+
+<pre>
+<?xml version = "1.0" encoding = "utf-8"?>
+    &lt;?xml version = &quot;1.0&quot; encoding = &quot;utf-8&quot;?&gt;
+&lt;configure
+    xmlns=&quot;http://namespaces.zope.org/zope&quot;
+    xmlns:zcml=&quot;http://namespaces.zope.org/zcml&quot;
+    &gt;
+
+    &lt;adapter
+        factory=&quot;.connections_provider.DeviceConnectionsProvider&quot;
+        for=&quot;.HyperVVSMS.HyperVVSMS&quot;
+        provides=&quot;ZenPacks.zenoss.Layer2.connections_provider.IConnectionsProvider&quot;
+        /&gt;
+
+&lt;/configure&gt;
+</pre>
+
+<p>and than include that file conditionally:</p>
+
+<pre>
+    &lt;include file=&quot;layer2.zcml&quot;
+             xmlns:zcml=&quot;http://namespaces.zope.org/zcml&quot;
+             zcml:condition=&quot;installed ZenPacks.zenoss.Layer2.connections_provider&quot; /&gt;
+</pre>
+
+<p>To test connections that your provider yields, you could run</p>
+
+<pre>
+zenmapper run -v10 -d &lt;name or id of your modeled device&gt;
+</pre>
+
+<p>And then look it up on the network map.</p>
+
+<h2 id="usage">Usage</h2>
+<p>This ZenPack has two separate capabilities. The first is to collect clients connected to switch ports so that event suppression can be done when the switch fails, and the second is to discover neighbor relationships between network devices using the CDP (Cisco Discovery Protocol) and LLDP (Link Layer Discover Protocol).</p>
+
+<h3 id="collecting-switch-port-clients">Collecting Switch Port Clients</h3>
+<p>To enable discovery of clients connected to switch ports you must enable the <code>zenoss.snmp.ClientMACs</code> modeler plugin for the switch devices. There is no need to enable this plugin for hosts, servers, or other endpoint devices. It is recommended to only assign the modeler plugin to access switch to which monitored servers are connected.</p>
+
+<p>The discovery is done using BRIDGE-MIB forwarding tables, so it's a prerequisite that the switch supports BRIDGE-MIB.</p>
+
+<h3 id="collecting-network-device-neighbors">Collecting Network Device Neighbors</h3>
+<p>To collect neighbor information from network devices that support CDP or LLDP, you must enable the <code>zenoss.snmp.CDPLLDPDiscover</code> modeler plugin for the devices.</p>
+
+<h2 id="service-impact">Service Impact</h2>
+<p>When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.</p>
+
+<h3 id="service-impact-relationships">Service Impact Relationships</h3>
+<ul>
+    <li>Device impacted by upstream switch device.</li>
+</ul>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="zenoss-5.0">Zenoss 5.0</h3>
+<p>If you are re-installing or updating this ZenPack on Zenoss 5.0, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.</p>
+
+<h3 id="open-vswitch-zenpack">Open vSwitch ZenPack</h3>
+<p>Open vSwitch ZenPack version prior to 1.1.1 should be updated or removed before Layer2 ZenPack installation.</p>
+
+<h3 id="empty-map-links-for-device">Empty Map/Links for Device</h3>
+<p>In case index for certain device is broken, one may force zenmapper to reindex this specific device. Daemon should be run with <code>--force</code> option.</p>
+
+<h3 id="layer2-forwarding-table">Layer2 Forwarding Table</h3>
+<p>Let's discuss Layer2 connections in particular.</p>
+
+<p>The essential mechanism that distinguishes network switches from network hubs is the MAC forwarding table. Instead of broadcasting incoming link layer frames to all it's interfaces, as hubs do, switches look into the forwarding table to find out which particular interface is connected to the destination device. The switch learns which devices are connected to which interface by looking at the source MAC address of incoming frames. Those MAC addresses are called "client MAC addresses".</p>
+
+<p>For zenoss to discover Layer 2 connection between some devices, MAC address of some interface of one device should be equal to client MAC address of some interface of other device. You could check if client MAC addresses for interface are modeled by looking at it's "Clients MAC addresses" display. It there are none, check that <code>zenoss.snmp.ClientMACs</code> modeler plugin is bound to device, and remodel device.</p>
+
+<p>It is also possible that there are no MAC address required to discover connection in forwarding table. To check that, you could run debug utility <a href="https://github.com/zenoss/ZenPacks.zenoss.Layer2/blob/develop/bridge_snmp.py">bridge_snmp.py</a>:</p>
+
+<pre>
+python bridge_snmp.py clientmacs -c &lt;community_string&gt; &lt;host&gt;
+</pre>
+
+<p>and see if your client mac address is visible at switch at all.</p>
+
+<p>Records in forwarding table are aged pretty fast, by default in 5 minutes. So, when there were no network activity on connection for more than 5 minutes, entry will be removed from switch forwarding table. You could check <code>dot1dTpAgingTime</code> object to know exact timeout period in seconds:</p>
+
+<pre>
+$ snmpget -v2c -c &lt;community_string&gt; &lt;host&gt; 1.3.6.1.2.1.17.4.2.0
+SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
+</pre>
+
+<h3 id="impact">Impact</h3>
+<p>This ZenPack also adds impact relation for layer2 connections. Switches impact devices connected to them. But this will work only when such connection is present on network map (see two previous sections for guide on troubleshooting that).</p>
+
+<p>If there is connection on network map, but still, no impact relation, than, probably impact relations were not rebuilt. You could do that by indexing device, for example by changing some field on overview and saving it. Or modeling device again.</p>
+
+<h3 id="limitations">Limitations</h3>
+<p>There are no client MACs data on interfaces modeled for the first time. This happens because <code>zenoss.snmp.ClientMACs</code> plugin runs before interfaces are modeled by another network modeler plugin (for example <code>cisco.snmp.Interfaces</code> or <code>zenoss.snmp.InterfaceMap</code>), so there is no entities to save this attribute on. Currently it is not possible to define order of modeler execution, so this remains a limitation.</p>
+
+<p>Possible workaround is to wait for next model cycle or just model the device again manually.</p>
+
+<h3 id="more-information">More Information</h3>
+<p>If you cannot find the answer in the documentation, then Resource Manager (Service Dynamics)
+    users should contact <a href="https://support.zenoss.com">Zenoss Customer Support</a>. Core users can use the #zenoss IRC channel or the community.zenoss.org forums.</p>
+
+<h2 id="installed-items">Installed Items</h2>
+<p>Installing this ZenPack will add the following items to your Zenoss system.</p>
+
+<h3 id="modeler-plugins">Modeler Plugins</h3>
+<ul>
+    <li>zenoss.snmp.CDPLLDPDiscover</li>
+    <li>zenoss.snmp.ClientMACs</li>
+</ul>
+
+<h3 id="configuration-properties">Configuration Properties</h3>
+<ul>
+    <li>zL2Gateways (default: [])</li>
+    <li>zL2PotentialRootCause (default: True)</li>
+    <li>zL2SuppressIfDeviceDown (default: False)</li>
+    <li>zL2SuppressIfPathsDown (default: False)</li>
+    <li>zLocalMacAddresses (default: ["00:00:00:00:00:00"])</li>
+    <li>zZenossGateway (deprecated by zL2Gateways)</li>
+</ul>
+
+<h3 id="daemons">Daemons</h3>
+<ul>
+    <li>zenmapper</li>
+</ul>
+
+<h2 id="changes">Changes</h2>
+
+<h3 id="changes-1.3.1">1.3.1</h3>
+<ul>
+    <li>Improve modeling performance for devices with many component types. (ZPS-736)</li>
+</ul>
+
+<h3 id="changes-1.3.0">1.3.0</h3>
+<ul>
+    <li>Add "Show MAC addresses" and "Show dangling connectors" to network map.</li>
+    <li>VLAN and VXLAN layers no longer selected by default on network map.</li>
+    <li>Support for multiple gateways per device or device class. (ZEN-24767)</li>
+    <li>Add zL2Gateways property. (ZEN-24767)</li>
+    <li>Deprecate zZenossGateway property. (ZEN-24767)</li>
+    <li>Add zL2PotentialRootCause to allow automatic gateways discovery.</li>
+    <li>Add zL2SuppressIfPathsDown to toggle ping event suppression.</li>
+    <li>Add zL2SuppressIfDeviceDown to toggle non-ping event suppression.</li>
+    <li>Add rootCauses event field for suppressed events.</li>
+    <li>Improve event suppression performance and reliability.</li>
+    <li>Add zLocalMacAddresses to remove unwanted interfaces in maps. (ZEN-23182)</li>
+    <li>Add client discovery support using Q-BRIDGE MIB. (ZEN-25336)</li>
+    <li>Fix "NeighborSwitch" errors after removing the ZenPack. (ZEN-26189)</li>
+</ul>
+
+<h3 id="changes-1.2.2">1.2.2</h3>
+<ul>
+    <li>Fix potential 2 minute modeling delay in Zenoss 4.</li>
+    <li>Fix "Connection refused" when Redis not available.</li>
+</ul>
+
+<h3 id="changes-1.2.1">1.2.1</h3>
+<ul>
+    <li>Added "workers" option to zenmapper daemon.</li>
+    <li>Refactored connection catalog to use Redis as a storage. This prevent from cases where ZoDB grows over time</li> (ZEN-22834).
+    <li>Layer2 index now don't touch/modify ZoDB storage in any of cases.</li>
+    <li>Devices added to index in time they changed. Zenmapper daemon adds to index only differences, e.g. indexing is</li> incremental now.
+    <li>In time when zenpack installed/upgraded zenmapper daemon will create initial index. This occurs only on first run.</li> And it may take several minutes depending on number of devices.
+</ul>
+
+<h3 id="changes-1.1.1">1.1.1</h3>
+<ul>
+    <li>Fix page help code in Layer2 ZP conflict with other ZenPacks (ZEN-21264)</li>
+</ul>
+
+<h3 id="changes-1.1.0">1.1.0</h3>
+<ul>
+    <li>When filtering by VLAN show also layer2 links that are VLAN-unaware (ZEN-20946)</li>
+    <li>Add checkbox that allows to show full map</li>
+    <li>Fix Cisco community string indexing in ClientMACs modeler plugin.</li>
+    <li>Fix issue getting client MAC address from labeled VLAN interfaces. (ZEN-19874)</li>
+    <li>Fix Network Map - Missing link from Cisco device to subnet on depth 2,3,4 (ZEN-18603)</li>
+    <li>Make Impact use new connections catalog instead of macs catalog (ZEN-18636)</li>
+    <li>Fix Broken link for Subnet node in Network map (ZEN-20749)</li>
+</ul>
+
+<h3 id="changes-1.0.3">1.0.3</h3>
+<ul>
+    <li>Remove macs_catalog when removing the ZenPack. (ZEN-17967)</li>
+    <li>Replace Layer2Info template with ClientMACs modeler plugin.</li>
+</ul>
+
+<h3 id="changes-1.0.2">1.0.2</h3>
+<ul>
+    <li>Fix modeling of CDP neighbor switches with IPv6 addresses. (ZEN-17248)</li>
+    <li>Avoid community@VLAN context querying for non-Cisco switches. (ZEN-17258)</li>
+    <li>Change default cycletime for Layer2Info from 30 minutes to 12 hours. (ZEN-17031)</li>
+</ul>
+
+<h3 id="changes-1.0.1">1.0.1</h3>
+<ul>
+    <li>Fix device overview links error. (ZEN-14063)</li>
+    <li>Remove add/remove from catalog logging. (ZEN-15465)</li>
+    <li>Fix usage of incorrect community VLAN suffixes on BRIDGE-MIB queries. (ZEN-16951)</li>
+    <li>Fix looping of impact relationships between switches. (ZEN-17020)</li>
+    <li>Fix incorrect modeling of neighbor switches and improve modeling time. (ZEN-17023)</li>
+    <li>Stop binding Layer2Info template to /Network by default. (ZEN-17035)</li>
+</ul>
+
+<h3 id="changes-1.0.0">1.0.0</h3>
+<ul>
+    <li>Initial release</li>
+</ul>
