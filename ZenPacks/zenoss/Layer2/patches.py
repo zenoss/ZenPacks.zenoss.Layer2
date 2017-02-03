@@ -9,6 +9,7 @@
 
 import urllib
 import logging
+import types
 from collections import defaultdict
 
 import Globals
@@ -21,6 +22,11 @@ from Products.Zuul.form import schema
 from Products.Zuul.infos import ProxyProperty
 from Products.Zuul.infos.component.ipinterface import IpInterfaceInfo
 from Products.Zuul.interfaces.component import IIpInterfaceInfo
+
+try:
+    from ZenPacks.zenoss.vSphere.Endpoint import Endpoint as vSphereEndpoint
+except ImportError:
+    vSphereEndpoint = types.NoneType
 
 from . import connections
 from . import network_tree
@@ -110,7 +116,7 @@ def remote_applyDataMaps(self, device, maps, *args, **kwargs):
             # buys us is more immediate updating of Layer2 data after
             # devices are remodeled.
             device = self.getPerformanceMonitor().findDeviceByIdExact(device)
-            if device:
+            if device and not isinstance(device, vSphereEndpoint):
                 connections.add_node(device)
 
         except Exception:

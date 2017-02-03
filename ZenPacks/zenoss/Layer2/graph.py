@@ -299,13 +299,19 @@ class Origin(object):
             self.set_checksum(checksum)
             return
 
+        # Pre-sort things to avoid repeatedly sorting them later.
+        all_layers = sorted(all_layers)
+        tbsbl = {
+            source: {layer: sorted(targets) for layer, targets in layers.iteritems()}
+            for source, layers in tbsbl.iteritems()}
+
         # perform all requests in one pipe
         pipe = PipelineTracker(self.redis)
 
         # request existing layer data
         pipe(
             "ns_layers_jsons",
-            "HMGET", self.ns_key(LAYERS_KEY), *sorted(all_layers))
+            "HMGET", self.ns_key(LAYERS_KEY), *all_layers)
 
         # request existing edge data
         for source, layers in tbsbl.iteritems():
@@ -331,7 +337,7 @@ class Origin(object):
         ns_layers_map = {}
         ns_layers_jsons = results["ns_layers_jsons"]
         for i, ns_layer_json in enumerate(ns_layers_jsons):
-            layer = sorted(all_layers)[i]
+            layer = all_layers[i]
             if not ns_layer_json:
                 ns_layers_map[layer] = [self.key]
             else:
@@ -354,7 +360,7 @@ class Origin(object):
                 targets_map = {}
                 targets_jsons = results[(source, layer)]
                 for i, target_json in enumerate(targets_jsons):
-                    target = sorted(targets)[i]
+                    target = targets[i]
                     if not target_json:
                         targets_map[target] = [self.key]
                     else:
