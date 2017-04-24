@@ -24,17 +24,31 @@ Entry point for event suppression. The expected usage is as follows.
 """
 
 import collections
+import datetime
 import time
 import types
+import sys
 
 from Products.ZenEvents.ZenEventClasses import Status_Ping
+from Products.ZenUtils.Utils import convToUnits
 
 from zenoss.protocols.protobufs.zep_pb2 import (
     STATUS_SUPPRESSED,
     SEVERITY_CLEAR, SEVERITY_CRITICAL,
     )
 
+try:
+    from networkx import shortest_simple_paths
+except ImportError:
+    # The networkx version shipped with Zenoss 4 (1.3) doesn't have
+    # shortest_simple_paths. So we have a compatible copy of the algorithm
+    # locally.
+    from .nx.simple_paths import shortest_simple_paths
+
 from . import connections
+
+import logging
+LOG = logging.getLogger("zen.Layer2")
 
 from metrology import Metrology
 s_meter = Metrology.meter("events-suppressed")
@@ -145,8 +159,12 @@ class Suppressor(object):
         if gateway_statuses and UP not in gateway_statuses:
             return set(gateways)
 
-        # Attempt to find root causes from layer-2 graph.
-        return self.l2_root_causes(device, gateways)
+        if any(x._v_multihop for x in gateways):
+            # Attempt to find root causes from layer-2 graph.
+            return self.l2_root_causes(device, gateways)
+        else:
+            # The shortcut above was enough to find single-hop root causes.
+            return set()
 
     def get_gateways(self, device, settings):
         """Return a list of gateways (Device instances) for device.
@@ -169,10 +187,16 @@ class Suppressor(object):
 
         # User configured gateways.
         gateways = device.get_l2_gateways()
+        for gateway in gateways:
+            # root_causes uses this flag for a significant optimization
+            gateway._v_multihop = True
 
         # Discovered upstream gateways.
         if not gateways and not settings.potential_rc:
             gateways = self.discover_gateways(device)
+            for gateway in gateways:
+                # root_causes uses this flag for a significant optimization
+                gateway._v_multihop = False
 
         self.gateways_cache.set(entity, gateways)
         return gateways
@@ -188,18 +212,19 @@ class Suppressor(object):
         """
         root_causes = set()
 
-        for path in self.get_shortest_paths(device, gateways):
-            for entity in reversed(path[1:]):
-                if not entity.startswith("/"):
-                    # Don't bother checking non-object entities.
-                    continue
+        for gateway in gateways:
+            for path in self.get_shortest_paths(device, gateway):
+                for entity in reversed(path[1:]):
+                    if not entity.startswith("/"):
+                        # Don't bother checking non-object entities.
+                        continue
 
-                if self.get_status(entity) is DOWN:
-                    # Found the closest-to-gateway failure on this path.
-                    root_causes.add(entity)
-                    break
-            else:
-                return set()
+                    if self.get_status(entity) is DOWN:
+                        # Found the closest-to-gateway failure on this path.
+                        root_causes.add(entity)
+                        break
+                else:
+                    return set()
 
         return set(self.to_objs(root_causes))
 
@@ -241,99 +266,50 @@ class Suppressor(object):
 
         return gateways
 
-    def get_shortest_paths(self, device, gateways):
-        """Return list of shortest paths from device to all gateways.
+    def get_shortest_paths(self, device, gateway):
+        """Return list of shortest paths from device to gateway.
 
-        Each generated path is a list of device primary URL paths. The
-        source device will be the first element in the list, and one of
-        targets will be the last element in the the list.
+        Each path in the list is a list containing entity IDs. The first
+        element of the list will be device.getPrimaryId(), and the last will
+        be gateway.getPrimaryId().
+        
+        * Node IDs beginning with a / are a Device.getPrimaryId()
+        * Node IDs beginning with a !/ are a DeviceComponent.getPrimaryId()
+        * Remaining node IDs are MAC addresses.
+        
+        An empty list is returned if not paths from device to gateway exist.
 
         """
-        source_entity = self.to_entity(device)
-        target_entities = [self.to_entity(x) for x in gateways]
+        device_entity = self.to_entity(device)
+        gateway_entity = self.to_entity(gateway)
+        cache_key = (device_entity, gateway_entity)
 
-        # First check to see if we already have the paths cached.
-        cached_paths = self.get_paths(source_entity, target_entities)
+        cached_paths = self.paths_cache.get(cache_key)
         if cached_paths is not None:
             return cached_paths
 
-        visited = collections.deque([source_entity])
-        stack = collections.deque([self.get_neighbors(source_entity)])
+        g = self.get_graph(gateway_entity)
 
-        paths = collections.defaultdict(list)
-        shortest_paths = {x: None for x in target_entities}
+        # No paths if the device or gateway isn't in the gateway's graph.
+        if device_entity not in g or gateway_entity not in g:
+            return []
 
-        def add_path(path, new):
+        shortest_path = None
+        shortest_paths = []
+
+        for path in shortest_simple_paths(g, device_entity, gateway_entity):
             path_len = len(path)
-            gateway = path[-1]
-            shortest_path = shortest_paths.get(gateway)
-            if not shortest_path or path_len < shortest_path:
+            if not shortest_path or path_len <= shortest_path:
+                # Interested in all paths the same length as the shortest.
                 shortest_path = path_len
-                shortest_paths[gateway] = shortest_path
+                shortest_paths.append(path)
+            else:
+                # Not interested in paths longer than the shortest.
+                break
 
-            if path_len <= shortest_path:
-                paths[gateway].append((new, path))
+        self.paths_cache.set(cache_key, shortest_paths)
 
-        while stack:
-            neighbors = stack[-1]
-            neighbor = next(neighbors, None)
-
-            if not neighbor:
-                # No neighbors left. Go back one hop.
-                stack.pop()
-                visited.pop()
-                continue
-
-            if neighbor in visited:
-                # Already seen this neighbor. Try the next neighbor.
-                continue
-
-            spvs = shortest_paths.values()
-            if all(spvs) and len(visited) >= max(spvs):
-                # We have at least one path to all gateways, and they're
-                # all shorter than the path we're on. Try the next
-                # neighbor.
-                continue
-
-            cached_paths = self.get_paths(neighbor, target_entities)
-            if cached_paths is not None:
-                # We know shortest paths from this neighbor to all
-                # gateways. Add them to paths, then try the next
-                # neighbor.
-                visited_path = tuple(visited)
-                for cached_path in cached_paths:
-                    add_path(visited_path + cached_path, new=False)
-
-                continue
-
-            if neighbor in target_entities:
-                # This neighbor is one of the gateways. Add the path,
-                # then continue to the next neighbor.
-                add_path(tuple(visited) + (neighbor,), new=True)
-                continue
-
-            # Go down the path to neighbor.
-            visited.append(neighbor)
-            stack.append(self.get_neighbors(neighbor))
-
-        paths_to_return = []
-        paths_to_cache = collections.defaultdict(list)
-        for gw_entity, gw_paths in paths.iteritems():
-            for new, path in (x for x in gw_paths if len(x[1]) <= shortest_paths[gw_entity]):
-                for partial_path in (path[x:] for x in xrange(len(path))):
-                    paths_to_cache[(partial_path[0], gw_entity)].append(partial_path)
-                    if not new:
-                        break
-
-                paths_to_return.append(path)
-
-        for target_entity in target_entities:
-            cache_key = (source_entity, target_entity)
-            if cache_key not in paths_to_cache:
-                paths_to_cache[cache_key].append([])
-
-        self.paths_cache.update(paths_to_cache)
-        return paths_to_return
+        return shortest_paths
 
     # -- Conversions ---------------------------------------------------------
 
@@ -383,6 +359,7 @@ class Suppressor(object):
         self.gateways_cache = ExpiringCache(600)
         self.neighbors_cache = ExpiringCache(3300)
         self.paths_cache = ExpiringCache(3300)
+        self.graphs_cache = ExpiringCache(3300)
 
     def get_device_and_settings(self, device_id):
         """Return (device, settings) tuple.
@@ -519,6 +496,49 @@ class Suppressor(object):
         else:
             return paths
 
+    def get_graph(self, entity):
+        """Return full networkx.Graph starting at entity.
+
+        This behaves as a read-through cache to connections.networkx_graph().
+        
+        Cached entries expire after a certain amount of time. See
+        gateways_cache in the clear_caches method for how long.
+
+        """
+        # Maybe a graph is already cached for entity.
+        cached_graph = self.graphs_cache.get(entity)
+        if cached_graph:
+            return cached_graph
+
+        # Maybe entity exists in a graph cached for a different entity.
+        for g in self.graphs_cache.values():
+            if g and entity in g:
+                return g
+
+        # I don't know how big these graphs can get. So it's important to
+        # log when we're building graphs, how long it takes, and how much
+        # memory caching them is going to consume.
+        start = datetime.datetime.now()
+        g = connections.networkx_graph(entity, ["layer2"])
+        elapsed = datetime.datetime.now() - start
+
+        if g is None:
+            nodes = 0
+            size = 0
+        else:
+            nodes = len(g)
+            size = sys.getsizeof(g.node) + sys.getsizeof(g.edge)
+
+        LOG.info(
+            "cached network graph for %s (%s nodes: %s in %s)",
+            entity,
+            nodes,
+            convToUnits(number=size, divby=1024.0, unitstr="B"),
+            elapsed)
+
+        self.graphs_cache.set(entity, g)
+        return g
+
 
 class ExpiringCache(object):
     """Cache where entries expire after a defined duration."""
@@ -593,3 +613,8 @@ class ExpiringCache(object):
             for key, (added, _) in self.data.items():
                 if added + self.seconds < asof:
                     self.invalidate(key)
+
+    def values(self):
+        """Generate all values in cache."""
+        for key in self.data.iterkeys():
+            yield self.get(key)

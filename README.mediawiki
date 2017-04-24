@@ -402,6 +402,9 @@ Installing this ZenPack will add the following items to your Zenoss system.
 
 == Changes ==
 
+;1.3.4
+* Fix potential infinite loop during event suppression. (ZPS-1353)
+
 ;1.3.3
 * Fix compatibility with ZenPacks rely on deprecated CatalogAPI. (ZPS-1267)
 
