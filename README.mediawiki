@@ -403,6 +403,7 @@ Installing this ZenPack will add the following items to your Zenoss system.
 == Changes ==
 
 ;1.3.5
+* Add client MAC addresses to SubInterfaces and ManagementInterfaces dropdown lists (ZPS-1663)
 * Fix an invalid expanded device link. (ZPS-1683)
 
 ;1.3.4
