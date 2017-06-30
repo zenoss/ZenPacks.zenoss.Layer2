@@ -41,4 +41,6 @@ class DeviceLinkProvider(object):
                     neighbor.getPrimaryUrlPath(),
                     neighbor.titleOrId()))
 
+        if len(links) == 0:
+            return []
         return ['<br />'] + sorted(links) + links_suffix

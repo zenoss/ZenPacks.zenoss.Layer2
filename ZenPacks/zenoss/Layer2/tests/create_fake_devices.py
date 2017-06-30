@@ -159,7 +159,7 @@ def get_device(id, dmd, organizer='/Network/Router/Cisco'):
     if d:
         return d
 
-    dc = dmd.Devices.createOrganizer(organizer)
+    dc = dmd.Devices.createOrganizer(organizer.encode("ascii"))
     return dc.createInstance(id)
 
 
