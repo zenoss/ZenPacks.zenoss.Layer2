@@ -121,6 +121,8 @@ Zenoss.nav.appendTo('Component', [{
 
             case 'CiscoEthernetInterface': return true;
             case 'CiscoInterface': return true;
+            case 'CiscoSubInterface': return true;
+            case 'CiscoManagementInterface': return true;
             case 'CiscoPortChannel': return true;
             case 'CiscoVLAN': return true;
 
