@@ -1,5 +1,5 @@
 {
-    "servicePath": "/",
+    "servicePath": "/=Zenoss",
     "serviceDefinition": {
         "Description": "Updates network map connections",
         "Name": "zenmapper",
@@ -55,7 +55,7 @@
                 "Interval": 5.0
             }
         },
-        "RAMCommitment": "5G",
+        "RAMCommitment": "1G",
         "Tags": [
             "daemon",
             "ZenPacks.zenoss.Layer2"
