@@ -72,7 +72,6 @@ Settings = collections.namedtuple(
     "Settings", [
         "enabled",
         "paths",
-        "potential_rc",
         "device",
         ])
 
@@ -192,7 +191,7 @@ class Suppressor(object):
             gateway._v_multihop = True
 
         # Discovered upstream gateways.
-        if not gateways and not settings.potential_rc:
+        if not gateways:
             gateways = self.discover_gateways(device)
             for gateway in gateways:
                 # root_causes uses this flag for a significant optimization
@@ -241,7 +240,8 @@ class Suppressor(object):
         visited = collections.deque([entity])
         stack = collections.deque([self.get_neighbors(entity)])
 
-        gateways = []
+        # Deduplicate gateways in case they can be reached via multiple paths.
+        gateways = set()
 
         while stack:
             neighbors = stack[-1]
@@ -257,14 +257,15 @@ class Suppressor(object):
             if neighbor.startswith("/"):
                 neighbor_obj = self.to_obj(neighbor)
                 if neighbor_obj:
-                    gateways.append(neighbor_obj)
+                    if neighbor_obj.getProperty("zL2PotentialRootCause"):
+                        gateways.add(neighbor_obj)
 
                 continue
 
             visited.append(neighbor)
             stack.append(self.get_neighbors(neighbor))
 
-        return gateways
+        return list(gateways)
 
     def get_shortest_paths(self, device, gateway):
         """Return list of shortest paths from device to gateway.
@@ -384,18 +385,15 @@ class Suppressor(object):
             if device:
                 if_paths = device.getProperty("zL2SuppressIfPathsDown")
                 if_device = device.getProperty("zL2SuppressIfDeviceDown")
-                potential_rc = device.getProperty("zL2PotentialRootCause")
 
                 settings = Settings(
                     enabled=(if_paths or if_device),
                     paths=if_paths,
-                    potential_rc=potential_rc,
                     device=if_device)
             else:
                 settings = Settings(
                     enabled=False,
                     paths=False,
-                    potential_rc=False,
                     device=False)
 
             self.settings_cache.set(device_id, settings)
