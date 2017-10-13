@@ -22,6 +22,8 @@ from Products.ZenTestCase.BaseTestCase import BaseTestCase
 from Products.ZenUtils.guid.interfaces import IGUIDManager
 from Products.ZenUtils.Utils import unused
 
+from .. import connections
+
 from .create_fake_devices import get_device, connect
 
 
@@ -111,6 +113,9 @@ class TestImpact(BaseTestCase):
         import ZenPacks.zenoss.Layer2
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
 
+        # Clear connections database.
+        connections.clear()
+
     @require_impact
     def test_switches_impact_server_and_no_each_other(self):
         dmd = self.dmd
@@ -124,7 +129,8 @@ class TestImpact(BaseTestCase):
         c(b, s)
 
         impacts, impacted_by = impacts_for(s)
-        self.assertEqual(len(impacts), 2)
+        self.assertNotIn('a', impacts)
+        self.assertNotIn('b', impacts)
         self.assertItemsEqual(impacted_by, ['a', 'b'])
 
         impacts, impacted_by = impacts_for(a)
