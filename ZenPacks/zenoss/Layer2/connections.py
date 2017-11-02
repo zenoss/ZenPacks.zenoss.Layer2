@@ -7,7 +7,7 @@
 #
 ##############################################################################
 
-"""Glue between Zenoss and more abstract graph, networkx, and redis modules."""
+"""Glue between Zenoss and more abstract graph, and networkx modules."""
 
 # stdlib imports
 import functools
@@ -17,10 +17,9 @@ from Products.ZenUtils.guid.interfaces import IGlobalIdentifier
 
 # third-party imports
 import networkx
-import redis
 
 # zenpack imports
-from . import graph
+from .graph import get_graph, get_provider
 from .connections_provider import IConnectionsProvider
 
 # logging
@@ -28,22 +27,23 @@ import logging
 LOG = logging.getLogger("zen.Layer2")
 
 # constants
-GRAPH_NAMESPACE = "g"
 LAYER2_LAYER = "layer2"
 LAYER2_NEIGHBOR_DEVICE_DEPTH = 3
 DEVICES_PREFIX = "/zport/dmd/Devices/"
 DEVICES_NETWORK_PREFIX = "/zport/dmd/Devices/Network/"
 
 
-def log_redis_errors(default=None):
-    """Log RedisError in decorated function and return default."""
+def log_mysql_errors(default=None):
+    """Log MySQL exceptions in decorated function and return default."""
+    from Products.ZenUtils.mysql import MySQLdb
+
     def wrap(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
-            except redis.RedisError as e:
-                LOG.exception("Redis Error: %s", e)
+            except MySQLdb.Error as e:
+                LOG.warning("MySQL Error: %s", e)
 
                 # Avoid problems with mutable default value.
                 if isinstance(default, set):
@@ -60,11 +60,10 @@ def log_redis_errors(default=None):
     return wrap
 
 
-@log_redis_errors(default=set())
+@log_mysql_errors(default=set())
 def get_layers():
     """Return set of all known layers."""
-    g = graph.Graph(GRAPH_NAMESPACE)
-    return g.get_layers()
+    return get_graph().get_layers()
 
 
 def get_default_layers():
@@ -74,23 +73,21 @@ def get_default_layers():
         if not (x.startswith("vlan") or x.startswith("vxlan"))}
 
 
-@log_redis_errors(default=networkx.Graph())
+@log_mysql_errors(default=networkx.Graph())
 def networkx_graph(root, layers, depth=None):
     """Return NetworkX graph of layers at depth starting from root."""
-    g = graph.Graph(GRAPH_NAMESPACE)
-    return g.networkx_graph(root, layers, depth=depth)
+    return get_graph().networkx_graph(root, layers, depth=depth)
 
 
-@log_redis_errors(default=[])
+@log_mysql_errors(default=[])
 def get_neighbors(node, layers, components=False):
     """Return list of all of nodes neighbors."""
-    g = graph.Graph(GRAPH_NAMESPACE)
     return [
-        target for _, target, _ in g.get_edges(node, layers)
+        target for _, target, _ in get_graph().get_edges(node, layers)
         if not (components or target.startswith("!"))]
 
 
-@log_redis_errors(default=None)
+@log_mysql_errors(default=None)
 def get_device_by_mac(dmd, macaddress):
     """Return first neighbor of macaddress that's a device."""
     if not macaddress:
@@ -105,7 +102,7 @@ def get_device_by_mac(dmd, macaddress):
                 continue
 
 
-@log_redis_errors(default=[])
+@log_mysql_errors(default=[])
 def get_layer2_neighbor_devices(device):
     """Generate devices that are layer2 neighbors of device."""
     device_uid = device.getPrimaryId()
@@ -129,16 +126,22 @@ def get_layer2_neighbor_devices(device):
             continue
 
 
-@log_redis_errors(default=None)
-def add_node(node, force=False):
-    """Add node and all of its connections to the graph."""
-    guid = IGlobalIdentifier(node).getGUID()
-    origin = graph.Origin(GRAPH_NAMESPACE, guid)
+@log_mysql_errors(default=None)
+def update_node(node, force=False):
+    """Update node and all of its connections in the graph.
+
+    Returns True if the node's connections were updated. Returns False if the
+    node's connections were already up to date.
+
+    Always updates the node's connections and returns True if force is True.
+
+    """
+    provider = get_provider(IGlobalIdentifier(node).getGUID())
     last_changed = get_last_changed(node)
 
-    if not force and last_changed == origin.get_checksum:
+    if not force and last_changed == provider.lastChange:
         # No need to do anything if we're up-to-date for this node.
-        return
+        return False
 
     edges = []
     for connection in IConnectionsProvider(node).get_connections():
@@ -148,8 +151,9 @@ def add_node(node, force=False):
                 connected_to,
                 connection.layers))
 
-    origin.clear()
-    origin.add_edges(edges, last_changed)
+    provider.update_edges(edges, last_changed)
+
+    return True
 
 
 def is_switch(device):
@@ -198,15 +202,13 @@ def get_status(dmd, node):
         return True
 
 
-@log_redis_errors(default=None)
+@log_mysql_errors(default=None)
 def clear():
-    """Clear all data for all origins."""
-    g = graph.Graph(GRAPH_NAMESPACE)
-    g.clear()
+    """Clear all data."""
+    return get_graph().clear()
 
 
-@log_redis_errors(default=None)
-def compact(guids):
-    """Clear data from origins not listed in guids."""
-    g = graph.Graph(GRAPH_NAMESPACE)
-    g.compact(guids)
+@log_mysql_errors(default=None)
+def compact(providerUUIDs):
+    """Clear data from providers not listed in providerUUIDs."""
+    return get_graph().compact(providerUUIDs)

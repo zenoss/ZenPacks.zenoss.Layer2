@@ -10,6 +10,8 @@
 '''
     Miscelanous utilities.
 '''
+
+import contextlib
 import re
 
 from Products.Zuul.catalog.global_catalog import GlobalCatalog
@@ -59,3 +61,35 @@ def filterMacSet(existing, excluded):
 # have connections_catalog in their ZODB pickled from utils.
 class ConnectionsCatalog(GlobalCatalog):
     pass
+
+
+@contextlib.contextmanager
+def ro_object(obj):
+    """Context manager for objects that should be read-only.
+
+    If the object was a ghost (deactivated) when entering the context manager,
+    it will be deactivated when the context manager exits.
+
+    """
+    try:
+        was_ghost = obj._p_changed is None
+    except AttributeError:
+        yield obj
+    else:
+        yield obj
+        if was_ghost:
+            obj._p_deactivate()
+
+
+def ro_objects(objs):
+    for obj in objs:
+        with ro_object(obj) as obj:
+            yield obj
+
+    for obj in objs:
+        try:
+            obj._p_jar.cacheGC()
+        except AttributeError:
+            continue
+        else:
+            break

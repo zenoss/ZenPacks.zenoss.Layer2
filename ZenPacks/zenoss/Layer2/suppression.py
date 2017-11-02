@@ -158,7 +158,7 @@ class Suppressor(object):
         if gateway_statuses and UP not in gateway_statuses:
             return set(gateways)
 
-        if any(x._v_multihop for x in gateways):
+        if any(getattr(x, "_v_multihop", False) for x in gateways):
             # Attempt to find root causes from layer-2 graph.
             return self.l2_root_causes(device, gateways)
         else:
@@ -255,6 +255,7 @@ class Suppressor(object):
                 continue
 
             if neighbor.startswith("/"):
+                visited.append(neighbor)
                 neighbor_obj = self.to_obj(neighbor)
                 if neighbor_obj:
                     if neighbor_obj.getProperty("zL2PotentialRootCause"):
