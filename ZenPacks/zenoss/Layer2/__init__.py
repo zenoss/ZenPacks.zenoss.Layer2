@@ -40,6 +40,10 @@ DEVICE_RELATIONS = {
     'neighbor_switches': 'ZenPacks.zenoss.Layer2.NeighborSwitch',
     }
 
+# Increase this number if more custom relationships are added.
+RELATIONS_REVISION = 1
+RELATIONS_REVISION_ATTR = "layer2_relations_revision"
+
 
 class ZenPack(ZenPackBase):
     """ Layer2 zenpack loader """
@@ -108,10 +112,15 @@ class ZenPack(ZenPackBase):
         self.install_relationships()
 
     def install_relationships(self):
+        if getattr(self.dmd, RELATIONS_REVISION_ATTR, 0) >= RELATIONS_REVISION:
+            # Avoid building relationships that already exist.
+            return
+
         LOG.info('Adding relationships to existing devices')
         for d in self.dmd.Devices.getSubDevicesGen():
-            add_relationships(d.__class__)
             d.buildRelations()
+
+        setattr(self.dmd, RELATIONS_REVISION_ATTR, RELATIONS_REVISION)
 
     def remove(self, app, leaveObjects=False):
         """Remove ZenPack.
@@ -124,6 +133,7 @@ class ZenPack(ZenPackBase):
 
         """
         if not leaveObjects:
+            setattr(self.dmd, RELATIONS_REVISION_ATTR, 0)
             self.remove_relationships()
             self.remove_catalogs()
 
