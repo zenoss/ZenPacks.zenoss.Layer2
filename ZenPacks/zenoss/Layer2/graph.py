@@ -7,126 +7,159 @@
 #
 ##############################################################################
 
-"""Multi-Origin Redis Undirected Graph.
-
-This module contains a Redis implementation of an undirected graph. An
-important feature of this implementation is that it allows many
-uncoordinated "origins" of graph information. Data from the origins is
-kept separate so that it can be cleared and replaced without damaging
-any information provided by other origins. However, when the graph is
-queried, the information from all origins is combined into a
-comprehensive result.
-
-The Origin class must be used to "write" to the graph, and the Graph
-class must be used to read the graph.
-
-The Redis keys and values look like this.
-
-    # Each origin (i.e. abc) stores its checksum here. (HASHMAP)
-    x:origins:
-        abc: 2016-11-18 16:07:32
-        xyz: 2016-11-17 09:12:07
-
-    ---
-
-    # Each origin (i.e. abc) stores all layers it originates here. (SET)
-    x:origins:abc:layers
-        - layer2
-        - layer3
-        - vlan51
-
-    # All layers with tracking of originators. (HASHMAP)
-    x:layers:
-        layer2: [abc, xyz]
-        layer3: [abc, xyz]
-        vlan51: [abc]
-        ciscoucs: [xyz]
-
-    ---
-
-    # Each origin (i.e. abc) stores all edges it originates here. (HASHMAP)
-    x:origins:abc:edges
-        /a/b/c:layer2: [/x/y/z]
-        /x/y/z:layer2: [/a/b/c]
-
-    # All edges with tracking of originators. (HASHMAP)
-    x:edges:/a/b/c:layer2
-        /x/y/z: [abc, xyz]
-
-"""
+"""Multi-Provider MySQL Undirected Graph."""
 
 # stdlib imports
 import collections
 import itertools
-import json
-import os
+import warnings
 
 # third-party imports
+import MySQLdb
+import MySQLdb.constants.CR
 import networkx
-import redis
 
 # default exports
 __all__ = (
-    "Graph",
-    "Origin",
+    "get_graph",
+    "get_provider",
     )
 
-# constants
-ORIGINS_KEY = "origins"
-LAYERS_KEY = "layers"
-EDGES_KEY = "edges"
+# Ignore "table already exists" warnings.
+warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
 # module caches
-REDIS = None
+GRAPH = None
+
+
+def get_graph():
+    """Return Graph singleton."""
+    global GRAPH
+
+    if GRAPH is None:
+        GRAPH = Graph()
+
+    return GRAPH
+
+
+def get_provider(uuid):
+    """Return Provider given its uuid."""
+    graph = get_graph()
+    return graph.get_provider(uuid)
 
 
 class Graph(object):
-    """Undirected graph of edges from all origins.
+    """Undirected graph of edges from all providers.
 
     This class is used to read information from the graph, and perform
     global operations on the graph such as clear and compact. See the
-    Origin class for adding  information to the graph.
+    Provider class for adding information to the graph.
 
     """
 
-    def __init__(self, namespace):
-        """Initialize a new Graph.
+    namespace = "l2"
 
-        The namespace argument is a mechanism for separating the graph's
-        data from other Redis data in the same Redis database. Though
-        you should really be using a separate Redis database for this.
+    def __init__(self):
+        self.db = MySQL(onConnect=self.create_tables)
 
-        """
-        self.namespace = namespace
-        self.redis = discover_redis()
+    def get_provider(self, uuid):
+        return Provider(self, uuid)
 
-    def ns_key(self, *args):
-        """Return a Redis key in this graph's namespace."""
-        return "{}:{}".format(self.namespace, ":".join(args))
+    def get_table(self, table):
+        return "{ns}_{table}".format(
+            ns=self.namespace,
+            table=table)
+
+    def create_tables(self):
+        self.db.create_table(
+            table=self.get_table("providers"),
+            columns=[
+                ("providerUUID", "VARCHAR(36) NOT NULL UNIQUE PRIMARY KEY"),
+                ("lastChange", "BIGINT NOT NULL")])
+
+        self.db.create_table(
+            table=self.get_table("edges"),
+            columns=[
+                ("providerUUID", "VARCHAR(36) NOT NULL"),
+                ("source", "VARCHAR(1024) NOT NULL"),
+                ("target", "VARCHAR(1024) NOT NULL"),
+                ("layer", "VARCHAR(255) NOT NULL")],
+            indexes=[
+                ("providerUUID", ("providerUUID",)),
+                ("sourceByLayer", ("source", "layer")),
+                ("targetByLayer", ("target", "layer")),
+                ("layer", ("layer",))])
 
     def get_layers(self):
         """Return set of all layers in the graph."""
-        return set(self.redis.hkeys(self.ns_key(LAYERS_KEY)))
+        rows = self.db.query(
+            "SELECT DISTINCT layer FROM {table} ORDER BY layer ASC".format(
+                table=self.get_table("edges")))
+
+        return set(x[0] for x in rows)
 
     def get_edges(self, node, layers):
-        """Return list of (source, target, layers) edge tupes.
+        """Return list of (source, target, layers) edge tuples.
 
         The source of each edge will be node. Only edges with one of the
         layers listed in the layers argument will be returned.
 
         """
-        layers = sorted(layers)
+        if not layers:
+            return []
 
-        pipe = PipelineTracker(self.redis)
-        for layer in layers:
-            pipe(layer, "HKEYS", self.ns_key(EDGES_KEY, node, layer))
+        return self.merge_layers(
+            self.db.query(
+                "SELECT DISTINCT source, target, layer FROM {table}"
+                " WHERE (source = %s OR target = %s)"
+                "   AND layer IN ({layer_subs})".format(
+                    table=self.get_table("edges"),
+                    layer_subs=",".join("%s" for x in layers)),
+                [node, node] + list(layers)),
+            preferred_source=node)
 
-        edges = collections.defaultdict(set)
-        for layer, targets in pipe.execute().iteritems():
-            for target in targets:
-                edges[(node, target)].add(layer)
+    def count_edges(self):
+        """Return count of (source, target, layers) edges."""
+        return len(
+            self.merge_layers(
+                self.db.query(
+                    "SELECT DISTINCT source, target, layer"
+                    "  FROM {table}".format(
+                        table=self.get_table("edges")))))
 
-        return [(s, t, l) for (s, t), l in edges.iteritems()]
+    def count_providers(self):
+        return self.db.query(
+            "SELECT COUNT(providerUUID) FROM {table}".format(
+                table=self.get_table("providers")))[0][0]
+
+    def count_layers(self):
+        return self.db.query(
+            "SELECT COUNT(DISTINCT layer) FROM {table}".format(
+                table=self.get_table("edges")))[0][0]
+
+    def merge_layers(self, edges, preferred_source=None):
+        """Return merged list of (source, target, layers).
+
+        The edges input argument is expected to be a list of
+        (source, target, layer) triples.
+
+        If the preferred_source parameter is specified, it will become the
+        source in the merged list of edge triples whether it was the source or
+        target.
+
+        """
+
+        edge_layers = collections.defaultdict(set)
+
+        for source, target, layer in edges:
+            if target == preferred_source:
+                source, target = target, source
+            elif source != preferred_source:
+                source, target = tuple(sorted((source, target)))
+
+            edge_layers[(source, target)].add(layer)
+
+        return [(k[0], k[1], v) for k, v in edge_layers.iteritems()]
 
     def networkx_graph(self, root, layers, depth=None):
         """Return a NetworkX Graph.
@@ -178,439 +211,214 @@ class Graph(object):
 
         return nxg
 
+    def compact(self, providerUUIDs):
+        """Clear provider data not listed in providerUUIDs."""
+        if not providerUUIDs:
+            self.clear()
+
+        for table in ("edges", "providers"):
+            self.db.execute(
+                "DELETE FROM {table}"
+                " WHERE providerUUID NOT IN ({layer_subs})".format(
+                    table=self.get_table(table),
+                    layer_subs=",".join("%s" for x in providerUUIDs)),
+                list(providerUUIDs))
+
     def clear(self):
-        """Clear the Redis database: FLUSHDB."""
-        self.redis.flushdb()
-
-    def compact(self, origins):
-        """Clear origins not listed in origins."""
-        all_origins = set(self.redis.hkeys(self.ns_key(ORIGINS_KEY)))
-        for garbage_origin in all_origins.difference(origins):
-            Origin(self.namespace, garbage_origin).clear()
+        """Clear all layer2 information from the database."""
+        for table in ("edges", "providers"):
+            self.db.execute(
+                "TRUNCATE TABLE {table}".format(
+                    table=self.get_table(table)))
 
 
-class Origin(object):
-    """Source of information for a graph.
+class Provider(object):
+    """Provider of information for a graph."""
 
-    This class is used to add information such as edges to the graph.
-    The Origin class is separate from Graph so that attribution of the
-    graph's information can be retained. This is important because the
-    use case is that an Origin is frequently replacing all edges it
-    originated with all new edges. This needs to be done in a way that
-    is non-destructive to information provided by other origins.
+    def __init__(self, graph, uuid):
+        self.graph = graph
+        self.uuid = uuid
 
-    """
+        # Loaded from database.
+        self._db_lastChange = None
 
-    def __init__(self, namespace, key):
-        """Initialize a new Origin.
+    @property
+    def lastChange(self):
+        if self._db_lastChange is None:
+            self.load_properties()
 
-        The namespace argument is a mechanism for separating the graph's
-        data from other Redis data in the same Redis database. Though
-        you should really be using a separate Redis database for this.
+        return self._db_lastChange
 
-        The key argument is a unique identifier for the origin.
+    def load_properties(self):
+        rows = self.graph.db.query(
+            "SELECT lastChange FROM {table} WHERE providerUUID = %s".format(
+                table=self.graph.get_table("providers")),
+            self.uuid)
 
-        """
-        self.namespace = namespace
-        self.key = key
-        self.redis = discover_redis()
+        if rows:
+            self._db_lastChange = rows[0][0]
+        else:
+            self._db_lastChange = None
 
-    def ns_key(self, *args):
-        """Return a Redis key in this origin's graph namespace."""
-        return "{}:{}".format(self.namespace, ":".join(args))
+    def update_properties(self, properties):
+        for k, v in properties.iteritems():
+            setattr(self, "_db_{}".format(k), v)
 
-    def origin_key(self, *args):
-        """Return a Redis key in this origin's namespace."""
-        return "{}:{}:{}:{}".format(
-            self.namespace,
-            ORIGINS_KEY,
-            self.key,
-            ":".join(args))
-
-    def get_checksum(self):
-        """Return currently stored checksum for this origin."""
-        return self.redis.hget(self.ns_key(ORIGINS_KEY), self.key)
-
-    def set_checksum(self, checksum):
-        return self.redis.hset(self.ns_key(ORIGINS_KEY), self.key, checksum)
-
-    def add_edges(self, edges, checksum):
-        """Add list of (source, target, layers) edge triples.
-
-        The source and target of each edge must be strings, and layers
-        must be a list, tuple, or set.
-
-        The following Redis commands are used to add all edges. All read
-        operations are pipelined together, then all write commands are
-        pipelined together. This allows all edges to be added in only
-        two round-trips to the Redis server.
-
-        Redis commands:
-
-            -- Get current NS layer values.
-            --  (only for unique layers in <edges>)
-            HMGET <ns>:LAYERS_KEY <layers>
-
-            -- Get current NS edge values.
-            --  (for each node/layer combination in <edges>)
-            HMGET <ns>:EDGES_KEY:<source>:<layer> <targets>
-
-            -- Update our checksum.
-            --  (key is used for compaction)
-            --  (value is used to avoid future unnecessary updates)
-            HSET <ns>:ORIGINS_KEY <self.key> <checksum>
-
-            -- Update NS layer values with <self.key> added to origins lists.
-            HMSET <ns>:LAYERS_KEY <layers-map>
-
-            -- Update NS edges values with <self.key> added to origins lists.
-            HMSET <ns>:EDGES_KEY:<source>:<layer> <targets-map>
-
-            -- Register our NS layers so they can be cleaned up later.
-            SADD <ns>:ORIGINS_KEY:<self.key>:LAYERS_KEY <layers>
-
-            -- Register our NS edges so they can be cleaned up later.
-            --  (for each node/layer combination in <edges>)
-            SADD <ns>:ORIGINS_KEY:<self.key>:EDGES_KEY:<source>:<layer> <targets>
-
-            -- Register our origin edges keys so they can be cleaned up later.
-            HMSET <ns>:ORIGINS_KEY:<self.key>:EDGES_KEY <edges-map>
-
-        """
-        all_layers = set()
-
-        # tbsbl = targets by source by layer
-        tbsbl = collections.defaultdict(        # sources
-            lambda: collections.defaultdict(    # layers
-                set))                           # targets
+    def update_edges(self, edges, lastChange):
+        """Update list of (source, target, layers) edge triples."""
+        rows = set()
 
         for source, target, layers in edges:
-            if not layers:
-                # every edge needs at least one layer.
+            if not (source and target and layers):
                 continue
 
-            all_layers.update(layers)
+            source, target = tuple(sorted((source, target)))
+
             for layer in layers:
-                tbsbl[source][layer].add(target)
-                tbsbl[target][layer].add(source)
+                rows.add((self.uuid, source, target, layer))
 
-        if not all_layers:
-            # no edges, or no edges with at least one layer.
-            self.set_checksum(checksum)
-            return
+        self.graph.db.execute(
+            "DELETE FROM {table} WHERE providerUUID = %s".format(
+                table=self.graph.get_table("edges")),
+            self.uuid)
 
-        # Pre-sort things to avoid repeatedly sorting them later.
-        all_layers = sorted(all_layers)
-        tbsbl = {
-            source: {layer: sorted(targets) for layer, targets in layers.iteritems()}
-            for source, layers in tbsbl.iteritems()}
+        # Convert back to a list for the insert.
+        rows = list(rows)
 
-        # perform all requests in one pipe
-        pipe = PipelineTracker(self.redis)
+        self.graph.db.insert(
+            table=self.graph.get_table("edges"),
+            columns=("providerUUID", "source", "target", "layer"),
+            rows=rows)
 
-        # request existing layer data
-        pipe(
-            "ns_layers_jsons",
-            "HMGET", self.ns_key(LAYERS_KEY), *all_layers)
+        self.graph.db.insert(
+            table=self.graph.get_table("providers"),
+            columns=("providerUUID", "lastChange"),
+            rows=[(self.uuid, lastChange)])
 
-        # request existing edge data
-        for source, layers in tbsbl.iteritems():
-            for layer, targets in layers.iteritems():
-                pipe(
-                    (source, layer),
-                    "HMGET",
-                    self.ns_key(EDGES_KEY, source, layer),
-                    *targets)
-
-        # execute all requests at once
-        results = pipe.execute()
-
-        # perform all writes in one pipe
-        pipe = PipelineTracker(self.redis)
-
-        # update our checksum
-        pipe(
-            "set_checksum",
-            "HSET", self.ns_key(ORIGINS_KEY), self.key, checksum)
-
-        # merge our layers into NS layers
-        ns_layers_map = {}
-        ns_layers_jsons = results["ns_layers_jsons"]
-        for i, ns_layer_json in enumerate(ns_layers_jsons):
-            layer = all_layers[i]
-            if not ns_layer_json:
-                ns_layers_map[layer] = [self.key]
-            else:
-                ns_layer_origins = from_json(ns_layer_json, [])
-                if self.key not in ns_layer_origins:
-                    ns_layer_origins.append(self.key)
-                    ns_layers_map[layer] = ns_layer_origins
-
-        if ns_layers_map:
-            pipe(
-                "merge_layers",
-                "HMSET", self.ns_key(LAYERS_KEY), json_values(ns_layers_map))
-
-        # record layer keys in our LAYERS_KEY set with one SADD
-        pipe("add_layers", "SADD", self.origin_key(LAYERS_KEY), *all_layers)
-
-        # merge our edges into NS edge data
-        for source, layers in tbsbl.iteritems():
-            for layer, targets in layers.iteritems():
-                targets_map = {}
-                targets_jsons = results[(source, layer)]
-                for i, target_json in enumerate(targets_jsons):
-                    target = targets[i]
-                    if not target_json:
-                        targets_map[target] = [self.key]
-                    else:
-                        target_origins = from_json(target_json, [])
-                        if self.key not in target_origins:
-                            target_origins.append(self.key)
-                            targets_map[target] = target_origins
-
-                if targets_map:
-                    pipe(
-                        "merge_edges_{}_{}".format(source, layer),
-                        "HMSET",
-                        self.ns_key(EDGES_KEY, source, layer),
-                        json_values(targets_map))
-
-        pipe(
-            "add_edges",
-            "HMSET",
-            self.origin_key(EDGES_KEY), {
-                ":".join((source, layer)): json.dumps(list(targets_set))
-                for source, source_data in tbsbl.items()
-                for layer, targets_set in source_data.items()})
-
-        # execute all writes at once
-        pipe.execute()
+        self.update_properties({"lastChange": lastChange})
 
     def clear(self):
-        """Remove this origin and its data from the graph.
+        """Remove this provider's data from the graph."""
+        for table in ("edges", "providers"):
+            self.graph.db.execute(
+                "DELETE FROM {table} WHERE providerUUID = %s".format(
+                    table=self.graph.get_table(table)),
+                self.uuid)
 
-        Redis commands:
-
-            -- Check if we're already an origin.
-            HGET <ns>:ORIGINS_KEY:<self.key>
-
-            -- Get set of layers we originated.
-            SMEMBERS <ns>:ORIGINS_KEY:<self.key>:LAYERS_KEY
-
-            -- Get map of <source>:<layer> to <targets> we originated.
-            HGETALL <ns>:ORIGINS_KEY:<self.key>:EDGES_KEY
-
-            -- Get NS layer values for layers we originated.
-            HMGET <ns>:LAYERS_KEY <originated-layers>
-
-            -- Get NS edge values for edges we originated.
-            --  (for each <source>:<layer> to <targets> combination)
-            HMGET <ns>:EDGES_KEY:<source>:<layer> <targets>
-
-            -- Remove our checksum.
-            HDEL <ns>:ORIGINS_KEY <self.key>
-
-            -- Remove our layers and edges registrations. (in one DEL)
-            DEL <ns>:ORIGINS_KEY:<self.key>:LAYERS_KEY
-                <ns>:ORIGINS_KEY:<self.key>:EDGES_KEY
-
-            -- Remove <self.key> from NS layers.
-            HMSET <ns>:LAYERS_KEY <cleaned-layers-map>
-
-            -- Remove <self.key> from NS edges.
-            --  (for each <source>:<layer> combination)
-            HMSET <ns>:EDGES_KEY:<source>:<target> <cleaned-targets-map>
-
-        """
-        # start 1st read pipeline
-        pipe = self.redis.pipeline()
-        pipe.hget(self.ns_key(ORIGINS_KEY), self.key)
-        pipe.smembers(self.origin_key(LAYERS_KEY))
-        pipe.hgetall(self.origin_key(EDGES_KEY))
-        checksum, o_layers, o_edges_map = pipe.execute()
-
-        # start 2nd read pipeline
-        pipe = PipelineTracker(self.redis)
-
-        if o_layers:
-            pipe(
-                "ns_layers_jsons",
-                "HMGET", self.ns_key(LAYERS_KEY), *o_layers)
-
-        for source_layer, targets_json in o_edges_map.iteritems():
-            pipe(
-                source_layer,
-                "HMGET",
-                self.ns_key(EDGES_KEY, source_layer),
-                *from_json(targets_json, []))
-
-        # execute 2nd read pipeline
-        results = pipe.execute()
-
-        # create layers_map with ourself removed from origins
-        ns_layers_map = {}
-        ns_layers_jsons = results.get("ns_layers_jsons", [])
-        for i, layer in enumerate(o_layers):
-            layer_origins = from_json(ns_layers_jsons[i], [])
-            ns_layers_map[layer] = [
-                x for x in layer_origins
-                if x != self.key]
-
-        # create edges_map with ourself removed from origins
-        ns_edges_map = {}
-        for i, (source_layer, targets_json) in enumerate(o_edges_map.iteritems()):
-            ns_edges_map[source_layer] = {}
-            targets = from_json(targets_json, [])
-            targets_origin_jsons = results[source_layer]
-            for j, target in enumerate(targets):
-                target_origins = from_json(targets_origin_jsons[j], [])
-                ns_edges_map[source_layer][target] = [
-                    x for x in target_origins
-                    if x != self.key]
-
-        # start write pipeline
-        pipe = PipelineTracker(self.redis)
-
-        # delete ourself from the origins registry
-        if checksum:
-            pipe("delete_checksum", "HDEL", self.ns_key(ORIGINS_KEY), self.key)
-
-        # delete our layers and edges keys
-        keys_to_delete = []
-        if o_layers:
-            keys_to_delete.append(self.origin_key(LAYERS_KEY))
-
-        if o_edges_map:
-            keys_to_delete.append(self.origin_key(EDGES_KEY))
-
-        if keys_to_delete:
-            pipe("delete_keys", "DEL", *keys_to_delete)
-
-        # remove ourself from layers
-        hmclear(pipe, self.ns_key(LAYERS_KEY), ns_layers_map)
-
-        # remove ourself from edges
-        for source_layer, targets_map in ns_edges_map.iteritems():
-            hmclear(pipe, self.ns_key(EDGES_KEY, source_layer), targets_map)
-
-        # execute write pipeline
-        pipe.execute()
+        self.update_properties({"lastChange": None})
 
 
-class PipelineTracker(object):
-    """Convenience wrapper around a Redis pipeline.
+class MySQL(object):
+    """Consolidated handling of direct MySQL interaction."""
 
-    * Results can are accessible by key instead of index.
-    * Pipelines with no commands don't round-trip to Redis.
-    * Pipelines with a single command don't incur pipeline overhead.
-    * Pipelines with zero commands have no overhead.
+    # We must try reconnecting up to 3 times for errors that can be fixed by
+    # reconnecting. This is because the first attempt may fail with a
+    # SERVER_GONE the first time, a SERVER_LOST the second, and succeed on
+    # the third attempt.
+    RECONNECT_ATTEMPTS = 3
 
-    """
+    RECONNECT_ERRORS = (
+        MySQLdb.constants.CR.SERVER_GONE_ERROR,
+        MySQLdb.constants.CR.SERVER_LOST,
+        )
 
-    def __init__(self, redis):
-        """Initialize a PipelineTracker."""
-        self.redis = redis
-        self.command_counter = 0
-        self.command_indexes = {}
-        self.command_tuples = []
+    def __init__(self, onConnect=None):
+        self.onConnect = onConnect
+        self.connection = None
 
-    def __call__(self, key, command, *args):
-        """Add command to pipeline by key."""
-        self.command_tuples.append((command, args))
-        self.command_indexes[key] = self.command_counter
-        self.command_counter += 1
+    def connect(self):
+        if self.connection and self.connection.open:
+            return
 
-    def execute(self):
-        """Return map of key to result after executing pipeline."""
-        if self.command_counter == 1:
-            for command, args in self.command_tuples:
-                results = [self.dispatch(self.redis, command, args)]
+        from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
 
-        elif self.command_counter > 1:
-            pipeline = self.redis.pipeline()
-            for command, args in self.command_tuples:
-                self.dispatch(pipeline, command, args)
+        global_config = getGlobalConfiguration()
+        connect_kwargs = {
+            "host": global_config.get("zodb-host", "127.0.0.1"),
+            "port": int(global_config.get("zodb-port", 3306)),
+            "db": global_config.get("zodb-db", "zodb"),
+            "user": global_config.get("zodb-user", "zenoss"),
+            "passwd": global_config.get("zodb-password", "zenoss"),
+        }
 
-            results = pipeline.execute()
+        self.connection = MySQLdb.connect(**connect_kwargs)
 
-        return {
-            key: results[idx]
-            for key, idx in self.command_indexes.iteritems()}
+        if callable(self.onConnect):
+            self.onConnect()
 
-    def dispatch(self, dispatcher, command, args):
-        """Correctly dispatch command to the dispatcher.
+    def close(self):
+        try:
+            self.connection.close()
+        except Exception:
+            pass
 
-        This method exists solely to consolidate special command
-        parameter handling into a single place. For now it looks like we
-        only need special handling for HMSET because we want to use a
-        dict as its second argument.
+    def query(self, statement, params=None):
+        return self.execute(statement, params=params, commit=False)
+
+    def execute(self, statement, params=None, commit=True):
+        return self.with_retry("execute", statement, params, commit=commit)
+
+    def executemany(self, statement, rows, commit=True):
+        if not rows:
+            return []
+
+        return self.with_retry("executemany", statement, rows, commit=commit)
+
+    def with_retry(self, fn_name, *args, **kwargs):
+        """Execute fn_name with args and kwargs. Retry when appropriate.
+
+        fn_name is expected to be either execute or executemany.
+
+        The operation will only be retried up to three time if either the
+        SERVER_LOST or SERVER_GONE_ERROR are encountered. These are the errors
+        seen when the remote server disconnects a client that has been idle
+        longer than "wait_timeout" seconds.
 
         """
-        if command == "HMSET":
-            return dispatcher.hmset(*args)
-        else:
-            return dispatcher.execute_command(command, *args)
+        commit = kwargs.pop("commit", True)
 
+        results = []
 
-def discover_redis():
-    """Return a StrictRedis appropriate for the environment."""
-    global REDIS
-    if not REDIS:
-        REDIS = redis.StrictRedis.from_url(discover_redis_url())
+        for attempt in range(1, MySQL.RECONNECT_ATTEMPTS + 1):
+            self.connect()
+            cursor = self.connection.cursor()
 
-    return REDIS
+            try:
+                getattr(cursor, fn_name)(*args, **kwargs)
+            except MySQLdb.OperationalError as e:
+                if e.args[0] in MySQL.RECONNECT_ERRORS:
+                    if attempt < MySQL.RECONNECT_ATTEMPTS:
+                        self.close()
+                        continue
 
+                raise
+            else:
+                results = cursor.fetchall()
+                break
+            finally:
+                cursor.close()
 
-def discover_redis_url():
-    """Return a Redis URL appropriate for the environment."""
-    if os.environ.get("CONTROLPLANE"):
-        # Zenoss 5 running under serviced.
-        return "redis://localhost:6379/1"
+        if commit:
+            self.connection.commit()
 
-    # Zenoss 4: User has specified Redis URL via environment variable.
-    env_redis_url = os.environ.get("REDIS_URL")
-    if env_redis_url:
-        return env_redis_url
+        return results
 
-    # Zenoss 4: Assume Redis is running on localhost:16379.
-    return "redis://localhost:16379/1"
+    def create_table(self, table, columns, indexes=None):
+        create_definitions = ["{} {}".format(x[0], x[1]) for x in columns]
+        if indexes:
+            create_definitions.extend([
+                "INDEX {} ({})".format(x[0], ",".join(x[1])) for x in indexes])
 
+        self.execute(
+            "CREATE TABLE IF NOT EXISTS {table} ({create_definitions})".format(
+                table=table,
+                create_definitions=",".join(create_definitions)))
 
-def json_values(mapping):
-    """Return mapping with JSON-encoded values."""
-    return {k: json.dumps(v) for k, v in mapping.iteritems()}
-
-
-def from_json(json_string, default=None):
-    """Return Python object from JSON string or default if not possible."""
-    try:
-        return json.loads(json_string)
-    except Exception:
-        return default
-
-
-def hmclear(pipe, key, mapping):
-    """HMSET key with non-empty values in mapping. HDEL the rest.
-
-    This is used when clearing origins because we want to delete hashmap
-    keys in cases where there are no longer any origins providing the
-    key.
-
-    The pipe argument must be a PipelineTracker. Zero or one HMSET and
-    HDEL commands will be added to the pipe, but it won't be executed.
-    It is the caller's responsibility to execute the pipe.
-
-    """
-    to_hmset, to_hdel = {}, []
-    for k, v in mapping.iteritems():
-        if v:
-            to_hmset[k] = json.dumps(v)
-        else:
-            to_hdel.append(k)
-
-    if to_hmset:
-        pipe("remove_from_{}".format(key), "HMSET", key, to_hmset)
-
-    if to_hdel:
-        pipe("delete_from_{}".format(key), "HDEL", key, *to_hdel)
+    def insert(self, table, columns, rows):
+        self.executemany(
+            "INSERT IGNORE INTO {table} ({columns}) "
+            "VALUES ({substitutions})".format(
+                table=table,
+                columns=",".join(columns),
+                substitutions=",".join(["%s"] * len(columns))),
+            rows)

@@ -172,8 +172,8 @@ def connect(d1, d2, dmd, layers=None, update_catalog=True):
     add_interface(d2, macaddress=mac2, clientmacs=[mac1], vlans=layers)
 
     if update_catalog:
-        connections.add_node(d1)
-        connections.add_node(d2)
+        connections.update_node(d1, force=True)
+        connections.update_node(d2, force=True)
 
 
 def add_interface(dev, macaddress='', clientmacs=[], vlans=None):

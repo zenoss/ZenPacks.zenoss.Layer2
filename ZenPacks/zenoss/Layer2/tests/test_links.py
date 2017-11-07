@@ -26,6 +26,10 @@ class TestLinks(BaseTestCase):
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
         connections.clear()
 
+    def tearDown(self):
+        connections.clear()
+        super(TestLinks, self).tearDown()
+
     def test_get_expanded_links(self):
         # a has an empty ExpandedLink string
         a = get_device('b', self.dmd, organizer='/Server/SSH/Linux')
@@ -45,11 +49,9 @@ class TestLinks(BaseTestCase):
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], vlans=[])
 
-        connections.add_node(a)
-        connections.add_node(b)
+        connections.update_node(a)
+        connections.update_node(b)
 
-        self.assertIn('Switch', b.getExpandedLinks()) 
+        self.assertIn('Switch', b.getExpandedLinks())
         self.assertIn("/zport/dmd/Devices/Network/Router/Cisco/devices/a",
-                      b.getExpandedLinks()) 
-
-
+                      b.getExpandedLinks())

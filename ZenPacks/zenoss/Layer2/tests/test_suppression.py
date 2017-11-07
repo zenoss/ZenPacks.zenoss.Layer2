@@ -43,10 +43,12 @@ TEST_TOPOLOGY_YUML = """
 [core-b]-[row-1a]
 [core-a]-[row-1b]
 [core-b]-[row-1b]
+[row-1a]-[row-1b]
 [row-1a]-[rack-1-1a]
 [row-1b]-[rack-1-1a]
 [row-1a]-[rack-1-1b]
 [row-1b]-[rack-1-1b]
+[rack-1-1a]-[rack-1-1b]
 [rack-1-1a]-[host-1-1-1]
 [rack-1-1b]-[host-1-1-1]
 [rack-1-1a]-[host-1-1-2]
@@ -56,6 +58,7 @@ TEST_TOPOLOGY_YUML = """
 [row-1b]-[rack-1-2a]
 [row-1a]-[rack-1-2b]
 [row-1b]-[rack-1-2b]
+[rack-1-2a]-[rack-1-2b]
 [rack-1-2a]-[host-1-2-1]
 [rack-1-2b]-[host-1-2-1]
 //
@@ -70,10 +73,12 @@ TEST_TOPOLOGY_YUML = """
 [rack-3-1a]-[host-3-1-1]
 //
 // Row 4: Fully Redundant - Row Disconnected from Core
+[row-4a]-[row-4b]
 [row-4a]-[rack-4-1a]
 [row-4b]-[rack-4-1a]
 [row-4a]-[rack-4-1b]
 [row-4b]-[rack-4-1b]
+[rack-4-1a]-[rack-4-1b]
 [rack-4-1a]-[host-4-1-1]
 [rack-4-1b]-[host-4-1-1]
 """
@@ -89,7 +94,7 @@ SCENARIOS = {
         "suppressed": False,
         },
 
-    "1st.) 0/1 switch": {
+    "1st.) 0/1": {
         "device": "host-3-1-1",
         "down": [],
         "suppressed": False,
@@ -119,6 +124,38 @@ SCENARIOS = {
         "down": ["rack-1-1a", "rack-1-1b"],
         "suppressed": True,
         "root_causes": "rack-1-1a,rack-1-1b",
+        },
+
+    "1st.) 0/1 switch": {
+        "device": "rack-3-1a",
+        "down": [],
+        "suppressed": False,
+        },
+
+    "1st.) 1/1 switch": {
+        "device": "rack-3-1a",
+        "down": ["row-3a"],
+        "suppressed": True,
+        "root_causes": "row-3a",
+        },
+
+    "1st.) 0/2 switch": {
+        "device": "rack-1-1a",
+        "down": [],
+        "suppressed": False,
+        },
+
+    "1st.) 1/2 switch": {
+        "device": "rack-1-1a",
+        "down": ["row-1a"],
+        "suppressed": False,
+        },
+
+    "1st.) 2/2 switch": {
+        "device": "rack-1-1a",
+        "down": ["row-1a", "row-1b", "rack-1-1b"],
+        "suppressed": True,
+        "root_causes": "rack-1-1b,row-1a,row-1b",
         },
 
     # -- Multi-Hop - Gateway(s) @ 2nd Hop ------------------------------------
@@ -534,7 +571,7 @@ class Stresser(object):
                 progress.increment()
 
         # Update all nodes in Redis graph.
-        [connections.add_node(d, force=True) for d in devices.values()]
+        [connections.update_node(d, force=True) for d in devices.values()]
 
         self.log.info("finished creating %s devices", len(nodes))
         return devices
