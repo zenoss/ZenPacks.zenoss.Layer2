@@ -7,9 +7,6 @@
 #
 ##############################################################################
 
-from Products.ZenTestCase.BaseTestCase import BaseTestCase
-
-
 import functools
 
 from zope.component import subscribers
@@ -115,6 +112,10 @@ class TestImpact(BaseTestCase):
 
         # Clear connections database.
         connections.clear()
+
+    def tearDown(self):
+        connections.clear()
+        super(TestImpact, self).tearDown()
 
     @require_impact
     def test_switches_impact_server_and_no_each_other(self):

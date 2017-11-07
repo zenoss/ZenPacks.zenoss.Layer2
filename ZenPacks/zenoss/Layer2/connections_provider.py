@@ -45,6 +45,8 @@ from zenoss.protocols.protobufs.zep_pb2 import (
     SEVERITY_CRITICAL,
     )
 
+from .utils import ro_objects
+
 
 log = logging.getLogger('zen.Layer2')
 
@@ -209,7 +211,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
         return int(result['total']) == 0
 
     def get_connections(self):
-        for interface in self.context.os.interfaces():
+        for interface in ro_objects(self.context.os.interfaces()):
             ic = InterfaceConnections(interface)
             layers = ic.layers
             mac = ic.macaddress
@@ -223,7 +225,7 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                     yield Connection(mac, (cl, ), layers)
 
             # Layer 3 connections
-            for ip in interface.ipaddresses():
+            for ip in ro_objects(interface.ipaddresses()):
                 net = ip.network()
                 if net is None or net.netmask == 32:
                     continue
@@ -231,18 +233,10 @@ class DeviceConnectionsProvider(BaseConnectionsProvider):
                 yield Connection(self.context, (net, ), ['layer3', ])
                 yield Connection(net, (self.context, ), ['layer3', ])
 
-                # Invalidation saves memory, but undoes uncommitted changes.
-                if ip._p_jar and not ip._p_changed:
-                    ip._p_invalidate()
-
-            # Invalidation saves memory, but undoes uncommitted changes.
-            if interface._p_jar and not interface._p_changed:
-                interface._p_invalidate()
-
 
 class NetworkConnectionsProvider(BaseConnectionsProvider):
     def get_connections(self):
-        for ip in self.context.ipaddresses():
+        for ip in ro_objects(self.context.ipaddresses()):
             dev = ip.device()
             if not dev:
                 continue
@@ -250,17 +244,20 @@ class NetworkConnectionsProvider(BaseConnectionsProvider):
             yield Connection(net, (dev, ), ['layer3', ])
             yield Connection(dev, (net, ), ['layer3', ])
 
-            # Invalidation saves memory, but undoes uncommitted changes.
-            if ip._p_jar and not ip._p_changed:
-                ip._p_invalidate()
-
 
 def get_vlans(iface):
     if not hasattr(iface, 'vlans'):
         return []
+
+    # VLAN ID access optimization. Depends on interface modeling stashing a
+    # list of VLAN IDs in their vlan_ids property.
+    if iface.aqBaseHasAttr("vlan_ids"):
+        if iface.vlan_ids:
+            return ["vlan{}".format(x) for x in iface.vlan_ids]
+
     if callable(iface.vlans):
         vlans = []
-        for vlan in iface.vlans():
+        for vlan in ro_objects(iface.vlans()):
             if hasattr(vlan, 'vlan_id'):
                 vlan_id = vlan.vlan_id
             elif hasattr(vlan, 'ipVlanId'):

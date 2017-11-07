@@ -571,7 +571,7 @@ class Stresser(object):
                 progress.increment()
 
         # Update all nodes in Redis graph.
-        [connections.add_node(d, force=True) for d in devices.values()]
+        [connections.update_node(d, force=True) for d in devices.values()]
 
         self.log.info("finished creating %s devices", len(nodes))
         return devices
