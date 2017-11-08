@@ -8,17 +8,17 @@
         "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run -c --logfileonly\"",
         "Commands": {
             "clear": {
-                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run --clear",
+                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run --clear\"",
                 "CommitOnSuccess": false,
                 "Description": "Clear network connectivity information"
             },
             "update": {
-                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run",
+                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run\"",
                 "CommitOnSuccess": false,
                 "Description": "Update network connectivity information"
             },
             "force": {
-                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run --force",
+                "Command": "su - zenoss -c \"/opt/zenoss/bin/zenmapper run --force\"",
                 "CommitOnSuccess": false,
                 "Description": "Update all network connectivity information"
             }
