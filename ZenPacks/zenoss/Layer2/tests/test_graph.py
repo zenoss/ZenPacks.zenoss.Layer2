@@ -272,7 +272,7 @@ class TestMySQL(unittest.TestCase):
         self.assertEqual(rows, ())
 
         time.sleep(1.1)
-        rows = db.query("SELECT * FROM l2_test")
+        rows = db.execute("SELECT * FROM l2_test")
 
         # query works after a server timeout.
         try:
