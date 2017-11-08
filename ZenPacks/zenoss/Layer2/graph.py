@@ -92,7 +92,7 @@ class Graph(object):
 
     def get_layers(self):
         """Return set of all layers in the graph."""
-        rows = self.db.query(
+        rows = self.db.execute(
             "SELECT DISTINCT layer FROM {table} ORDER BY layer ASC".format(
                 table=self.get_table("edges")))
 
@@ -109,7 +109,7 @@ class Graph(object):
             return []
 
         return self.merge_layers(
-            self.db.query(
+            self.db.execute(
                 "SELECT DISTINCT source, target, layer FROM {table}"
                 " WHERE (source = %s OR target = %s)"
                 "   AND layer IN ({layer_subs})".format(
@@ -122,18 +122,18 @@ class Graph(object):
         """Return count of (source, target, layers) edges."""
         return len(
             self.merge_layers(
-                self.db.query(
+                self.db.execute(
                     "SELECT DISTINCT source, target, layer"
                     "  FROM {table}".format(
                         table=self.get_table("edges")))))
 
     def count_providers(self):
-        return self.db.query(
+        return self.db.execute(
             "SELECT COUNT(providerUUID) FROM {table}".format(
                 table=self.get_table("providers")))[0][0]
 
     def count_layers(self):
-        return self.db.query(
+        return self.db.execute(
             "SELECT COUNT(DISTINCT layer) FROM {table}".format(
                 table=self.get_table("edges")))[0][0]
 
@@ -250,7 +250,7 @@ class Provider(object):
         return self._db_lastChange
 
     def load_properties(self):
-        rows = self.graph.db.query(
+        rows = self.graph.db.execute(
             "SELECT lastChange FROM {table} WHERE providerUUID = %s".format(
                 table=self.graph.get_table("providers")),
             self.uuid)
@@ -342,6 +342,7 @@ class MySQL(object):
         }
 
         self.connection = MySQLdb.connect(**connect_kwargs)
+        self.connection.autocommit(True)
 
         if callable(self.onConnect):
             self.onConnect()
@@ -352,17 +353,14 @@ class MySQL(object):
         except Exception:
             pass
 
-    def query(self, statement, params=None):
-        return self.execute(statement, params=params, commit=False)
+    def execute(self, statement, params=None):
+        return self.with_retry("execute", statement, params)
 
-    def execute(self, statement, params=None, commit=True):
-        return self.with_retry("execute", statement, params, commit=commit)
-
-    def executemany(self, statement, rows, commit=True):
+    def executemany(self, statement, rows):
         if not rows:
             return []
 
-        return self.with_retry("executemany", statement, rows, commit=commit)
+        return self.with_retry("executemany", statement, rows)
 
     def with_retry(self, fn_name, *args, **kwargs):
         """Execute fn_name with args and kwargs. Retry when appropriate.
@@ -375,8 +373,6 @@ class MySQL(object):
         longer than "wait_timeout" seconds.
 
         """
-        commit = kwargs.pop("commit", True)
-
         results = []
 
         for attempt in range(1, MySQL.RECONNECT_ATTEMPTS + 1):
@@ -397,9 +393,6 @@ class MySQL(object):
                 break
             finally:
                 cursor.close()
-
-        if commit:
-            self.connection.commit()
 
         return results
 
