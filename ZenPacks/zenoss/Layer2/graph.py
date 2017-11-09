@@ -341,6 +341,12 @@ class MySQL(object):
             "passwd": global_config.get("zodb-password", "zenoss"),
         }
 
+        # Using "localhost" as the MySQL host can cause the mysql library to
+        # connect using the UNIX domain socket instead of the network. By
+        # replacing localhost with 127.0.0.1 we force the network to be used.
+        if connect_kwargs["host"] == "localhost":
+            connect_kwargs["host"] = "127.0.0.1"
+
         self.connection = MySQLdb.connect(**connect_kwargs)
         self.connection.autocommit(True)
 
