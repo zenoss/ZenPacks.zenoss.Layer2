@@ -12,6 +12,7 @@
 # stdlib imports
 import collections
 import itertools
+import threading
 import warnings
 
 # third-party imports
@@ -29,17 +30,17 @@ __all__ = (
 warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
 # module caches
-GRAPH = None
+THREAD_LOCAL = threading.local()
 
 
 def get_graph():
     """Return Graph singleton."""
-    global GRAPH
+    global THREAD_LOCAL
 
-    if GRAPH is None:
-        GRAPH = Graph()
+    if not hasattr(THREAD_LOCAL, "GRAPH"):
+        THREAD_LOCAL.GRAPH = Graph()
 
-    return GRAPH
+    return THREAD_LOCAL.GRAPH
 
 
 def get_provider(uuid):
