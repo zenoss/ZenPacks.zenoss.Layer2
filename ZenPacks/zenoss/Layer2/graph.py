@@ -111,7 +111,7 @@ class Graph(object):
 
         return self.merge_layers(
             self.db.execute(
-                "SELECT DISTINCT source, target, layer FROM {table}"
+                "SELECT source, target, layer FROM {table}"
                 " WHERE (source = %s OR target = %s)"
                 "   AND layer IN ({layer_subs})".format(
                     table=self.get_table("edges"),
@@ -124,7 +124,7 @@ class Graph(object):
         return len(
             self.merge_layers(
                 self.db.execute(
-                    "SELECT DISTINCT source, target, layer"
+                    "SELECT source, target, layer"
                     "  FROM {table}".format(
                         table=self.get_table("edges")))))
 
