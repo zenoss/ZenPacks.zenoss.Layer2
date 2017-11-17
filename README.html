@@ -78,6 +78,12 @@ dd {
     </li>
     <li><a href="#zenmapper-daemon">zenmapper Daemon</a></li>
     <li><a href="#writing-your-own-connection-provider">Writing Your Own Connection Provider</a></li>
+    <li><a href="#installation">Installation</a>
+        <ol>
+            <li><a href="#installation-zenoss-5.0">Zenoss 5.0</a></li>
+            <li><a href="#installation-openvswitch">Open vSwitch</a></li>
+        </ol>
+    </li>
     <li><a href="#usage">Usage</a>
         <ol>
             <li><a href="#collecting-switch-port-clients">Collecting Switch Port Clients</a></li>
@@ -91,8 +97,6 @@ dd {
     </li>
     <li><a href="#troubleshooting">Troubleshooting</a>
         <ol>
-            <li><a href="#zenoss-5.0">Zenoss 5.0</a></li>
-            <li><a href="#open-vswitch-zenpack">Open vSwitch ZenPack</a></li>
             <li><a href="#empty-map-links-for-device">Empty Map/Links for Device</a></li>
             <li><a href="#layer2-forwarding-table">Layer2 Forwarding Table</a></li>
             <li><a href="#impact">Impact</a></li>
@@ -104,7 +108,7 @@ dd {
         <ol>
             <li><a href="#modeler-plugins">Modeler Plugins</a></li>
             <li><a href="#configuration-properties">Configuration Properties</a></li>
-            <li><a href="#daemons">Daemons</a></li>
+            <li><a href="#services">Services / Daemons</a></li>
         </ol>
     </li>
     <li><a href="#changes">Changes</a></li>
@@ -379,6 +383,15 @@ zenmapper run -v10 -d &lt;name or id of your modeled device&gt;
 
 <p>And then look it up on the network map.</p>
 
+<h2 id="installation">Installation</h2>
+<p>This ZenPack has the following special circumstances that affect its installation.</p>
+
+<h3 id="installation-zenoss-5.0">Zenoss 5.0</h3>
+<p>If you are re-installing or updating this ZenPack on Zenoss 5.0, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.</p>
+
+<h3 id="installation-openvswitch">Open vSwitch ZenPack</h3>
+<p>Open vSwitch ZenPack version prior to 1.1.1 should be updated or removed before Layer2 ZenPack installation.</p>
+
 <h2 id="usage">Usage</h2>
 <p>This ZenPack has two separate capabilities. The first is to collect clients connected to switch ports so that event suppression can be done when the switch fails, and the second is to discover neighbor relationships between network devices using the CDP (Cisco Discovery Protocol) and LLDP (Link Layer Discover Protocol).</p>
 
@@ -399,12 +412,6 @@ zenmapper run -v10 -d &lt;name or id of your modeled device&gt;
 </ul>
 
 <h2 id="troubleshooting">Troubleshooting</h2>
-
-<h3 id="zenoss-5.0">Zenoss 5.0</h3>
-<p>If you are re-installing or updating this ZenPack on Zenoss 5.0, you should first check in control center that <code>zenmapper</code> daemon is stopped, and if not - stop it. It should be stopped automatically, but while this issue is not fixed, you should do that by hand.</p>
-
-<h3 id="open-vswitch-zenpack">Open vSwitch ZenPack</h3>
-<p>Open vSwitch ZenPack version prior to 1.1.1 should be updated or removed before Layer2 ZenPack installation.</p>
 
 <h3 id="empty-map-links-for-device">Empty Map/Links for Device</h3>
 <p>In case index for certain device is broken, one may force zenmapper to reindex this specific device. Daemon should be run with <code>--force</code> option.</p>
@@ -467,7 +474,7 @@ SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
     <li>zZenossGateway (deprecated by zL2Gateways)</li>
 </ul>
 
-<h3 id="daemons">Daemons</h3>
+<h3 id="services">Services / Daemons</h3>
 <ul>
     <li>zenmapper</li>
 </ul>
