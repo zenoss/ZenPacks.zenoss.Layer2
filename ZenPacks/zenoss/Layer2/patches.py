@@ -117,7 +117,7 @@ def remote_applyDataMaps(self, device, maps, *args, **kwargs):
             # devices are remodeled.
             device = self.getPerformanceMonitor().findDeviceByIdExact(device)
             if device and not isinstance(device, vSphereEndpoint):
-                connections.add_node(device)
+                connections.update_node(device)
 
         except Exception:
             # Redis might not be available. We'll just let zenmapper add

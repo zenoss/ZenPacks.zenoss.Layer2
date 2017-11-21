@@ -10,110 +10,73 @@
 """Test cases for graph module."""
 
 # stdlib imports
-import os
+import time
 import unittest
 
 # zenpack imports
-from ZenPacks.zenoss.Layer2 import graph
-
-# constants
-NS = "t"
-
-
-class TestRedisDiscovery(unittest.TestCase):
-    """Redis discovery testing."""
-
-    def setUp(self):
-        # Store existing value of environment variables so we can
-        # restore them after this test.
-        self.controlplane = os.environ.get("CONTROLPLANE", "")
-        self.redis_url = os.environ.get("REDIS_URL", "")
-
-        # Unset environment variables so the tests can set them as
-        # needed.
-        os.environ["CONTROLPLANE"] = ""
-        os.environ["REDIS_URL"] = ""
-
-    def tearDown(self):
-        # Restore environment variables to their pre-test values.
-        os.environ["CONTROLPLANE"] = self.controlplane
-        os.environ["REDIS_URL"] = self.redis_url
-
-    def test_discover_redis_url_zenoss4(self):
-        """Test when running on same server as redis in Zenoss 4."""
-        self.assertEqual(
-            "redis://localhost:16379/1",
-            graph.discover_redis_url())
-
-    def test_discover_redis_url_zenoss4_explicit(self):
-        """Test when user has manually set REDIS_URL in Zenoss 4."""
-        os.environ["REDIS_URL"] = "FOO"
-        self.assertEqual("FOO", graph.discover_redis_url())
-
-    def test_discover_redis_url_zenoss5(self):
-        """Test when running in Zenoss 5."""
-        os.environ["CONTROLPLANE"] = "1"
-        self.assertEqual(
-            "redis://localhost:6379/1",
-            graph.discover_redis_url())
+from ZenPacks.zenoss.Layer2.graph import get_graph
+from ZenPacks.zenoss.Layer2.graph import MySQL
 
 
 class TestGraph(unittest.TestCase):
     """Graph and Origin class tests."""
 
     def setUp(self):
-        self.graph = graph.Graph(NS)
-        self.redis = graph.discover_redis()
-        self.redis.flushdb()
+        super(TestGraph, self).setUp()
+        self.graph = get_graph()
+        self.graph.clear()
 
     def tearDown(self):
-        self.redis = graph.discover_redis()
-        self.redis.flushdb()
+        self.graph.clear()
+        super(TestGraph, self).tearDown()
 
-    def test_checksums(self):
-        # First origin behaves.
-        origin1 = graph.Origin(NS, "o1")
-        self.assertIsNone(origin1.get_checksum())
-        origin1.add_edges([("s1", "t1", ["layer1"])], "checksum1")
-        self.assertEqual(origin1.get_checksum(), "checksum1")
+    def test_lastChange(self):
+        # First provider behaves.
+        provider1 = self.graph.get_provider("p1")
+        self.assertIsNone(provider1.lastChange)
+        provider1.update_edges([("s1", "t1", ["layer1"])], 1)
+        self.assertEqual(provider1.lastChange, 1)
 
-        # Second origin behaves as well as the first.
-        origin2 = graph.Origin(NS, "o2")
-        self.assertIsNone(origin2.get_checksum())
-        origin2.add_edges([("s1", "t1", ["layer1"])], "checksum2")
-        self.assertEqual(origin2.get_checksum(), "checksum2")
+        # Second provider behaves as well as the first.
+        provider2 = self.graph.get_provider("p2")
+        self.assertIsNone(provider2.lastChange)
+        provider2.update_edges([("s1", "t1", ["layer1"])], 2)
+        self.assertEqual(provider2.lastChange, 2)
 
-        # Origin2 shouldn't interfere with origin1's checksum.
-        self.assertEqual(origin1.get_checksum(), "checksum1")
+        # provider2 shouldn't interfere with provider1's lastChange.
+        self.assertEqual(provider1.lastChange, 1)
 
-        # Clearing an origin should clear only its checksum.
-        origin2.clear()
-        self.assertIsNone(origin2.get_checksum())
-        self.assertEqual(origin1.get_checksum(), "checksum1")
+        # Clearing provider2 should clear only its lastChange.
+        provider2.clear()
+        self.assertIsNone(provider2.lastChange)
+        self.assertEqual(provider1.lastChange, 1)
 
-    def test_clear_all_origins(self):
-        origin1 = graph.Origin(NS, "o1")
-        origin1.add_edges([("s1", "t1", ["layer1"])], "checksum1")
-        origin2 = graph.Origin(NS, "o2")
-        origin2.add_edges([("s1", "t1", ["layer1"])], "checksum2")
+    def test_clear_all_providers(self):
+        provider1 = self.graph.get_provider("p1")
+        provider1.update_edges([("s1", "t1", ["layer1"])], 1)
+        provider2 = self.graph.get_provider("p2")
+        provider2.update_edges([("s1", "t1", ["layer1"])], 2)
 
-        # Clearing all origins should delete all Redis keys.
-        origin1.clear()
-        origin2.clear()
-        self.assertEqual(len(self.redis.keys()), 0)
+        # Clearing all providers should delete all provider data.
+        provider1.clear()
+        provider2.clear()
+        self.assertEqual(self.graph.count_edges(), 0)
+        self.assertEqual(self.graph.count_providers(), 0)
 
     def test_clear_graph(self):
-        origin1 = graph.Origin(NS, "o1")
-        origin1.add_edges([("s1", "t1", ["layer1"])], "checksum1")
-        origin2 = graph.Origin(NS, "o2")
-        origin2.add_edges([("s1", "t1", ["layer1"])], "checksum2")
+        provider1 = self.graph.get_provider("p1")
+        provider1.update_edges([("s1", "t1", ["layer1"])], 1)
+        provider2 = self.graph.get_provider("p2")
+        provider2.update_edges([("s1", "t1", ["layer1"])], 2)
 
-        # Clearing the graph should delete all Redis keys.
+        # Clearing the graph should delete all graph data.
         self.graph.clear()
-        self.assertEqual(len(self.redis.keys()), 0)
+        self.assertEqual(self.graph.count_layers(), 0)
+        self.assertEqual(self.graph.count_edges(), 0)
+        self.assertEqual(self.graph.count_providers(), 0)
 
     def test_remove_nodes(self):
-        create_topology()
+        create_topology(self.graph)
 
         # Validate edges pre-removal.
         self.assertItemsEqual(
@@ -137,23 +100,20 @@ class TestGraph(unittest.TestCase):
                 ])
 
         # Simulate removal of (h|sw|r)2 nodes.
-        o_host1 = graph.Origin(NS, "host1")
-        o_host1.clear()
-        o_host1.add_edges([
+        p_host1 = self.graph.get_provider("host1")
+        p_host1.update_edges([
             ("h1", "n1", ["layer3"]),
             ], "host1")
 
-        o_switch1 = graph.Origin(NS, "switch1")
-        o_switch1.clear()
-        o_switch1.add_edges([
+        p_switch1 = self.graph.get_provider("switch1")
+        p_switch1.update_edges([
             ("sw1", "h1", ["layer2"]),
             ("sw1", "r1", ["layer2", "cdp"]),
             ("sw1", "n2", ["layer3"]),
             ], "switch1")
 
-        o_router1 = graph.Origin(NS, "router1")
-        o_router1.clear()
-        o_router1.add_edges([
+        p_router1 = self.graph.get_provider("router1")
+        p_router1.update_edges([
             ("r1", "sw1", ["layer2", "cdp"]),
             ("r1", "n1", ["layer3"]),
             ], "router1")
@@ -178,7 +138,7 @@ class TestGraph(unittest.TestCase):
                 ])
 
     def test_get_edges_host1(self):
-        create_topology()
+        create_topology(self.graph)
 
         self.assertItemsEqual(self.graph.get_edges("h1", layers=[]), [])
         self.assertItemsEqual(
@@ -200,7 +160,7 @@ class TestGraph(unittest.TestCase):
                 ])
 
     def test_get_edges_switch1(self):
-        create_topology()
+        create_topology(self.graph)
 
         self.assertItemsEqual(self.graph.get_edges("sw1", layers=[]), [])
         self.assertItemsEqual(
@@ -232,13 +192,13 @@ class TestGraph(unittest.TestCase):
                 ])
 
     def test_get_layers(self):
-        create_topology()
+        create_topology(self.graph)
         self.assertEquals(
             self.graph.get_layers(),
             {"cdp", "layer2", "layer3"})
 
     def test_networkx_graph(self):
-        create_topology()
+        create_topology(self.graph)
 
         # 1 layer, 1 deep.
         g1 = self.graph.networkx_graph("h1", ["layer2"], depth=1)
@@ -291,16 +251,46 @@ class TestGraph(unittest.TestCase):
              ('n2', 'sw2', {'layers': set(['layer3'])})])
 
 
-def create_topology():
-    graph.Origin(NS, "host1").add_edges([
+class TestMySQL(unittest.TestCase):
+    def test_reconnect(self):
+        db = MySQL()
+        db.execute("SET SESSION wait_timeout=1")
+
+        db.execute("DROP TABLE IF EXISTS l2_test")
+        db.create_table(
+            "l2_test", [
+                ("id", "VARCHAR(36) NOT NULL UNIQUE PRIMARY KEY"),
+                ("value", "VARCHAR(255) NOT NULL")])
+
+        db.close()
+        rows = db.executemany(
+            "INSERT INTO l2_test (id, value) VALUES (%s, %s)", [
+                ("959b8d02-3a54-4c93-a6d0-2a94d59f8f84", "first"),
+                ("8474b0f2-9a0f-4f01-b809-c699d857e562", "second")])
+
+        # executemany works after an explicit close.
+        self.assertEqual(rows, ())
+
+        time.sleep(1.1)
+        rows = db.execute("SELECT * FROM l2_test")
+
+        # query works after a server timeout.
+        try:
+            self.assertEqual(len(rows), 2)
+        finally:
+            db.close()
+
+
+def create_topology(graph):
+    graph.get_provider("host1").update_edges([
         ("h1", "n1", ["layer3"]),
         ], "host1")
 
-    graph.Origin(NS, "host2").add_edges([
+    graph.get_provider("host2").update_edges([
         ("h2", "n1", ["layer3"]),
         ], "host2")
 
-    graph.Origin(NS, "switch1").add_edges([
+    graph.get_provider("switch1").update_edges([
         ("sw1", "h1", ["layer2"]),
         ("sw1", "h2", ["layer2"]),
         ("sw1", "r1", ["layer2", "cdp"]),
@@ -308,7 +298,7 @@ def create_topology():
         ("sw1", "n2", ["layer3"]),
         ], "switch1")
 
-    graph.Origin(NS, "switch2").add_edges([
+    graph.get_provider("switch2").update_edges([
         ("sw2", "h1", ["layer2"]),
         ("sw2", "h2", ["layer2"]),
         ("sw2", "r1", ["layer2", "cdp"]),
@@ -316,14 +306,14 @@ def create_topology():
         ("sw2", "n2", ["layer3"]),
         ], "switch2")
 
-    graph.Origin(NS, "router1").add_edges([
+    graph.get_provider("router1").update_edges([
         ("r1", "sw1", ["layer2", "cdp"]),
         ("r1", "sw2", ["layer2", "cdp"]),
         ("r1", "n1", ["layer3"]),
         ("r1", "n2", ["layer3"]),
         ], "router1")
 
-    graph.Origin(NS, "router2").add_edges([
+    graph.get_provider("router2").update_edges([
         ("r2", "sw1", ["layer2", "cdp"]),
         ("r2", "sw2", ["layer2", "cdp"]),
         ("r2", "n1", ["layer3"]),

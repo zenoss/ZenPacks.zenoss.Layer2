@@ -33,38 +33,6 @@
         return layers.join(',');
     };
 
-    var parse_hash = function(hash) {
-        var res = {
-            'layers': '',
-            'root_id': '',
-            'depth': 3
-        };
-        if (hash) {
-            var a = hash.split('&');
-            if(
-                (a[0].indexOf('deviceDetailNav') == 0) &&
-                (a[0] != 'deviceDetailNav:network_map')
-            ) return null; // not our panel
-            for (var i in a) {
-                var b = a[i].split('=');
-                res[decodeURIComponent(b[0])] = decodeURIComponent(b[1]);
-            }
-        }
-        return res;
-    }
-
-    var format_hash = function(data) {
-        var res = ['deviceDetailNav:network_map'];
-        Object.keys(data).forEach(function(key) {
-            res.push(
-                encodeURIComponent(key) +
-                '=' +
-                encodeURIComponent(data[key])
-            );
-        });
-        return res.join('&');
-    };
-
     var format_layers_data = function(checked_data) {
         var vlans = [],
             vxlans = [],
@@ -174,19 +142,10 @@
 
     var refresh_map = function () {
         var params = sidebar.getValues();
-        params.layers = get_checked_layers();
 
-        // Updating URL
-        var oldToken = Ext.History.getToken();
-        var newToken = format_hash({
-            root_id: params.root_id,
-            depth: params.depth,
-            layers: params.layers,
-            macs: params.macs
-        });
-        if (newToken !== oldToken) {
-            Ext.History.add(newToken);
-        };
+        if (!params.root_id) return;
+
+        params.layers = get_checked_layers();
 
         Ext.Ajax.request({
             url: '/zport/dmd/getJSONEdges',
@@ -211,17 +170,109 @@
         });
     };
 
-    var on_hash_change = function(hash) {
-        var params = parse_hash(hash);
-        if (params === null) return; // not our panel
+    var get_scope = function() {
+        if (location.pathname.endswith("/dmd/networkMap")) {
+            return "global";
+        } else if (location.hash.startswith("#deviceDetailNav:network_map")) {
+            return "device";
+        }
+    };
 
-        var layers = params.layers.split(',');
+    var set_sidebar_from_hash = function(hash) {
+        if (hash === null) hash = "";
+
+        var layers = [];
+
+        var parts = hash.split('&');
+        for (var i in parts) {
+            var kv = parts[i].split('=');
+            var k = decodeURIComponent(kv[0]);
+
+            if (kv[1] !== undefined) {
+                var v = decodeURIComponent(kv[1]);
+            } else {
+                continue;
+            }
+
+            switch (k) {
+                case "root_id":
+                    Ext.getCmp("sidebar_root_id").setValue(v);
+                    break;
+                case "layers":
+                    layers = v.split(',');
+                    break;
+                case "depth":
+                    Ext.getCmp("sidebar_depth").setValue(v);
+                    break;
+                case "macs":
+                    Ext.getCmp("sidebar_macs").setValue(v);
+                    break;
+                case "dangling":
+                    Ext.getCmp("sidebar_dangling").setValue(v);
+                    break;
+            }
+        }
 
         on_layers_loaded(function () {
             Ext.getCmp('layers_group').store.setRootNode(format_layers_data(layers));
         });
-        Ext.getCmp('sidebar_depth').setValue(params.depth);
-        window.form_panel.change_root(params.root_id);
+    }
+
+    var get_hash_from_sidebar = function() {
+        var scope = get_scope();
+        var hash_parts = null;
+
+        if (scope == "global") {
+            var hash_parts = [];
+        } else if (scope == "device") {
+            var hash_parts = ['deviceDetailNav:network_map'];
+        } else {
+            return;
+        }
+
+        var sidebar_data = Ext.getCmp("network_map_form").getValues();
+
+        var params = {
+            root_id: sidebar_data.root_id,
+            depth: sidebar_data.depth,
+            layers: get_checked_layers(),
+            macs: sidebar_data.macs,
+            dangling: sidebar_data.dangling
+        };
+
+        Object.keys(params).forEach(function(key) {
+            if (params[key] !== undefined) {
+                hash_parts.push(
+                    encodeURIComponent(key) +
+                    '=' +
+                    encodeURIComponent(params[key])
+                );
+            }
+        });
+
+        return hash_parts.join('&');
+    };
+
+    var on_hash_change = function(hash) {
+        var scope = get_scope();
+        if (!scope) return;
+
+        set_sidebar_from_hash(hash);
+        refresh_map();
+    };
+
+    var apply = function(params) {
+        var hash = get_hash_from_sidebar();
+        if (hash) Ext.History.add(hash);
+    }
+
+    window.form_panel.change_root = function(new_id) {
+        var sidebar_root_id = Ext.getCmp('sidebar_root_id');
+
+        if (sidebar_root_id.getValue() != new_id) {
+            sidebar_root_id.setValue(new_id);
+            Ext.History.add(get_hash_from_sidebar());
+        }
     };
 
     var sidebar = Ext.create('Ext.form.Panel', {
@@ -315,10 +366,11 @@
                 text: 'Apply',
                 name: 'refresh_button',
                 xtype: 'button',
-                handler: refresh_map
+                handler: apply
             },
         ],
     });
+
     var map = Ext.create('Ext.panel.Panel', {
         flex: 1,
     });
@@ -330,11 +382,6 @@
             align: 'stretch'
         },
     });
-
-    window.form_panel.change_root = function(new_id) {
-        Ext.getCmp('sidebar_root_id').setValue(new_id);
-        refresh_map();
-    };
 
     window.form_panel.render = function(panel) {
         Ext.History.init();

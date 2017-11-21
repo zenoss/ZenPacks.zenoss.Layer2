@@ -41,7 +41,7 @@
 
     <browser:viewlet
         name="css-network_map"
-        paths="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css"
+        paths="/++resource++ZenPacks_zenoss_Layer2/css/network_map.css?md5sum=2202161d8d9573a001425ae7a20b0461"
         for="*"
         weight="20"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
@@ -52,7 +52,7 @@
     <!-- JavaScript needed for all Zenoss pages. -->
     <browser:viewlet
         name="js-layer2views"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js?md5sum=518bfb158abf0c588594d8b1a056d5ba"
         for="*"
         weight="20"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
@@ -62,7 +62,7 @@
 
     <browser:viewlet
         name="js-d3"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/d3.v3.min.js?md5sum=3cad967c9e31d02ef6bce0e9a8eb9950"
         weight="9"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
         class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
@@ -71,7 +71,7 @@
 
     <browser:viewlet
         name="js-graph_renderer"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/graph_renderer.js?md5sum=f9af5102d75f72382f75e1db37d5e86e"
         weight="9"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
         class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"
@@ -80,7 +80,7 @@
 
     <browser:viewlet
         name="js-render_network_map"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/render_network_map.js?md5sum=88fca984ecab4f1aa67faa40bfc5769f"
         weight="9"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
         class="Products.ZenUI3.browser.javascript.JavaScriptSrcBundleViewlet"

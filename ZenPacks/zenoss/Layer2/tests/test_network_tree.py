@@ -68,12 +68,15 @@ class TestGetConnections(BaseTestCase):
         # make b look like a server
         add_interface(b, macaddress=mac_b, clientmacs=[], vlans=[])
 
-        connections.add_node(a)
-        connections.add_node(b)
+        connections.update_node(a)
+        connections.update_node(b)
 
         res = get_connections(a, depth=3, layers=['vlan1'])
-        links = str(res['links'])
-        self.assertIn("{'color': [u'layer2', u'vlan1']", links)
+        self.assertIn("links", res)
+        self.assertEqual(len(res["links"]), 1)
+        self.assertTrue("color" in res["links"][0])
+        self.assertTrue("vlan1" in res["links"][0]["color"])
+        self.assertTrue("layer2" in res["links"][0]["color"])
 
 
 class TestNodeAdapter(BaseTestCase):

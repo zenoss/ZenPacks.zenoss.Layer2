@@ -17,10 +17,12 @@ LOG = logging.getLogger('zen.Layer2')
 import Globals
 
 from Products.ZenModel.Device import Device
+from Products.ZenModel.PerformanceConf import PerformanceConf
 from Products.ZenUtils.Utils import unused
 from Products.ZenModel.ZenPack import ZenPackBase
 from Products.ZenRelations.RelSchema import ToManyCont, ToOne
 from Products.ZenRelations.zPropertyCategory import setzPropertyCategory
+from Products.Zuul.interfaces import ICatalogTool
 
 import ZenPacks.zenoss.Layer2.patches
 
@@ -39,6 +41,10 @@ setzPropertyCategory('zLocalMacAddresses', ZPROPERTY_CATEGORY)
 DEVICE_RELATIONS = {
     'neighbor_switches': 'ZenPacks.zenoss.Layer2.NeighborSwitch',
     }
+
+# Increase this number if more custom relationships are added.
+RELATIONS_REVISION = 1
+RELATIONS_REVISION_ATTR = "layer2_relations_revision"
 
 
 class ZenPack(ZenPackBase):
@@ -108,10 +114,15 @@ class ZenPack(ZenPackBase):
         self.install_relationships()
 
     def install_relationships(self):
+        if getattr(self.dmd, RELATIONS_REVISION_ATTR, 0) >= RELATIONS_REVISION:
+            # Avoid building relationships that already exist.
+            return
+
         LOG.info('Adding relationships to existing devices')
         for d in self.dmd.Devices.getSubDevicesGen():
-            add_relationships(d.__class__)
             d.buildRelations()
+
+        setattr(self.dmd, RELATIONS_REVISION_ATTR, RELATIONS_REVISION)
 
     def remove(self, app, leaveObjects=False):
         """Remove ZenPack.
@@ -124,8 +135,10 @@ class ZenPack(ZenPackBase):
 
         """
         if not leaveObjects:
+            setattr(self.dmd, RELATIONS_REVISION_ATTR, 0)
             self.remove_relationships()
             self.remove_catalogs()
+            self.remove_properties()
 
         super(ZenPack, self).remove(app, leaveObjects=leaveObjects)
 
@@ -143,6 +156,23 @@ class ZenPack(ZenPackBase):
         except AttributeError:
             # already deleted
             pass
+
+    def remove_properties(self):
+        """Remove properties added to _properties."""
+        for result in ICatalogTool(self.dmd.Monitors).search(PerformanceConf):
+            try:
+                collector = result.getObject()
+            except Exception:
+                continue
+
+            # Skip collectors lacking an instance value of _properties.
+            if collector._properties is collector.__class__._properties:
+                continue
+
+            # Remove l2_gateways property from all collectors (ZPS-2581)
+            collector._properties = tuple(
+                x for x in collector._properties
+                if x.get("id") != "l2_gateways")
 
 
 def add_relationships(cls):
