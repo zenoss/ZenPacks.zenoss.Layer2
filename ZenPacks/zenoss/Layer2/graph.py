@@ -13,6 +13,7 @@
 import collections
 import itertools
 import threading
+import time
 import warnings
 
 # third-party imports
@@ -72,6 +73,17 @@ class Graph(object):
             table=table)
 
     def create_tables(self):
+        self.db.create_table(
+            table=self.get_table("metadata"),
+            columns=[
+                ("name", "VARCHAR(255) NOT NULL UNIQUE PRIMARY KEY"),
+                ("value", "LONGBLOB")])
+
+        self.db.insert(
+            table=self.get_table("metadata"),
+            columns=("name", "value"),
+            rows=[("lastOptimize", "0",)])
+
         self.db.create_table(
             table=self.get_table("providers"),
             columns=[
@@ -225,9 +237,37 @@ class Graph(object):
                     layer_subs=",".join("%s" for x in providerUUIDs)),
                 list(providerUUIDs))
 
+    def should_optimize(self):
+        """Return True if database should be optimized."""
+        lastOptimize_results = self.db.execute(
+            "SELECT value FROM {table} WHERE name = %s LIMIT 1".format(
+                table=self.get_table("metadata")),
+            ("lastOptimize",))
+
+        for lastOptimize, in lastOptimize_results:
+            try:
+                if int(lastOptimize) + 86400 < time.time():
+                    return True
+            except Exception:
+                return True
+
+        return False
+
+    def optimize(self):
+        """Optimize all layer2 tables in the database."""
+        for table in ("metadata", "edges", "providers"):
+            self.db.execute(
+                "OPTIMIZE TABLE {table}".format(
+                    table=self.get_table(table)))
+
+        self.db.execute(
+            "UPDATE {table} SET value = %s WHERE name = %s".format(
+                table=self.get_table("metadata")),
+                [str(int(time.time())), "lastOptimize"])
+
     def clear(self):
         """Clear all layer2 information from the database."""
-        for table in ("edges", "providers"):
+        for table in ("metadata", "edges", "providers"):
             self.db.execute(
                 "TRUNCATE TABLE {table}".format(
                     table=self.get_table(table)))
@@ -278,19 +318,19 @@ class Provider(object):
             for layer in layers:
                 rows.add((self.uuid, source, target, layer))
 
-        self.graph.db.execute(
-            "DELETE FROM {table} WHERE providerUUID = %s".format(
-                table=self.graph.get_table("edges")),
-            self.uuid)
-
         # Convert back to a list for the insert.
         rows = list(rows)
 
+        # Clear this provider's previous data from the database.
+        self.clear()
+
+        # Add current edges for this provider.
         self.graph.db.insert(
             table=self.graph.get_table("edges"),
             columns=("providerUUID", "source", "target", "layer"),
             rows=rows)
 
+        # Add metadata for this provider.
         self.graph.db.insert(
             table=self.graph.get_table("providers"),
             columns=("providerUUID", "lastChange"),
