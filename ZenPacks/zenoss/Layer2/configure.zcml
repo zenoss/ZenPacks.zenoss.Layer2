@@ -52,7 +52,7 @@
     <!-- JavaScript needed for all Zenoss pages. -->
     <browser:viewlet
         name="js-layer2views"
-        paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js?md5sum=518bfb158abf0c588594d8b1a056d5ba"
+        paths="/++resource++ZenPacks_zenoss_Layer2/js/views.js?md5sum=9eb56cbcccae2e9d5cb83aaf78448d4a"
         for="*"
         weight="20"
         manager="Products.ZenUI3.browser.interfaces.IJavaScriptSrcManager"
