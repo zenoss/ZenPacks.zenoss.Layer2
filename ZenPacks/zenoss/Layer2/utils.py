@@ -93,3 +93,24 @@ def ro_objects(objs):
             continue
         else:
             break
+
+
+# Backwards-compatible virtual root support.
+try:
+    from zope.component import getUtility
+    from zope.component.interfaces import ComponentLookupError
+    from Products.ZenUtils.virtual_root import IVirtualRoot
+
+    def get_cz_url_path(obj):
+        """Return CZ URL path for obj."""
+        try:
+            virtual_root = getUtility(IVirtualRoot)
+        except ComponentLookupError:
+            return obj.getPrimaryUrlPath()
+
+        return virtual_root.ensure_virtual_root(obj.getPrimaryUrlPath())
+
+except ImportError:
+    def get_cz_url_path(obj):
+        """Return primary URL path for obj."""
+        return obj.getPrimaryUrlPath()
