@@ -30,6 +30,7 @@ except ImportError:
 
 from . import connections
 from . import network_tree
+from .utils import get_cz_url_path
 
 unused(Globals)
 
@@ -67,14 +68,13 @@ def get_clients_links(self):
 
         if device:
             template = '<a href="{}">{}</a>'
-            link = template.format(device.getPrimaryUrlPath(),
-                                   device.titleOrId())
+            link = template.format(get_cz_url_path(device), device.titleOrId())
             links[link]['macs'].setdefault(mac[:8], []).append(mac)
             vs_instance = device.device()
             if vs_instance.meta_type == 'vSphereEndpoint':
-                links[link]['vsphere'] =\
-                    template.format(vs_instance.getPrimaryUrlPath(),
-                                    vs_instance.titleOrId())
+                links[link]['vsphere'] = template.format(
+                    get_cz_url_path(vs_instance),
+                    vs_instance.titleOrId())
         else:
             links["Other"]['macs'].setdefault(mac[:8], []).append(mac)
     # Formats result to use in ExtJS tree view
