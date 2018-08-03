@@ -43,7 +43,7 @@ DEVICE_RELATIONS = {
     }
 
 # Increase this number if more custom relationships are added.
-RELATIONS_REVISION = 1
+RELATIONS_REVISION = 2
 RELATIONS_REVISION_ATTR = "layer2_relations_revision"
 
 
@@ -135,7 +135,6 @@ class ZenPack(ZenPackBase):
 
         """
         if not leaveObjects:
-            setattr(self.dmd, RELATIONS_REVISION_ATTR, 0)
             self.remove_relationships()
             self.remove_catalogs()
             self.remove_properties()
@@ -148,6 +147,9 @@ class ZenPack(ZenPackBase):
         for d in self.dmd.Devices.getSubDevicesGen():
             remove_relationships(d.__class__)
             d.buildRelations()
+
+        if self.dmd.aqBaseHasAttr(RELATIONS_REVISION_ATTR):
+            delattr(self.dmd, RELATIONS_REVISION_ATTR)
 
     def remove_catalogs(self):
         """Remove our catalogs."""
@@ -178,23 +180,34 @@ class ZenPack(ZenPackBase):
 def add_relationships(cls):
     """Add our relationships to cls._relations."""
     our_relnames = set(DEVICE_RELATIONS)
-    existing_relnames = {x[0] for x in cls._relations}
-    new_reltuples = tuple(
-        (relname, ToManyCont(ToOne, DEVICE_RELATIONS[relname], 'switch'))
-        for relname in our_relnames.difference(existing_relnames))
+    for cls_ in get_subclasses(cls):
+        existing_relnames = {x[0] for x in cls_._relations}
+        new_reltuples = tuple(
+            (relname, ToManyCont(ToOne, DEVICE_RELATIONS[relname], 'switch'))
+            for relname in our_relnames.difference(existing_relnames))
 
-    if new_reltuples:
-        cls._relations += new_reltuples
+        if new_reltuples:
+            cls_._relations += new_reltuples
 
 
 def remove_relationships(cls):
     """Remove our relationships from cls._relations."""
     our_relnames = set(DEVICE_RELATIONS)
-    existing_relnames = {x[0] for x in cls._relations}
-    if our_relnames.intersection(existing_relnames):    
-        cls._relations = tuple(
-            (relname, relspec) for relname, relspec in cls._relations
-            if relname not in our_relnames)
+    for cls_ in get_subclasses(cls):
+        existing_relnames = {x[0] for x in cls_._relations}
+        if our_relnames.intersection(existing_relnames):
+            cls_._relations = tuple(
+                (relname, relspec) for relname, relspec in cls_._relations
+                if relname not in our_relnames)
+
+
+def get_subclasses(cls):
+    """Generate all subclasses of cls recursively. Includes cls itself."""
+    yield cls
+    for subclass in cls.__subclasses__():
+        yield subclass
+        for subclass_ in get_subclasses(subclass):
+            yield subclass_
 
 
 # Patch Device._relations with our relationships.
