@@ -106,9 +106,11 @@ Ext.reg('NeighborSwitchPanel', ZC.NeighborSwitchPanel);
 
 get_clientmacs = function(uid, callback) {
     router = Zenoss.remote.DeviceRouter;
-    router.getInfo({uid:uid}, function(response){
-        callback(response.data.get_clients_links);
-    });
+    router.getInfo(
+        {uid:uid, keys:["get_clients_links"]},
+        function(response){
+            callback(response.data.get_clients_links);
+        });
 }
 
 Zenoss.nav.appendTo('Component', [{

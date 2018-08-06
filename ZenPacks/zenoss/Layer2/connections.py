@@ -209,6 +209,18 @@ def clear():
 
 
 @log_mysql_errors(default=None)
+def should_optimize():
+    """Return True if data should be optimized."""
+    return get_graph().should_optimize()
+
+
+@log_mysql_errors(default=None)
+def optimize():
+    """Optimize all data."""
+    return get_graph().optimize()
+
+
+@log_mysql_errors(default=None)
 def compact(providerUUIDs):
     """Clear data from providers not listed in providerUUIDs."""
     return get_graph().compact(providerUUIDs)

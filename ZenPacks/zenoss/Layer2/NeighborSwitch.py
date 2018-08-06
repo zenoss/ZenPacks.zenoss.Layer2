@@ -22,6 +22,8 @@ from Products.Zuul.infos.component import ComponentInfo
 from Products.Zuul.interfaces.component import IComponentInfo
 from Products.Zuul.utils import ZuulMessageFactory as _t
 
+from .utils import get_cz_url_path
+
 
 class NeighborSwitch(DeviceComponent, ManagedEntity):
     meta_type = portal_type = 'NeighborSwitch'
@@ -95,5 +97,5 @@ class NeighborSwitchInfo(ComponentInfo):
         if not obj:
             return ip
         return '<a href="{}">{}</a>'.format(
-            obj.getPrimaryUrlPath(), obj.titleOrId()
-        )
+            get_cz_url_path(obj),
+            obj.titleOrId())
