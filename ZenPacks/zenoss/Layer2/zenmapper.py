@@ -172,7 +172,7 @@ class ZenMapper(CyclingDaemon):
             try:
                 added = connections.update_node(node, force=self.options.force)
             except Exception:
-                LOG.exception("%s: unexpected exception while updating")
+                LOG.exception("%s: unexpected exception while updating", node.id)
                 continue
 
             if added:
@@ -224,6 +224,11 @@ class ZenMapper(CyclingDaemon):
 
             LOG.info("pruning non-existent nodes")
             connections.compact(node_uuids)
+
+            if connections.should_optimize():
+                LOG.info("optimizing database")
+                connections.optimize()
+                LOG.info("finished optimizing database")
 
         # Paths must be sorted for workers to get the right chunks.
         node_paths.sort()

@@ -8,6 +8,7 @@
 ##############################################################################
 
 from . import connections
+from .utils import get_cz_url_path
 
 # constants
 MAX_LINKS = 100
@@ -38,7 +39,7 @@ class DeviceLinkProvider(object):
 
             links.add(
                 'Switch: <a href="{}">{}</a>'.format(
-                    neighbor.getPrimaryUrlPath(),
+                    get_cz_url_path(neighbor),
                     neighbor.titleOrId()))
 
         if len(links) == 0:
