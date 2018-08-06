@@ -42,6 +42,8 @@ def get_connections_json(
         connections data for graph.
     '''
 
+    if root_id.find("/zport/") > 0:
+        root_id = root_id[root_id.find("/zport/"):] # CZ workaround, ZEN-30541
     obj = data_root.Devices.findDevice(root_id)
     try:
         obj = obj or data_root.dmd.getObjByPath(root_id)
