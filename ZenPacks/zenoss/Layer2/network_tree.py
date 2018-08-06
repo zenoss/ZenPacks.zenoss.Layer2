@@ -43,16 +43,14 @@ def get_connections_json(
     '''
 
     if root_id.find("/zport/") > 0:
-        rid = root_id[root_id.find("/zport/"):] # CZ workaround, ZEN-30541
-    else:
-        rid = root_id
-    obj = data_root.Devices.findDevice(rid)
+        root_id = root_id[root_id.find("/zport/"):] # CZ workaround, ZEN-30541
+    obj = data_root.Devices.findDevice(root_id)
     try:
-        obj = obj or data_root.dmd.getObjByPath(rid)
+        obj = obj or data_root.dmd.getObjByPath(root_id)
     except KeyError:
         obj = None
     if not obj:
-        return serialize('Node %r was not found' % rid)
+        return serialize('Node %r was not found' % root_id)
 
     return serialize(get_connections(obj, depth, layers, macs, dangling))
 
