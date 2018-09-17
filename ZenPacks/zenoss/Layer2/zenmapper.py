@@ -15,6 +15,7 @@ import datetime
 import logging
 import math
 import multiprocessing
+import optparse
 import os
 import resource
 import sys
@@ -27,9 +28,15 @@ from Products.ZenUtils.Utils import convToUnits
 from Products.Zuul.interfaces import ICatalogTool
 
 from ZenPacks.zenoss.Layer2 import connections
+from ZenPacks.zenoss.Layer2.progresslog import ProgressLogger
 
 LOG = logging.getLogger('zen.ZenMapper')
 
+# How often (in seconds) to update connection information for all devices.
+DEFAULT_CYCLETIME = 300
+
+# Hot often (in seconds) to optimize database tables. 0 means never.
+DEFAULT_OPTIMIZE_INTERVAL = 0
 
 # ZenMapper.updates_nodes() will log at INFO level instead of DEBUG if it
 # takes longer than LONG_TIME seconds to update a node's edges, or if memory
@@ -74,60 +81,82 @@ class ZenMapper(CyclingDaemon):
 
     def buildOptions(self):
         super(CyclingDaemon, self).buildOptions()
+
+        # Options common to multiple Zenoss processes.
         self.parser.add_option(
-            '--cycletime',
-            dest='cycletime', default=300, type="int",
-            help="update connections every CYCLETIME seconds. 300 by default"
-        )
-        self.parser.add_option(
-            "--monitor", dest="monitor",
+            "--monitor",
+            dest="monitor",
             default=DEFAULT_MONITOR,
-            help="Name of monitor instance to use for heartbeat "
-            " events. Default is %s." % DEFAULT_MONITOR
-        )
+            help="Name of monitor to use for heartbeat events.\n"
+                 "[default: %default]")
+
         self.parser.add_option(
+            "--cycletime",
+            dest="cycletime",
+            default=DEFAULT_CYCLETIME,
+            type="int",
+            help="How often (in seconds) to update connections.\n"
+                 "[default: %default]")
+
+        self.parser.add_option(
+            "-d",
+            "--device",
+            dest="device",
+            help="Specific device ID for which to update connections.\n"
+                 "[optional]")
+
+        # Options specific to zenmapper.
+        group = optparse.OptionGroup(self.parser, "ZenMapper Options")
+        self.parser.add_option_group(group)
+
+        group.add_option(
             "--clear",
             dest="clear",
             action="store_true",
-            help="Clear MACs catalog"
-        )
+            help="Clear all connections.")
 
-        self.parser.add_option(
+        group.add_option(
             "--force",
             dest="force",
             action="store_true",
-            help="Force reindex"
-        )
+            help="Force update for unchanged devices.")
 
-        self.parser.add_option(
-            '-d', '--device', dest='device',
-            help="Fully qualified device name ie www.confmon.com"
-        )
+        group.add_option(
+            "--optimize-interval",
+            dest="optimize_interval",
+            default=DEFAULT_OPTIMIZE_INTERVAL,
+            type="int",
+            help="How often (in seconds) to optimize database.\n"
+                 "[default: %default]")
 
-        self.parser.add_option(
-            '--workers',
-            dest='workers', default=2, type="int",
-            help='Workers number'
-        )
+        group.add_option(
+            "--workers",
+            dest="workers",
+            default=2,
+            type="int",
+            help="Number of workers.\n"
+                 "[default: %default]")
 
-        self.parser.add_option(
+        # Internal-use-only options. These are passed to workers by the main
+        # process, and not expected to be passed to the main process by the
+        # user.
+        group.add_option(
             "--worker",
             dest="worker",
             action="store_true",
-            help="Run as worker"
-        )
+            help=optparse.SUPPRESS_HELP)
 
-        self.parser.add_option(
-            '--offset',
-            dest='offset', type="int",
-            help='Start point to process in worker'
-        )
+        group.add_option(
+            "--offset",
+            dest="offset",
+            type="int",
+            help=optparse.SUPPRESS_HELP)
 
-        self.parser.add_option(
-            '--chunk',
-            dest='chunk', type="int",
-            help='Chunk size to process in worker'
-        )
+        group.add_option(
+            "--chunk",
+            dest="chunk",
+            type="int",
+            help=optparse.SUPPRESS_HELP)
 
     def start_worker(self, worker_id, chunk_size):
         """
@@ -164,8 +193,10 @@ class ZenMapper(CyclingDaemon):
     def update_nodes(self, paths):
         """Update nodes given paths."""
         updated = 0
+        progress = ProgressLogger(LOG, total=len(paths), interval=60)
 
         for node in nodes_from_paths(self.dmd.Devices, paths):
+            progress.increment()
             start_time = datetime.datetime.now()
             start_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
@@ -225,10 +256,13 @@ class ZenMapper(CyclingDaemon):
             LOG.info("pruning non-existent nodes")
             connections.compact(node_uuids)
 
-            if connections.should_optimize():
+            if connections.should_optimize(self.options.optimize_interval):
                 LOG.info("optimizing database")
                 connections.optimize()
                 LOG.info("finished optimizing database")
+
+            # Clean up deprecated data.
+            connections.migrate()
 
         # Paths must be sorted for workers to get the right chunks.
         node_paths.sort()

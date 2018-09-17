@@ -41,6 +41,7 @@ class TestUpdateCatalog(BaseTestCase):
         self.zenmapper.options.workers = 0
         self.zenmapper.options.worker = False
         self.zenmapper.options.force = False
+        self.zenmapper.options.optimize_interval = 0
 
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
