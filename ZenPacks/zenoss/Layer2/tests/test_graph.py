@@ -262,19 +262,19 @@ class TestMySQL(unittest.TestCase):
                 ("id", "VARCHAR(36) NOT NULL UNIQUE PRIMARY KEY"),
                 ("value", "VARCHAR(255) NOT NULL")])
 
+        # executemany works after an explicit close.
         db.close()
-        rows = db.executemany(
-            "INSERT INTO l2_test (id, value) VALUES (%s, %s)", [
+        db.executemany(
+            "INSERT INTO l2_test (id, value) values (%s, %s)", [
                 ("959b8d02-3a54-4c93-a6d0-2a94d59f8f84", "first"),
                 ("8474b0f2-9a0f-4f01-b809-c699d857e562", "second")])
 
-        # executemany works after an explicit close.
-        self.assertEqual(rows, ())
-
+        # query works after a server timeout.
         time.sleep(1.1)
         rows = db.execute("SELECT * FROM l2_test")
 
-        # query works after a server timeout.
+        db.execute("DROP TABLE l2_test")
+
         try:
             self.assertEqual(len(rows), 2)
         finally:
