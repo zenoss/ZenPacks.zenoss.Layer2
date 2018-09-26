@@ -197,6 +197,11 @@ class ZenMapper(CyclingDaemon):
 
         for node in nodes_from_paths(self.dmd.Devices, paths):
             progress.increment()
+
+            if not node.getZ("zL2UpdateInBackground", True):
+                LOG.debug("%s: zL2UpdateInBackground = False", node.id)
+                continue
+
             start_time = datetime.datetime.now()
             start_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
