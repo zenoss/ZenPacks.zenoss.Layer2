@@ -73,7 +73,6 @@ class TestPatches(BaseTestCase):
                     relname="interfaces",
                     compname="os",
                     modname="Products.ZenModel.IpInterface",
-                    plugin_name="Layer2.test_patches",
                     objmaps=[{
                         "id": "eth0",
                         "interfaceName": "eth0",
@@ -93,7 +92,6 @@ class TestPatches(BaseTestCase):
                     relname="interfaces",
                     compname="os",
                     modname="Products.ZenModel.IpInterface",
-                    plugin_name="Layer2.test_patches",
                     objmaps=[{
                         "id": "eth0",
                         "interfaceName": "eth0",
