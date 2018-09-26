@@ -1,6 +1,6 @@
 ######################################################################
 #
-# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2015-2018, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is
@@ -52,9 +52,20 @@ class TestUpdateCatalog(BaseTestCase):
 
     def test_pair(self):
         self.topology('a b')
-        self.zenmapper.main_loop()
         a = self.dmd.getObjByPath(router("a"))
         b = self.dmd.getObjByPath(router("b"))
+
+        # Test that disabling background updates works.
+        a.setZenProperty("zL2UpdateInBackground", False)
+        b.setZenProperty("zL2UpdateInBackground", False)
+        self.zenmapper.main_loop()
+        a_neighbors = connections.get_layer2_neighbor_devices(a)
+        self.assertNotIn(b, a_neighbors)
+
+        # Test that enabling background updates works.
+        a.setZenProperty("zL2UpdateInBackground", True)
+        b.setZenProperty("zL2UpdateInBackground", True)
+        self.zenmapper.main_loop()
         a_neighbors = connections.get_layer2_neighbor_devices(a)
         self.assertIn(b, a_neighbors)
 

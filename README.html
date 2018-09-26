@@ -353,6 +353,13 @@ zenmapper run -v10 -d &lt;name or id of your modeled device&gt;
 <h3 id="collecting-network-device-neighbors">Collecting Network Device Neighbors</h3>
 <p>To collect neighbor information from network devices that support CDP or LLDP, you must enable the <code>zenoss.snmp.CDPLLDPDiscover</code> modeler plugin for the devices.</p>
 
+<h3 id="usage-update-control">Update Control</h3>
+<p>Many of this ZenPack's features such as the network map, event suppression, impact analysis, and root cause analysis depend on quick access to information about the connectivity between devices and components. To support this, the ZenPack updates a dedicated database of connectivity information at two different times. When modeling a device results in a change, and periodically in the background to catch any changes not caught during modeling updates.</p>
+
+<p>Updating the connectivity database does have some performance cost, and it isn't always necessary to have the information updated during modeling if the most up-to-date information isn't required, or in the background if you expect the modeling-time updates to catch all relevant changes. Towards this end there are two configuration properties that allow you to selectively disable modeling-time updates (zL2UpdateOnModel), background updates (zL2UpdateInBackground), or both. By default both of these properties are enabled.</p>
+
+<p>Bear in mind that setting both properties to false will prevent all of this ZenPack's functionality from working for the device(s) in question. If you find that modeling is slowed down to unacceptable levels, then you might consider setting zL2UpdateOnModel to false and allowing the background processing to reconcile chanages periodically. However, if you find that the zenmapper service is consuming too many resources you may want to consider setting zL2UpdateInBackground to false and allowing the modeling-time updates to do all of the work. Using the default of having both properties set to true results in the best experience on systems not suffering from performance problems because the connectivity information is as up-to-date as possible, and will be periodically reconciled in case of external changes.</p>
+
 <h2 id="service-impact">Service Impact</h2>
 <p>When combined with the Zenoss Service Dynamics product, this ZenPack adds built-in service impact capability based on Layer 2 data. The following service impact relationships are automatically added. These will be included in any services that contain one or more of the explicitly mentioned entities.</p>
 
@@ -416,6 +423,8 @@ SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
 
 <h3 id="configuration-properties">Configuration Properties</h3>
 <ul>
+    <li>zL2UpdateOnModel (default: True)</li>
+    <li>zL2UpdateInBackground (default: True)</li>
     <li>zL2Gateways (default: [])</li>
     <li>zL2PotentialRootCause (default: True)</li>
     <li>zL2SuppressIfDeviceDown (default: False)</li>

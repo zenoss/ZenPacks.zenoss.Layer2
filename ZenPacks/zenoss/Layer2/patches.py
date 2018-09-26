@@ -116,11 +116,17 @@ def remote_applyDataMaps(self, device, maps, *args, **kwargs):
             # buys us is more immediate updating of Layer2 data after
             # devices are remodeled.
             device = self.getPerformanceMonitor().findDeviceByIdExact(device)
-            if device and not isinstance(device, vSphereEndpoint):
+            if not device:
+                return changed
+
+            if isinstance(device, vSphereEndpoint):
+                return changed
+
+            if device.getZ("zL2UpdateOnModel", True):
                 connections.update_node(device)
 
         except Exception:
-            # Redis might not be available. We'll just let zenmapper add
+            # MySQL might not be available. We'll just let zenmapper add
             # this node on its next cycle.
             pass
 
