@@ -1,5 +1,5 @@
 <style>
-div.thumbnail {
+#doc-container div.thumbnail {
     clear: right;
     float: right;
     margin: 0 0 10px 10px;
@@ -9,19 +9,31 @@ div.thumbnail {
     font-style: italic;
 }
 
-br.clear {
+#doc-container br.clear {
     clear: right;
 }
 
-dd {
+#doc-container dd {
     font-size: smaller;
 }
+
+#doc-container ul.properties {
+    font-size: smaller;
+    list-style-type: none;
+    margin: 10px 0 10px 0;
+    padding: 0;
+}
 </style>
+
+<div id="doc-container">
+
 <h1 id="title">Layer2 ZenPack</h1>
 <p>Monitoring of OSI Layer 2 networking infrastructure.</p>
 
 <h2 id="background">Background</h2>
 <p>This ZenPack provides support to model OSI Layer 2 (or data link layer) topology. That topology information is used to suppress events from devices connection to which was lost because they are connected to broken devices. Data collection is performed using SNMP.</p>
+
+<p>[zenoss-toc]</p>
 
 <h2 id="releases">Releases</h2>
 
@@ -51,60 +63,6 @@ dd {
         <a href="/product/zenpacks/pythoncollector">PythonCollector ZenPack >= 1.1</a>
     </dd>
 </dl>
-
-<h2 id="contents">Contents</h2>
-<ol>
-    <li><a href="#features">Features</a>
-        <ol>
-            <li><a href="#discovered-components">Discovered Components</a></li>
-            <li><a href="#monitoring">Monitoring</a></li>
-            <li><a href="#event-suppression">Event Suppression</a></li>
-        </ol>
-    </li>
-    <li><a href="#network-map">Network Map</a>
-        <ol>
-            <li><a href="#filtering">Filtering</a></li>
-            <li><a href="#colors-and-shapes">Colors and Shapes</a></li>
-            <li><a href="#interaction">Interaction</a></li>
-        </ol>
-    </li>
-    <li><a href="#zenmapper-daemon">zenmapper Daemon</a></li>
-    <li><a href="#writing-your-own-connection-provider">Writing Your Own Connection Provider</a></li>
-    <li><a href="#installation">Installation</a>
-        <ol>
-            <li><a href="#installation-zenoss-5.0">Zenoss 5.0</a></li>
-            <li><a href="#installation-openvswitch">Open vSwitch</a></li>
-        </ol>
-    </li>
-    <li><a href="#usage">Usage</a>
-        <ol>
-            <li><a href="#collecting-switch-port-clients">Collecting Switch Port Clients</a></li>
-            <li><a href="#collecting-network-device-neighbors">Collecting Network Device Neighbors</a></li>
-        </ol>
-    </li>
-    <li><a href="#service-impact">Service Impact</a>
-        <ol>
-            <li><a href="#service-impact-relationships">Service Impact Relationships</a></li>
-        </ol>
-    </li>
-    <li><a href="#troubleshooting">Troubleshooting</a>
-        <ol>
-            <li><a href="#empty-map-links-for-device">Empty Map/Links for Device</a></li>
-            <li><a href="#layer2-forwarding-table">Layer2 Forwarding Table</a></li>
-            <li><a href="#impact">Impact</a></li>
-            <li><a href="#limitations">Limitations</a></li>
-            <li><a href="#more-information">More Information</a></li>
-        </ol>
-    </li>
-    <li><a href="#installed-items">Installed Items</a>
-        <ol>
-            <li><a href="#modeler-plugins">Modeler Plugins</a></li>
-            <li><a href="#configuration-properties">Configuration Properties</a></li>
-            <li><a href="#services">Services / Daemons</a></li>
-        </ol>
-    </li>
-    <li><a href="#changes">Changes</a></li>
-</ol>
 
 <h2 id="features">Features</h2>
 <p>The features added by this ZenPack can be summarized as follows. They are each detailed further below.</p>
@@ -601,3 +559,5 @@ SNMPv2-SMI::mib-2.17.4.2.0 = INTEGER: 300
 <ul>
     <li>Initial release</li>
 </ul>
+
+</div> <!-- end #doc-container -->
