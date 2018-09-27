@@ -30,7 +30,7 @@ from Products.Zuul.interfaces import ICatalogTool
 from ZenPacks.zenoss.Layer2 import connections
 from ZenPacks.zenoss.Layer2.progresslog import ProgressLogger
 
-LOG = logging.getLogger('zen.ZenMapper')
+LOG = logging.getLogger('zen.zenmapper')
 
 # How often (in seconds) to update connection information for all devices.
 DEFAULT_CYCLETIME = 300
@@ -63,7 +63,7 @@ def exec_worker(offset, chunk):
     try:
         os.execvp(argv[0], argv)
     except:
-        LOG.exception("Failed to start process")
+        LOG.exception("failed to start worker process")
 
 
 def main():
@@ -78,6 +78,11 @@ class ZenMapper(CyclingDaemon):
     def __init__(self, noopts=0, app=None, keeproot=False):
         super(ZenMapper, self).__init__(noopts, app, keeproot)
         self._workers = {}
+
+        if self.options.worker:
+            self.log = self.log.getChild(
+                "worker-{}".format(
+                    self.options.offset))
 
     def buildOptions(self):
         super(CyclingDaemon, self).buildOptions()
@@ -163,9 +168,9 @@ class ZenMapper(CyclingDaemon):
         Creates new process of zenmapper with a task to process chunk of nodes
         """
         if worker_id in self._workers and self._workers[worker_id].is_alive():
-            LOG.info("worker %i: still running", worker_id)
+            self.log.info("worker-%i still running", worker_id)
         else:
-            LOG.info("worker %i: starting for %s nodes", worker_id, chunk_size)
+            self.log.info("starting worker-%i for %s nodes", worker_id, chunk_size)
             p = multiprocessing.Process(
                 target=exec_worker,
                 args=(worker_id, chunk_size)
@@ -193,13 +198,13 @@ class ZenMapper(CyclingDaemon):
     def update_nodes(self, paths):
         """Update nodes given paths."""
         updated = 0
-        progress = ProgressLogger(LOG, total=len(paths), interval=60)
+        progress = ProgressLogger(self.log, total=len(paths), interval=60)
 
         for node in nodes_from_paths(self.dmd.Devices, paths):
             progress.increment()
 
             if not node.getZ("zL2UpdateInBackground", True):
-                LOG.debug("%s: zL2UpdateInBackground = False", node.id)
+                self.log.debug("%s: zL2UpdateInBackground = False", node.id)
                 continue
 
             start_time = datetime.datetime.now()
@@ -208,7 +213,7 @@ class ZenMapper(CyclingDaemon):
             try:
                 added = connections.update_node(node, force=self.options.force)
             except Exception:
-                LOG.exception("%s: unexpected exception while updating", node.id)
+                self.log.exception("%s: unexpected exception while updating", node.id)
                 continue
 
             if added:
@@ -225,7 +230,7 @@ class ZenMapper(CyclingDaemon):
                 else:
                     log_level = logging.DEBUG
 
-                LOG.log(
+                self.log.log(
                     log_level,
                     "%s: updated (%s in %s)",
                     node.id,
@@ -234,22 +239,28 @@ class ZenMapper(CyclingDaemon):
 
                 updated += 1
             else:
-                LOG.debug("%s: already up to date", node.id)
+                self.log.debug("%s: already up to date", node.id)
 
         return updated
 
-    def main_loop(self):
-        if self.options.clear:
-            LOG.info("clearing database")
-            connections.clear()
-            return
+    def run(self):
+        """Execute startup-time-only tasks."""
+        super(ZenMapper, self).run()
 
+        # Clean up deprecated data.
+        connections.migrate()
+
+        if self.options.clear:
+            self.log.info("clearing database")
+            connections.clear()
+
+    def main_loop(self):
         if self.options.device:
             device = self.dmd.Devices.findDeviceByIdExact(self.options.device)
             if device:
                 self.update_nodes([device.getPrimaryId()])
             else:
-                LOG.error("device %s not found", self.options.device)
+                self.log.error("device %s not found", self.options.device)
 
             return
 
@@ -258,16 +269,13 @@ class ZenMapper(CyclingDaemon):
         else:
             node_paths, node_uuids = self.get_paths_and_uuids(uuids=True)
 
-            LOG.info("pruning non-existent nodes")
+            self.log.info("pruning non-existent nodes")
             connections.compact(node_uuids)
 
             if connections.should_optimize(self.options.optimize_interval):
-                LOG.info("optimizing database")
+                self.log.info("optimizing database")
                 connections.optimize()
-                LOG.info("finished optimizing database")
-
-            # Clean up deprecated data.
-            connections.migrate()
+                self.log.info("finished optimizing database")
 
         # Paths must be sorted for workers to get the right chunks.
         node_paths.sort()
@@ -277,7 +285,7 @@ class ZenMapper(CyclingDaemon):
             chunk_size = int(
                 math.ceil(len(node_paths) / float(self.options.workers)))
 
-            LOG.info(
+            self.log.info(
                 "starting %s workers (%s nodes each)",
                 self.options.workers,
                 chunk_size)
@@ -288,13 +296,10 @@ class ZenMapper(CyclingDaemon):
             return
 
         if self.options.worker:
-            worker_prefix = "worker {}: ".format(self.options.offset)
             start = self.options.offset * self.options.chunk
             node_paths = node_paths[start:start + self.options.chunk]
-        else:
-            worker_prefix = ""
 
-        LOG.info("%schecking %s nodes", worker_prefix, len(node_paths))
+        self.log.info("checking %s nodes", len(node_paths))
 
         start_time = datetime.datetime.now()
         start_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -306,9 +311,8 @@ class ZenMapper(CyclingDaemon):
         duration = end_time - start_time
         growth = (end_rss - start_rss) * 1024
 
-        LOG.info(
-            "%supdated %s of %s nodes (%s in %s)",
-            worker_prefix,
+        self.log.info(
+            "updated %s of %s nodes (%s in %s)",
             updated,
             len(node_paths),
             convToUnits(growth, 1024.0, "B"),
