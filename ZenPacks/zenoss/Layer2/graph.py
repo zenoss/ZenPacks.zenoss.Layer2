@@ -51,6 +51,12 @@ def get_provider(uuid):
     return graph.get_provider(uuid)
 
 
+def chunks(s, n):
+    """Generate lists of size n from iterable s."""
+    for chunk in (s[i:i + n] for i in range(0, len(s), n)):
+        yield chunk
+
+
 class Graph(object):
     """Undirected graph of edges from all providers.
 
@@ -140,6 +146,7 @@ class Graph(object):
                 ("target_id", "INT UNSIGNED NOT NULL"),
                 ("layer_id", "INT UNSIGNED NOT NULL")],
             indexes=[
+                ("UNIQUE INDEX", "allColumns", ("provider_id", "source_id", "target_id", "layer_id")),
                 ("INDEX", "sourceByLayer", ("source_id", "layer_id")),
                 ("INDEX", "targetByLayer", ("target_id", "layer_id"))],
             foreign_keys=[
@@ -416,8 +423,11 @@ class Graph(object):
                 self.db.execute(
                     "DELETE FROM {table}".format(
                         table=self.get_table(table)))
-            except Exception as e:
+            except Exception:
                 pass
+
+        # Tables require optimization after emptying.
+        self.optimize()
 
     def migrate(self):
         """Migrate data from previous versions."""
@@ -515,7 +525,6 @@ class Provider(object):
 
     def update_edges(self, edges, lastChange):
         """Update list of (source, target, layers) edge triples."""
-
         rows, layers, nodes = set(), set(), set()
 
         for s, t, ls in edges:
@@ -566,37 +575,39 @@ class Provider(object):
         if old_rows:
             delete_table = self.graph.get_table("edges_to_delete")
 
-            # Create a temporary table filled with edges to delete.
-            self.graph.db.execute(
-                "CREATE TEMPORARY TABLE {delete_table} "
-                "SELECT * FROM {edges_table} WHERE 1=0".format(
-                    delete_table=delete_table,
-                    edges_table=self.graph.edges_table))
+            # Delete in chunks to avoid edges table deadlocks.
+            for i, old_rows_chunk in enumerate(chunks(list(old_rows), 1000)):
+                # Create a temporary table filled with edges to delete.
+                self.graph.db.create_table(
+                    table=delete_table,
+                    columns=[
+                        ("source_id", "INT UNSIGNED NOT NULL"),
+                        ("target_id", "INT UNSIGNED NOT NULL"),
+                        ("layer_id", "INT UNSIGNED NOT NULL")],
+                    temporary=True)
 
-            self.graph.db.bulk_insert(
-                table=delete_table,
-                columns=("provider_id", "source_id", "target_id", "layer_id"),
-                rows=[(
-                    self.id,
-                    state["node_ids"][x[0]],
-                    state["node_ids"][x[1]],
-                    state["layer_ids"][x[2]],
-                    ) for x in old_rows],
-                ignore=True)
+                self.graph.db.bulk_insert(
+                    table=delete_table,
+                    columns=("source_id", "target_id", "layer_id"),
+                    rows=[(
+                        state["node_ids"][x[0]],
+                        state["node_ids"][x[1]],
+                        state["layer_ids"][x[2]],
+                        ) for x in old_rows_chunk],
+                    ignore=True)
 
-            # Delete all edges that exist in the temporary table.
-            self.graph.db.execute(
-                "DELETE FROM e USING {edges_table} e"
-                " INNER JOIN {delete_table} d ON ("
-                "   e.provider_id = d.provider_id AND"
-                "   e.source_id = d.source_id AND"
-                "   e.target_id = d.target_id AND"
-                "   e.layer_id = d.layer_id)".format(
-                    edges_table=self.graph.edges_table,
-                    delete_table=delete_table))
+                # Delete all edges that exist in the temporary table.
+                self.graph.db.execute(
+                    "DELETE FROM e USING {edges_table} e"
+                    " INNER JOIN {delete_table} d ON ("
+                    "   e.source_id = d.source_id AND"
+                    "   e.target_id = d.target_id AND"
+                    "   e.layer_id = d.layer_id)".format(
+                        edges_table=self.graph.edges_table,
+                        delete_table=delete_table))
 
-            # Cleanup the temporary table.
-            self.graph.db.execute("DROP TEMPORARY TABLE {}".format(delete_table))
+                # Cleanup the temporary table.
+                self.graph.db.execute("DROP TEMPORARY TABLE {}".format(delete_table))
 
         # Insert new edges.
         new_rows = rows.difference(state["rows"])

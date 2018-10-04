@@ -107,7 +107,7 @@ class ZenMapper(CyclingDaemon):
             "-d",
             "--device",
             dest="device",
-            help="Specific device ID for which to update connections.\n"
+            help="Update single device then exit.\n"
                  "[optional]")
 
         # Options specific to zenmapper.
@@ -118,13 +118,13 @@ class ZenMapper(CyclingDaemon):
             "--clear",
             dest="clear",
             action="store_true",
-            help="Clear all connections.")
+            help="Clear all connections then exit.")
 
         group.add_option(
-            "--force",
-            dest="force",
+            "--optimize",
+            dest="optimize",
             action="store_true",
-            help="Force update for unchanged devices.")
+            help="Optimize database then exit.")
 
         group.add_option(
             "--optimize-interval",
@@ -133,6 +133,12 @@ class ZenMapper(CyclingDaemon):
             type="int",
             help="How often (in seconds) to optimize database.\n"
                  "[default: %default]")
+
+        group.add_option(
+            "--force",
+            dest="force",
+            action="store_true",
+            help="Force update for unchanged devices.")
 
         group.add_option(
             "--workers",
@@ -245,25 +251,38 @@ class ZenMapper(CyclingDaemon):
 
     def run(self):
         """Execute startup-time-only tasks."""
-        super(ZenMapper, self).run()
-
-        # Clean up deprecated data.
         connections.migrate()
 
         if self.options.clear:
             self.log.info("clearing database")
             connections.clear()
+            self.log.info("finished clearing database")
 
-    def main_loop(self):
+        if self.options.optimize:
+            self.log.info("optimizing database")
+            connections.optimize()
+            self.log.info("finished optimizing database")
+
         if self.options.device:
             device = self.dmd.Devices.findDeviceByIdExact(self.options.device)
             if device:
+                self.log.info("updating %s", device.id)
                 self.update_nodes([device.getPrimaryId()])
+                self.log.info("finished updating %s", device.id)
             else:
                 self.log.error("device %s not found", self.options.device)
 
-            return
+        # The clear/optimize/device options should prevent cycling.
+        should_cycle = not any((
+            self.options.clear,
+            self.options.optimize,
+            self.options.device))
 
+        if should_cycle:
+            super(ZenMapper, self).run()
+
+    def main_loop(self):
+        """Execute once-per-cycletime tasks."""
         if self.options.worker:
             node_paths = self.get_paths_and_uuids(uuids=False)[0]
         else:

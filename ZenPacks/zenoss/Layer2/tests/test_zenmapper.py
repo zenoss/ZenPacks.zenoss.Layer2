@@ -43,6 +43,9 @@ class TestUpdateCatalog(BaseTestCase):
         self.zenmapper.options.force = False
         self.zenmapper.options.optimize_interval = 0
 
+        import logging
+        self.zenmapper.log = logging.getLogger("test")
+
         zcml.load_config('testing-noevent.zcml', Products.ZenTestCase)
         zcml.load_config('configure.zcml', ZenPacks.zenoss.Layer2)
         connections.clear()
