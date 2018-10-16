@@ -137,6 +137,8 @@ def update_node(node, force=False):
 
     """
     provider = get_provider(IGlobalIdentifier(node).getGUID())
+    provider.load()
+
     last_changed = get_last_changed(node)
 
     if not force and last_changed == provider.lastChange:
@@ -174,7 +176,7 @@ def get_last_changed(node):
         # Prefer this because it should be available on devices, and is
         # an "application" value that can even be updated within a
         # transaction.
-        return node.getLastChange().micros()
+        return str(node.getLastChange().micros())
     except Exception:
         pass
 
@@ -184,7 +186,7 @@ def get_last_changed(node):
         # time the object was committed. So if we call it twice within
         # the same transaction before and after useful changes have
         # occurred, we'll think that no useful changes have occurred.
-        return node.bobobase_modification_time().micros()
+        return str(node.bobobase_modification_time().micros())
     except Exception:
         pass
 
@@ -209,9 +211,9 @@ def clear():
 
 
 @log_mysql_errors(default=None)
-def should_optimize():
+def should_optimize(optimize_interval=0):
     """Return True if data should be optimized."""
-    return get_graph().should_optimize()
+    return get_graph().should_optimize(optimize_interval=optimize_interval)
 
 
 @log_mysql_errors(default=None)
@@ -224,3 +226,9 @@ def optimize():
 def compact(providerUUIDs):
     """Clear data from providers not listed in providerUUIDs."""
     return get_graph().compact(providerUUIDs)
+
+
+@log_mysql_errors(default=None)
+def migrate():
+    """Migrate data from previous versions."""
+    return get_graph().migrate()
