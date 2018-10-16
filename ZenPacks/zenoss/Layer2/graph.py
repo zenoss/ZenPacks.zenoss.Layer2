@@ -12,6 +12,7 @@
 # stdlib imports
 import collections
 import itertools
+import sys
 import threading
 import time
 import warnings
@@ -50,6 +51,12 @@ def get_provider(uuid):
     return graph.get_provider(uuid)
 
 
+def chunks(s, n):
+    """Generate lists of size n from iterable s."""
+    for chunk in (s[i:i + n] for i in range(0, len(s), n)):
+        yield chunk
+
+
 class Graph(object):
     """Undirected graph of edges from all providers.
 
@@ -59,7 +66,7 @@ class Graph(object):
 
     """
 
-    namespace = "l2"
+    namespace = "l2_v2"
 
     def __init__(self):
         self.db = MySQL(onConnect=self.create_tables)
@@ -72,44 +79,155 @@ class Graph(object):
             ns=self.namespace,
             table=table)
 
+    @property
+    def metadata_table(self):
+        return self.get_table("metadata")
+
+    @property
+    def providers_table(self):
+        return self.get_table("providers")
+
+    @property
+    def layers_table(self):
+        return self.get_table("layers")
+
+    @property
+    def nodes_table(self):
+        return self.get_table("nodes")
+
+    @property
+    def edges_table(self):
+        return self.get_table("edges")
+
+    @property
+    def edges_view(self):
+        return self.get_table("edges_view")
+
     def create_tables(self):
         self.db.create_table(
-            table=self.get_table("metadata"),
+            table=self.metadata_table,
             columns=[
                 ("name", "VARCHAR(255) NOT NULL UNIQUE PRIMARY KEY"),
                 ("value", "LONGBLOB")])
 
         self.db.insert(
-            table=self.get_table("metadata"),
-            columns=("name", "value"),
-            rows=[("lastOptimize", "0",)])
+            table=self.metadata_table,
+            ignore=True,
+            values={
+                "name": "lastOptimize",
+                "value": "0"})
 
         self.db.create_table(
-            table=self.get_table("providers"),
+            table=self.providers_table,
             columns=[
-                ("providerUUID", "VARCHAR(36) NOT NULL UNIQUE PRIMARY KEY"),
-                ("lastChange", "BIGINT NOT NULL")])
+                ("id", "INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY"),
+                ("uuid", "CHAR(36) NOT NULL UNIQUE"),
+                ("lastChange", "VARCHAR(255)")])
 
         self.db.create_table(
-            table=self.get_table("edges"),
+            table=self.nodes_table,
             columns=[
-                ("providerUUID", "VARCHAR(36) NOT NULL"),
-                ("source", "VARCHAR(1024) NOT NULL"),
-                ("target", "VARCHAR(1024) NOT NULL"),
-                ("layer", "VARCHAR(255) NOT NULL")],
+                ("id", "INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY"),
+                ("node", "VARCHAR(1024) NOT NULL")],
             indexes=[
-                ("providerUUID", ("providerUUID",)),
-                ("sourceByLayer", ("source", "layer")),
-                ("targetByLayer", ("target", "layer")),
-                ("layer", ("layer",))])
+                ("UNIQUE INDEX", "node", ("node(767)",))])
+
+        self.db.create_table(
+            table=self.layers_table,
+            columns=[
+                ("id", "INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY"),
+                ("layer", "VARCHAR(255) NOT NULL UNIQUE")])
+
+        self.db.create_table(
+            table=self.edges_table,
+            columns=[
+                ("provider_id", "INT UNSIGNED NOT NULL"),
+                ("source_id", "INT UNSIGNED NOT NULL"),
+                ("target_id", "INT UNSIGNED NOT NULL"),
+                ("layer_id", "INT UNSIGNED NOT NULL")],
+            indexes=[
+                ("UNIQUE INDEX", "allColumns", ("provider_id", "source_id", "target_id", "layer_id")),
+                ("INDEX", "sourceByLayer", ("source_id", "layer_id")),
+                ("INDEX", "targetByLayer", ("target_id", "layer_id"))],
+            foreign_keys=[
+                ("provider_id", self.providers_table),
+                ("source_id", self.nodes_table),
+                ("target_id", self.nodes_table),
+                ("layer_id", self.layers_table)])
+
+        self.db.execute(
+            "CREATE OR REPLACE VIEW {edges_view} AS "
+            "SELECT"
+            "    providers.uuid AS provider,"
+            "    sources.node AS source,"
+            "    targets.node AS node,"
+            "    layers.layer AS layer"
+            "  FROM {edges_table} AS edges"
+            "    INNER JOIN {providers_table} providers"
+            "            ON providers.id = edges.provider_id"
+            "    INNER JOIN {nodes_table} sources"
+            "            ON sources.id = edges.source_id"
+            "    INNER JOIN {nodes_table} targets"
+            "            ON targets.id = edges.target_id"
+            "    INNER JOIN {layers_table} layers"
+            "            ON layers.id = edges.layer_id".format(
+                edges_view=self.edges_view,
+                edges_table=self.edges_table,
+                providers_table=self.providers_table,
+                nodes_table=self.nodes_table,
+                layers_table=self.layers_table))
+
+    def get_node_ids(self, nodes=None):
+        """Return map of node to node ID for specified nodes.
+
+        Return map of all nodes if unspecified.
+
+        """
+        if nodes is None:
+            rows = self.db.execute(
+                "SELECT id, node FROM {table}".format(
+                    table=self.nodes_table))
+        elif nodes:
+            rows = self.db.execute(
+                "SELECT id, node FROM {table}"
+                " WHERE node IN ({node_subs})".format(
+                    table=self.nodes_table,
+                    node_subs=",".join(["%s"] * len(nodes))),
+                list(nodes))
+        else:
+            rows = []
+
+        return {x[1]: x[0] for x in rows}
 
     def get_layers(self):
         """Return set of all layers in the graph."""
         rows = self.db.execute(
-            "SELECT DISTINCT layer FROM {table} ORDER BY layer ASC".format(
-                table=self.get_table("edges")))
+            "SELECT layer FROM {table} ORDER BY layer ASC".format(
+                table=self.layers_table))
 
         return set(x[0] for x in rows)
+
+    def get_layer_ids(self, layers=None):
+        """Return map of layer to layer ID for specified layers.
+
+        Return map of all layers if unspecified.
+
+        """
+        if layers is None:
+            rows = self.db.execute(
+                "SELECT id, layer FROM {table}".format(
+                    table=self.layers_table))
+        elif layers:
+            rows = self.db.execute(
+                "SELECT id, layer FROM {table}"
+                " WHERE layer IN ({layer_subs})".format(
+                    table=self.layers_table,
+                    layer_subs=",".join(["%s"] * len(layers))),
+                list(layers))
+        else:
+            rows = []
+
+        return {x[1]: x[0] for x in rows}
 
     def get_edges(self, node, layers):
         """Return list of (source, target, layers) edge tuples.
@@ -123,12 +241,20 @@ class Graph(object):
 
         return self.merge_layers(
             self.db.execute(
-                "SELECT source, target, layer FROM {table}"
-                " WHERE (source = %s OR target = %s)"
-                "   AND layer IN ({layer_subs})".format(
-                    table=self.get_table("edges"),
-                    layer_subs=",".join("%s" for x in layers)),
-                [node, node] + list(layers)),
+                "SELECT"
+                "    (SELECT node FROM {nodes_table} WHERE id = edges.source_id) AS source,"
+                "    (SELECT node FROM {nodes_table} WHERE id = edges.target_id) AS target,"
+                "    layers.layer"
+                "  FROM {edges_table} AS edges"
+                "    INNER JOIN (SELECT id FROM {nodes_table} WHERE node = %s)"
+                "       AS node ON (node.id = edges.source_id OR node.id = edges.target_id)"
+                "    INNER JOIN (SELECT id, layer FROM {layers_table} WHERE layer IN ({layer_subs}))"
+                "       AS layers ON (layers.id = edges.layer_id)".format(
+                    edges_table=self.edges_table,
+                    nodes_table=self.nodes_table,
+                    layers_table=self.layers_table,
+                    layer_subs=",".join(["%s"] * len(layers))),
+                [node] + list(layers)),
             preferred_source=node)
 
     def count_edges(self):
@@ -136,21 +262,22 @@ class Graph(object):
         return len(
             self.merge_layers(
                 self.db.execute(
-                    "SELECT source, target, layer"
+                    "SELECT source_id, target_id, layer_id"
                     "  FROM {table}".format(
-                        table=self.get_table("edges")))))
+                        table=self.edges_table))))
 
     def count_providers(self):
         return self.db.execute(
-            "SELECT COUNT(providerUUID) FROM {table}".format(
-                table=self.get_table("providers")))[0][0]
+            "SELECT COUNT(id) FROM {table}".format(
+                table=self.providers_table))[0][0]
 
     def count_layers(self):
         return self.db.execute(
-            "SELECT COUNT(DISTINCT layer) FROM {table}".format(
-                table=self.get_table("edges")))[0][0]
+            "SELECT COUNT(id) FROM {table}".format(
+                table=self.layers_table))[0][0]
 
-    def merge_layers(self, edges, preferred_source=None):
+    @staticmethod
+    def merge_layers(edges, preferred_source=None):
         """Return merged list of (source, target, layers).
 
         The edges input argument is expected to be a list of
@@ -229,24 +356,43 @@ class Graph(object):
         if not providerUUIDs:
             self.clear()
 
-        for table in ("edges", "providers"):
-            self.db.execute(
-                "DELETE FROM {table}"
-                " WHERE providerUUID NOT IN ({layer_subs})".format(
-                    table=self.get_table(table),
-                    layer_subs=",".join("%s" for x in providerUUIDs)),
-                list(providerUUIDs))
+        keep_table = self.get_table("providers_to_keep")
 
-    def should_optimize(self):
+        self.db.create_table(
+            table=keep_table,
+            columns=[("uuid", "CHAR(36) NOT NULL UNIQUE")],
+            temporary=True)
+
+        self.db.bulk_insert(
+            table=keep_table,
+            columns=("uuid",),
+            rows=[(x,) for x in providerUUIDs],
+            ignore=True)
+
+        # Deleting from providers cascades to edges.
+        self.db.execute(
+            "DELETE p FROM {providers_table} p"
+            "    LEFT JOIN {keep_table} k ON k.uuid = p.uuid"
+            "        WHERE k.uuid IS NULL".format(
+                providers_table=self.providers_table,
+                keep_table=keep_table))
+
+        # Cleanup the temporary table.
+        self.db.execute("DROP TEMPORARY TABLE {}".format(keep_table))
+
+    def should_optimize(self, optimize_interval=0):
         """Return True if database should be optimized."""
+        if optimize_interval <= 0:
+            return False
+
         lastOptimize_results = self.db.execute(
             "SELECT value FROM {table} WHERE name = %s LIMIT 1".format(
-                table=self.get_table("metadata")),
+                table=self.metadata_table),
             ("lastOptimize",))
 
         for lastOptimize, in lastOptimize_results:
             try:
-                if int(lastOptimize) + 86400 < time.time():
+                if int(lastOptimize) + optimize_interval < time.time():
                     return True
             except Exception:
                 return True
@@ -255,22 +401,40 @@ class Graph(object):
 
     def optimize(self):
         """Optimize all layer2 tables in the database."""
-        for table in ("metadata", "edges", "providers"):
+        for table in ("metadata", "providers", "layers", "nodes", "edges"):
             self.db.execute(
                 "OPTIMIZE TABLE {table}".format(
                     table=self.get_table(table)))
 
         self.db.execute(
             "UPDATE {table} SET value = %s WHERE name = %s".format(
-                table=self.get_table("metadata")),
-                [str(int(time.time())), "lastOptimize"])
+                table=self.metadata_table),
+            [str(int(time.time())), "lastOptimize"])
 
     def clear(self):
         """Clear all layer2 information from the database."""
-        for table in ("metadata", "edges", "providers"):
-            self.db.execute(
-                "TRUNCATE TABLE {table}".format(
-                    table=self.get_table(table)))
+        try:
+            self.db.execute("TRUNCATE TABLE {}".format(self.edges_table))
+        except Exception:
+            pass
+
+        for table in ("metadata", "providers", "layers", "nodes"):
+            try:
+                self.db.execute(
+                    "DELETE FROM {table}".format(
+                        table=self.get_table(table)))
+            except Exception:
+                pass
+
+        # Tables require optimization after emptying.
+        self.optimize()
+
+    def migrate(self):
+        """Migrate data from previous versions."""
+        for old_table in ("l2_edges", "l2_providers", "l2_metadata"):
+            if self.db.table_exists(old_table):
+                self.db.execute(
+                    "DROP TABLE IF EXISTS {table}".format(table=old_table))
 
 
 class Provider(object):
@@ -281,72 +445,195 @@ class Provider(object):
         self.uuid = uuid
 
         # Loaded from database.
-        self._db_lastChange = None
+        self.id = None
+        self.lastChange = None
 
-    @property
-    def lastChange(self):
-        if self._db_lastChange is None:
-            self.load_properties()
+    def save(self, lastChange):
+        """Save provider to database. Return provider.id or None."""
+        if self.id is not None and lastChange == self.lastChange:
+            return
 
-        return self._db_lastChange
+        self.graph.db.execute(
+            "INSERT INTO {table} (uuid, lastChange) VALUES (%s, %s)"
+            "  ON DUPLICATE KEY UPDATE"
+            "    id=LAST_INSERT_ID(id),"
+            "    lastChange=%s".format(
+                table=self.graph.providers_table),
+            [self.uuid, lastChange, lastChange])
 
-    def load_properties(self):
+        rows = self.graph.db.execute("SELECT LAST_INSERT_ID()")
+
+        if rows:
+            self.lastChange = lastChange
+            self.id = rows[0][0]
+
+            return self.id
+
+    def load(self):
+        """Load provider from database. Return provider.id or None."""
+        if self.id is not None:
+            return self.id
+
         rows = self.graph.db.execute(
-            "SELECT lastChange FROM {table} WHERE providerUUID = %s".format(
-                table=self.graph.get_table("providers")),
+            "SELECT id, lastChange FROM {table} WHERE uuid = %s".format(
+                table=self.graph.providers_table),
             self.uuid)
 
         if rows:
-            self._db_lastChange = rows[0][0]
-        else:
-            self._db_lastChange = None
+            self.id = rows[0][0]
+            self.lastChange = rows[0][1]
+
+        return self.id
 
     def update_properties(self, properties):
         for k, v in properties.iteritems():
             setattr(self, "_db_{}".format(k), v)
 
+    def get_existing_state(self):
+        state = {"rows": set(), "node_ids": {}, "layer_ids": {}}
+
+        if self.id is None:
+            return state
+
+        rows = self.graph.db.execute(
+            "SELECT"
+            "    sources.node AS source,"
+            "    edges.source_id AS source_id,"
+            "    targets.node AS target,"
+            "    edges.target_id AS target_id,"
+            "    layers.layer AS layer,"
+            "    edges.layer_id AS layer_id"
+            "  FROM {providers_table} AS providers"
+            "    INNER JOIN {edges_table} AS edges ON edges.provider_id = providers.id"
+            "    INNER JOIN {nodes_table} AS sources ON edges.source_id = sources.id"
+            "    INNER JOIN {nodes_table} AS targets ON edges.target_id = targets.id"
+            "    INNER JOIN {layers_table} AS layers on edges.layer_id = layers.id"
+            " WHERE providers.uuid = %s".format(
+                providers_table=self.graph.providers_table,
+                edges_table=self.graph.edges_table,
+                nodes_table=self.graph.nodes_table,
+                layers_table=self.graph.layers_table),
+            self.uuid)
+
+        for s, sid, t, tid, l, lid in rows:
+            state["rows"].add((s, t, l))
+            state["node_ids"].setdefault(s, sid)
+            state["node_ids"].setdefault(t, tid)
+            state["layer_ids"].setdefault(l, lid)
+
+        return state
+
     def update_edges(self, edges, lastChange):
         """Update list of (source, target, layers) edge triples."""
-        rows = set()
+        rows, layers, nodes = set(), set(), set()
 
-        for source, target, layers in edges:
-            if not (source and target and layers):
+        for s, t, ls in edges:
+            if not (s and t and ls):
                 continue
 
-            source, target = tuple(sorted((source, target)))
+            # Sort nodes to avoid logically duplicate undirected edges.
+            s, t = tuple(sorted((s, t)))
 
-            for layer in layers:
-                rows.add((self.uuid, source, target, layer))
+            nodes.update((s, t))
+            layers.update(ls)
 
-        # Convert back to a list for the insert.
-        rows = list(rows)
+            for l in ls:
+                rows.add((s, t, l))
 
-        # Clear this provider's previous data from the database.
-        self.clear()
+        # Ensure we have a provider ID.
+        self.save(lastChange)
 
-        # Add current edges for this provider.
-        self.graph.db.insert(
-            table=self.graph.get_table("edges"),
-            columns=("providerUUID", "source", "target", "layer"),
-            rows=rows)
+        # Current state of this provider's edges in the database.
+        state = self.get_existing_state()
 
-        # Add metadata for this provider.
-        self.graph.db.insert(
-            table=self.graph.get_table("providers"),
-            columns=("providerUUID", "lastChange"),
-            rows=[(self.uuid, lastChange)])
+        # Create any nodes that don't already exist.
+        new_nodes = nodes.difference(state["node_ids"])
+        if new_nodes:
+            self.graph.db.bulk_insert(
+                table=self.graph.nodes_table,
+                columns=("node",),
+                rows=[(x,) for x in new_nodes],
+                ignore=True)
 
-        self.update_properties({"lastChange": lastChange})
+            # Merge new node ID mappings into state to complete map.
+            state["node_ids"].update(self.graph.get_node_ids(new_nodes))
+
+        # Create any layers that don't already exist.
+        new_layers = layers.difference(state["layer_ids"])
+        if new_layers:
+            self.graph.db.bulk_insert(
+                table=self.graph.layers_table,
+                columns=("layer",),
+                rows=[(x,) for x in new_layers],
+                ignore=True)
+
+            # Merge new layer ID mappings into state to complete map.
+            state["layer_ids"].update(self.graph.get_layer_ids(new_layers))
+
+        # Delete old edges.
+        old_rows = state["rows"].difference(rows)
+        if old_rows:
+            delete_table = self.graph.get_table("edges_to_delete")
+
+            # Delete in chunks to avoid edges table deadlocks.
+            for i, old_rows_chunk in enumerate(chunks(list(old_rows), 1000)):
+                # Create a temporary table filled with edges to delete.
+                self.graph.db.create_table(
+                    table=delete_table,
+                    columns=[
+                        ("source_id", "INT UNSIGNED NOT NULL"),
+                        ("target_id", "INT UNSIGNED NOT NULL"),
+                        ("layer_id", "INT UNSIGNED NOT NULL")],
+                    temporary=True)
+
+                self.graph.db.bulk_insert(
+                    table=delete_table,
+                    columns=("source_id", "target_id", "layer_id"),
+                    rows=[(
+                        state["node_ids"][x[0]],
+                        state["node_ids"][x[1]],
+                        state["layer_ids"][x[2]],
+                        ) for x in old_rows_chunk],
+                    ignore=True)
+
+                # Delete all edges that exist in the temporary table.
+                self.graph.db.execute(
+                    "DELETE FROM e USING {edges_table} e"
+                    " INNER JOIN {delete_table} d ON ("
+                    "   e.source_id = d.source_id AND"
+                    "   e.target_id = d.target_id AND"
+                    "   e.layer_id = d.layer_id)".format(
+                        edges_table=self.graph.edges_table,
+                        delete_table=delete_table))
+
+                # Cleanup the temporary table.
+                self.graph.db.execute("DROP TEMPORARY TABLE {}".format(delete_table))
+
+        # Insert new edges.
+        new_rows = rows.difference(state["rows"])
+        if new_rows:
+            self.graph.db.bulk_insert(
+                table=self.graph.edges_table,
+                columns=("provider_id", "source_id", "target_id", "layer_id"),
+                rows=[(
+                    self.id,
+                    state["node_ids"][x[0]],
+                    state["node_ids"][x[1]],
+                    state["layer_ids"][x[2]],
+                    ) for x in new_rows],
+                ignore=True)
 
     def clear(self):
         """Remove this provider's data from the graph."""
-        for table in ("edges", "providers"):
-            self.graph.db.execute(
-                "DELETE FROM {table} WHERE providerUUID = %s".format(
-                    table=self.graph.get_table(table)),
-                self.uuid)
+        self.graph.db.execute(
+            "DELETE FROM {table} WHERE uuid = %s".format(
+                table=self.graph.providers_table),
+            self.uuid)
 
-        self.update_properties({"lastChange": None})
+        # Delete from providers cascades to edges.
+
+        self.id = None
+        self.lastChange = None
 
 
 class MySQL(object):
@@ -407,7 +694,19 @@ class MySQL(object):
         if not rows:
             return []
 
-        return self.with_retry("executemany", statement, rows)
+        # We chunk large rows into multiple queries to avoid exceeding the
+        # server's max_allowed_packet configuration. We don't know what the
+        # configuration is here, but it's been 64MB in Zenoss for a while.
+        chunks = [[]]
+
+        for row in rows:
+            if sys.getsizeof(chunks[-1]) > 10485760:
+                chunks.append([])
+
+            chunks[-1].append(row)
+
+        for chunk in chunks:
+            self.with_retry("executemany", statement, chunk)
 
     def with_retry(self, fn_name, *args, **kwargs):
         """Execute fn_name with args and kwargs. Retry when appropriate.
@@ -436,28 +735,81 @@ class MySQL(object):
 
                 raise
             else:
-                results = cursor.fetchall()
+                # Fetching results after executemany will fail.
+                if fn_name != "executemany":
+                    results = cursor.fetchall()
+
                 break
             finally:
                 cursor.close()
 
         return results
 
-    def create_table(self, table, columns, indexes=None):
+    def table_exists(self, table):
+        """Return True if table exists, False if not."""
+        rows = self.execute(
+            "SELECT COUNT(*) FROM information_schema.tables"
+            " WHERE table_name = %s",
+            params=[table])
+
+        if rows and rows[0][0] > 0:
+            return True
+
+        return False
+
+    def create_table(
+            self,
+            table,
+            columns,
+            indexes=None,
+            foreign_keys=None,
+            temporary=False):
+        """Create database table."""
         create_definitions = ["{} {}".format(x[0], x[1]) for x in columns]
         if indexes:
             create_definitions.extend([
-                "INDEX {} ({})".format(x[0], ",".join(x[1])) for x in indexes])
+                "{} {} ({})".format(x[0], x[1], ",".join(x[2])) for x in indexes])
+
+        if foreign_keys:
+            create_definitions.extend([
+                "FOREIGN KEY ({}) REFERENCES {}(id) ON DELETE CASCADE".format(
+                    x[0], x[1]) for x in foreign_keys])
 
         self.execute(
-            "CREATE TABLE IF NOT EXISTS {table} ({create_definitions})".format(
+            "CREATE {type} IF NOT EXISTS {table} ({create_definitions})".format(
+                type="TEMPORARY TABLE" if temporary else "TABLE",
                 table=table,
                 create_definitions=",".join(create_definitions)))
 
-    def insert(self, table, columns, rows):
-        self.executemany(
-            "INSERT IGNORE INTO {table} ({columns}) "
+    def insert(self, table=None, values=None, ignore=False):
+        """Insert row of values into table. Return None."""
+        if not (table and values):
+            return
+
+        columns, params = zip(*values.iteritems())
+        self.execute(
+            "INSERT{ignore} INTO {table} ({columns}) "
             "VALUES ({substitutions})".format(
+                ignore=" IGNORE" if ignore else "",
+                table=table,
+                columns=",".join(columns),
+                substitutions=",".join(["%s"] * len(columns))),
+            list(params))
+
+    def bulk_insert(self, table=None, columns=None, rows=None, ignore=False):
+        """Bulk INSERT IGNORE rows for columns into table. Return None."""
+        if not (table and columns and rows):
+            return
+
+        # It's important that "values" below be lowercase. MySQLdb 1.2.3 and
+        # earlier have a bug that prevents the bulk insert optimization from
+        # working if VALUES isn't lowercase.
+        #
+        # https://github.com/farcepest/MySQLdb1/commit/6fc719b4b1a6f51a7717680c491be241c160c97b
+        self.executemany(
+            "INSERT{ignore} INTO {table} ({columns}) "
+            "values ({substitutions})".format(
+                ignore=" IGNORE" if ignore else "",
                 table=table,
                 columns=",".join(columns),
                 substitutions=",".join(["%s"] * len(columns))),

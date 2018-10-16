@@ -626,6 +626,19 @@ class Stresser(object):
 
             notify(IndexingEvent(connecting_if))
 
+        # if "rack" in node:
+        #     for x in xrange(10):
+        #         lan_if_id = "lan-{}".format(x)
+        #         device.os.interfaces._setObject(
+        #             lan_if_id,
+        #             IpInterface(lan_if_id))
+        #
+        #         lan_if = device.os.interfaces._getOb(lan_if_id)
+        #         lan_if.macaddress = self.next_mac()
+        #         lan_if.clientmacs = [self.next_mac() for _ in xrange(4096)]
+        #
+        #     notify(IndexingEvent(lan_if))
+
         notify(IndexingEvent(device))
         device.index_object()
 

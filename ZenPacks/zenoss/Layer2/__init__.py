@@ -51,6 +51,8 @@ class ZenPack(ZenPackBase):
     """ Layer2 zenpack loader """
 
     packZProperties = [
+        ('zL2UpdateOnModel', True, 'boolean'),
+        ('zL2UpdateInBackground', True, 'boolean'),
         ('zL2SuppressIfDeviceDown', False, 'boolean'),
         ('zL2SuppressIfPathsDown', False, 'boolean'),
         ('zL2PotentialRootCause', True, 'boolean'),
@@ -60,6 +62,20 @@ class ZenPack(ZenPackBase):
         ]
 
     packZProperties_data = {
+        'zL2UpdateOnModel': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Connections Update: On Model',
+            'description': 'Update network connectivity database as devices are modeled.',
+            'type': 'boolean',
+            },
+
+        'zL2UpdateInBackground': {
+            'category': ZPROPERTY_CATEGORY,
+            'label': 'Connections Update: In Background',
+            'description': 'Update network connectivity database in the background.',
+            'type': 'boolean',
+            },
+
         'zL2SuppressIfDeviceDown': {
             'category': ZPROPERTY_CATEGORY,
             'label': 'Event Suppression: Device Down',
