@@ -160,7 +160,7 @@ class Graph(object):
             "SELECT"
             "    providers.uuid AS provider,"
             "    sources.node AS source,"
-            "    targets.node AS node,"
+            "    targets.node AS target,"
             "    layers.layer AS layer"
             "  FROM {edges_table} AS edges"
             "    INNER JOIN {providers_table} providers"
@@ -229,33 +229,43 @@ class Graph(object):
 
         return {x[1]: x[0] for x in rows}
 
-    def get_edges(self, node, layers):
+    def get_edges(self, nodes, layers):
         """Return list of (source, target, layers) edge tuples.
 
-        The source of each edge will be node. Only edges with one of the
-        layers listed in the layers argument will be returned.
+        The source of each edge will be one of nodes. Only edges with one of
+        the layers listed in the layers argument will be returned.
 
         """
-        if not layers:
+        if not layers or not nodes:
             return []
+
+        nodelist = nodes if isinstance(nodes, list) else list(nodes)
+        layerlist = layers if isinstance(layers, list) else list(layers)
 
         return self.merge_layers(
             self.db.execute(
                 "SELECT"
                 "    (SELECT node FROM {nodes_table} WHERE id = edges.source_id) AS source,"
                 "    (SELECT node FROM {nodes_table} WHERE id = edges.target_id) AS target,"
-                "    layers.layer"
-                "  FROM {edges_table} AS edges"
-                "    INNER JOIN (SELECT id FROM {nodes_table} WHERE node = %s)"
-                "       AS node ON (node.id = edges.source_id OR node.id = edges.target_id)"
-                "    INNER JOIN (SELECT id, layer FROM {layers_table} WHERE layer IN ({layer_subs}))"
-                "       AS layers ON (layers.id = edges.layer_id)".format(
+                "    (SELECT layer FROM {layers_table} WHERE id = edges.layer_id) AS layer"
+                " FROM ("
+                "   (SELECT source_id, target_id, layer_id"
+                "      FROM {edges_table} AS edges"
+                "     WHERE source_id IN (SELECT id FROM {nodes_table} WHERE node IN ({node_subs}))"
+                "       AND layer_id IN (SELECT id FROM {layers_table} WHERE layer IN ({layer_subs})))"
+                "   UNION"
+                "   (SELECT source_id, target_id, layer_id"
+                "      FROM {edges_table} AS edges"
+                "     WHERE target_id IN (SELECT id FROM {nodes_table} WHERE node IN ({node_subs}))"
+                "       AND layer_id IN (SELECT id FROM {layers_table} WHERE layer IN ({layer_subs})))"
+                "   ) AS edges".format(
                     edges_table=self.edges_table,
                     nodes_table=self.nodes_table,
+                    node_subs=",".join(["%s"] * len(nodes)),
                     layers_table=self.layers_table,
                     layer_subs=",".join(["%s"] * len(layers))),
-                [node] + list(layers)),
-            preferred_source=node)
+                nodelist + layerlist + nodelist + layerlist),
+            preferred_sources=nodes)
 
     def count_edges(self):
         """Return count of (source, target, layers) edges."""
@@ -277,25 +287,24 @@ class Graph(object):
                 table=self.layers_table))[0][0]
 
     @staticmethod
-    def merge_layers(edges, preferred_source=None):
+    def merge_layers(edges, preferred_sources=None):
         """Return merged list of (source, target, layers).
 
         The edges input argument is expected to be a list of
         (source, target, layer) triples.
 
-        If the preferred_source parameter is specified, it will become the
-        source in the merged list of edge triples whether it was the source or
-        target.
+        Nodes listed in preferred_sources will become the source whether
+        they're found to be a source or a target.
 
         """
 
         edge_layers = collections.defaultdict(set)
 
         for source, target, layer in edges:
-            if target == preferred_source:
-                source, target = target, source
-            elif source != preferred_source:
-                source, target = tuple(sorted((source, target)))
+            if preferred_sources:
+                if source not in preferred_sources:
+                    if target in preferred_sources:
+                        source, target = target, source
 
             edge_layers[(source, target)].add(layer)
 
@@ -316,13 +325,6 @@ class Graph(object):
         If "depth" is None, the subgraph of nodes reachable from "root"
         will be returned.
 
-        The most important performance consideration when calling this
-        method is how many nodes are expected to be in the graph. There
-        will be N HKEYS calls made to Redis for each node where N is the
-        length of "layers". The N HKEYS calls for each node are
-        pipelined, so there will only be 1 round trip to Redis for each
-        node.
-
         """
         nxg = networkx.Graph()
         seen_nodes = set()
@@ -336,10 +338,9 @@ class Graph(object):
                 # No more hops to explore.
                 break
 
-            edges = itertools.chain.from_iterable(
-                self.get_edges(n, layers=layers) for n in next_nodes)
-
+            edges = self.get_edges(next_nodes, layers=layers)
             next_nodes = set()
+
             for source, target, edge_layers in edges:
                 if source not in seen_nodes:
                     seen_nodes.add(source)

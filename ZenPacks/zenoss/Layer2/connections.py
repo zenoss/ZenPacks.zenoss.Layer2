@@ -83,7 +83,7 @@ def networkx_graph(root, layers, depth=None):
 def get_neighbors(node, layers, components=False):
     """Return list of all of nodes neighbors."""
     return [
-        target for _, target, _ in get_graph().get_edges(node, layers)
+        target for _, target, _ in get_graph().get_edges([node], layers)
         if not (components or target.startswith("!"))]
 
 
@@ -112,18 +112,11 @@ def get_layer2_neighbor_devices(device):
         depth=LAYER2_NEIGHBOR_DEVICE_DEPTH)
 
     for node in nxg.nodes():
-        if node.startswith("!"):
-            # Component nodes aren't devices.
-            continue
-
-        if node == device_uid:
-            # The device can't be its own neighbor.
-            continue
-
-        try:
-            yield device.getObjByPath(str(node))
-        except Exception:
-            continue
+        if node.startswith("/") and node != device_uid:
+            try:
+                yield device.getObjByPath(str(node))
+            except Exception:
+                continue
 
 
 @log_mysql_errors(default=None)
