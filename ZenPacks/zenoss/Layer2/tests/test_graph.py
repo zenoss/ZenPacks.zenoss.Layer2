@@ -80,13 +80,13 @@ class TestGraph(unittest.TestCase):
 
         # Validate edges pre-removal.
         self.assertItemsEqual(
-            self.graph.get_edges("h1", ["layer2"]), [
+            self.graph.get_edges(["h1"], ["layer2"]), [
                 ("h1", "sw1", {"layer2"}),
                 ("h1", "sw2", {"layer2"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["layer2"]), [
+            self.graph.get_edges(["sw1"], ["layer2"]), [
                 ("sw1", "h1", {"layer2"}),
                 ("sw1", "h2", {"layer2"}),
                 ("sw1", "r1", {"layer2"}),
@@ -94,7 +94,7 @@ class TestGraph(unittest.TestCase):
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("r1", ["layer2"]), [
+            self.graph.get_edges(["r1"], ["layer2"]), [
                 ("r1", "sw1", {"layer2"}),
                 ("r1", "sw2", {"layer2"}),
                 ])
@@ -122,38 +122,38 @@ class TestGraph(unittest.TestCase):
 
         # Validate edges post-removal.
         self.assertItemsEqual(
-            self.graph.get_edges("h1", ["layer2"]), [
+            self.graph.get_edges(["h1"], ["layer2"]), [
                 ("h1", "sw1", {"layer2"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["layer2"]), [
+            self.graph.get_edges(["sw1"], ["layer2"]), [
                 ("sw1", "h1", {"layer2"}),
                 ("sw1", "r1", {"layer2"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("r1", ["layer2"]), [
+            self.graph.get_edges(["r1"], ["layer2"]), [
                 ("r1", "sw1", {"layer2"}),
                 ])
 
     def test_get_edges_host1(self):
         create_topology(self.graph)
 
-        self.assertItemsEqual(self.graph.get_edges("h1", layers=[]), [])
+        self.assertItemsEqual(self.graph.get_edges(["h1"], layers=[]), [])
         self.assertItemsEqual(
-            self.graph.get_edges("h1", ["layer2"]), [
+            self.graph.get_edges(["h1"], ["layer2"]), [
                 ("h1", "sw1", {"layer2"}),
                 ("h1", "sw2", {"layer2"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("h1", ["layer3"]), [
+            self.graph.get_edges(["h1"], ["layer3"]), [
                 ("h1", "n1", {"layer3"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("h1", ["layer2", "layer3"]), [
+            self.graph.get_edges(["h1"], ["layer2", "layer3"]), [
                 ("h1", "sw1", {"layer2"}),
                 ("h1", "sw2", {"layer2"}),
                 ("h1", "n1", {"layer3"}),
@@ -162,15 +162,15 @@ class TestGraph(unittest.TestCase):
     def test_get_edges_switch1(self):
         create_topology(self.graph)
 
-        self.assertItemsEqual(self.graph.get_edges("sw1", layers=[]), [])
+        self.assertItemsEqual(self.graph.get_edges(["sw1"], layers=[]), [])
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["cdp"]), [
+            self.graph.get_edges(["sw1"], ["cdp"]), [
                 ("sw1", "r1", {"cdp"}),
                 ("sw1", "r2", {"cdp"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["layer2"]), [
+            self.graph.get_edges(["sw1"], ["layer2"]), [
                 ("sw1", "h1", {"layer2"}),
                 ("sw1", "h2", {"layer2"}),
                 ("sw1", "r1", {"layer2"}),
@@ -178,12 +178,12 @@ class TestGraph(unittest.TestCase):
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["layer3"]), [
+            self.graph.get_edges(["sw1"], ["layer3"]), [
                 ("sw1", "n2", {"layer3"}),
                 ])
 
         self.assertItemsEqual(
-            self.graph.get_edges("sw1", ["cdp", "layer2", "layer3"]), [
+            self.graph.get_edges(["sw1"], ["cdp", "layer2", "layer3"]), [
                 ("sw1", "h1", {"layer2"}),
                 ("sw1", "h2", {"layer2"}),
                 ("sw1", "r1", {"cdp", "layer2"}),
