@@ -72,16 +72,17 @@ class DeviceRelationsProvider(BaseRelationsProvider):
     def getEdges(self):
         device = self._object
         try:
+            my_guid = self.guid()
             neighbors = connections.get_layer2_neighbor_devices(device)
 
             if connections.is_switch(device):
                 for neighbor in neighbors:
                     if not connections.is_switch(neighbor):
-                        yield edge(self.guid(), guid(neighbor))
+                        yield edge(my_guid, guid(neighbor))
             else:
                 for neighbor in neighbors:
                     if connections.is_switch(neighbor):
-                        yield edge(guid(neighbor), self.guid())
+                        yield edge(guid(neighbor), my_guid)
 
         except Exception as e:
             log.exception(e)
