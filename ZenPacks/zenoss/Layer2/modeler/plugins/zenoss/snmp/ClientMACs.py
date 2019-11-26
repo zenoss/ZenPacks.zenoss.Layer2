@@ -92,8 +92,9 @@ class ClientMACs(PythonPlugin):
 
         results = []
 
-        for community in state.all_communities:
-            snmp_client = state.get_snmp_client(community=community)
+        for snmp_client in state.get_all_clients():
+            snmp_client.initSnmpProxy()
+
             try:
                 yield drive(snmp_client.doRun)
             except Exception:
@@ -162,19 +163,37 @@ class ClientMACsState(object):
         manufacturer = getattr(self.device, 'getHWManufacturerName', 'Unknown')
         return 'cisco' in manufacturer.lower()
 
-    @property
-    def primary_community(self):
-        """Return device's primary SNMP community string."""
-        return self.device.zSnmpCommunity
+    def get_all_clients(self):
+        """Generate all SnmpClient instances required to collect."""
+        yield SnmpClient(
+            hostname=self.device.id,
+            ipaddr=self.device.manageIp,
+            options=SnmpClientOptions(),
+            device=self.device,
+            datacollector=None,
+            plugins=[ClientMACsSnmpPlugin()])
 
-    @property
-    def other_communities(self):
-        """Return list of SNMP community strings other than the primary."""
-        if not self.is_cisco:
-            return []
+        if self.is_cisco:
+            for vlan_id in self.get_vlan_ids():
+                device_copy = copy.deepcopy(self.device)
 
-        communities = []
+                if "3" in getattr(self.device, "zSnmpVer", "v2c"):
+                    device_copy.zSnmpContext = "vlan-{}".format(vlan_id)
+                else:
+                    device_copy.zSnmpCommunity = "{}@{}".format(
+                        self.device.zSnmpCommunity,
+                        vlan_id)
 
+                yield SnmpClient(
+                    hostname=device_copy.id,
+                    ipaddr=device_copy.manageIp,
+                    options=SnmpClientOptions(),
+                    device=device_copy,
+                    datacollector=None,
+                    plugins=[ClientMACsSnmpPlugin()])
+
+    def get_vlan_ids(self):
+        """Generate VLAN IDs for this state's device."""
         for ifid, info in self.iftable.iteritems():
             vlan_id = info.get('vlan_id')
 
@@ -185,36 +204,9 @@ class ClientMACsState(object):
                 # https://jira.zenoss.com/browse/ZEN-16951
                 # vlan_id should be integer, not any string
                 try:
-                    communities.append(
-                        "{}@{}".format(
-                            self.primary_community,
-                            int(vlan_id)))
+                    yield int(vlan_id)
                 except Exception:
                     pass
-
-        return communities
-
-    @property
-    def all_communities(self):
-        """Return list of all SNMP communities to try."""
-        return [self.primary_community] + self.other_communities
-
-    def get_snmp_client(self, community):
-        """Return an SnmpClient instance."""
-        device_copy = copy.deepcopy(self.device)
-        device_copy.zSnmpCommunity = community
-
-        snmp_client = SnmpClient(
-            hostname=device_copy.id,
-            ipaddr=device_copy.manageIp,
-            options=SnmpClientOptions(),
-            device=device_copy,
-            datacollector=None,
-            plugins=[ClientMACsSnmpPlugin()])
-
-        snmp_client.initSnmpProxy()
-
-        return snmp_client
 
     def update_iftable(self, tabledata):
         """Update iftable with queried SNMP table data."""
