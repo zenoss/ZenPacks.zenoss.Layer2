@@ -742,7 +742,12 @@ class MySQL(object):
 
                 break
             finally:
-                cursor.close()
+                # try-except for ZPS-7119
+                try:
+                    cursor.close()
+                except AttributeError:
+                    cursor._executed = None
+                    cursor.close()
 
         return results
 
