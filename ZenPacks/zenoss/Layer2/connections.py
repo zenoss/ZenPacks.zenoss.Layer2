@@ -79,14 +79,6 @@ def networkx_graph(root, layers, depth=None):
     return get_graph().networkx_graph(root, layers, depth=depth)
 
 
-@log_mysql_errors(default=[])
-def get_neighbors(node, layers, components=False):
-    """Return list of all of nodes neighbors."""
-    return [
-        target for _, target, _ in get_graph().get_edges([node], layers)
-        if not (components or target.startswith("!"))]
-
-
 @log_mysql_errors(default=None)
 def get_device_by_mac(dmd, macaddress):
     """Return first neighbor of macaddress that's a device."""
@@ -103,20 +95,27 @@ def get_device_by_mac(dmd, macaddress):
 
 
 @log_mysql_errors(default=[])
-def get_layer2_neighbor_devices(device):
-    """Generate devices that are layer2 neighbors of device."""
-    device_uid = device.getPrimaryId()
+def get_layer2_neighbors(entity):
+    """Generate device UIDs that are layer2 neighbors of entity."""
     nxg = networkx_graph(
-        device_uid,
+        entity,
         [LAYER2_LAYER],
         depth=LAYER2_NEIGHBOR_DEVICE_DEPTH)
 
     for node in nxg.nodes():
-        if node.startswith("/") and node != device_uid:
-            try:
-                yield device.getObjByPath(str(node))
-            except Exception:
-                continue
+        # Avoid yielding non-device entities, and the passed entity.
+        if node.startswith("/") and node != entity:
+            yield node
+
+
+@log_mysql_errors(default=[])
+def get_layer2_neighbor_devices(device):
+    """Generate devices that are layer2 neighbors of device."""
+    for node in get_layer2_neighbors(device.getPrimaryId()):
+        try:
+            yield device.getObjByPath(str(node))
+        except Exception:
+            continue
 
 
 @log_mysql_errors(default=None)

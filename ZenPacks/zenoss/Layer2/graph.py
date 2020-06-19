@@ -478,7 +478,7 @@ class Provider(object):
         rows = self.graph.db.execute(
             "SELECT id, lastChange FROM {table} WHERE uuid = %s".format(
                 table=self.graph.providers_table),
-            self.uuid)
+            [self.uuid])
 
         if rows:
             self.id = rows[0][0]
@@ -514,7 +514,7 @@ class Provider(object):
                 edges_table=self.graph.edges_table,
                 nodes_table=self.graph.nodes_table,
                 layers_table=self.graph.layers_table),
-            self.uuid)
+            [self.uuid])
 
         for s, sid, t, tid, l, lid in rows:
             state["rows"].add((s, t, l))
@@ -629,7 +629,7 @@ class Provider(object):
         self.graph.db.execute(
             "DELETE FROM {table} WHERE uuid = %s".format(
                 table=self.graph.providers_table),
-            self.uuid)
+            [self.uuid])
 
         # Delete from providers cascades to edges.
 
@@ -688,8 +688,8 @@ class MySQL(object):
         except Exception:
             pass
 
-    def execute(self, statement, params=None):
-        return self.with_retry("execute", statement, params)
+    def execute(self, statement, args=None):
+        return self.with_retry("execute", statement, args)
 
     def executemany(self, statement, rows):
         if not rows:
@@ -709,8 +709,8 @@ class MySQL(object):
         for chunk in chunks:
             self.with_retry("executemany", statement, chunk)
 
-    def with_retry(self, fn_name, *args, **kwargs):
-        """Execute fn_name with args and kwargs. Retry when appropriate.
+    def with_retry(self, fn_name, statement, args):
+        """Execute fn_name with statement and args. Retry when appropriate.
 
         fn_name is expected to be either execute or executemany.
 
@@ -727,7 +727,7 @@ class MySQL(object):
             cursor = self.connection.cursor()
 
             try:
-                getattr(cursor, fn_name)(*args, **kwargs)
+                getattr(cursor, fn_name)(statement, args)
             except MySQLdb.OperationalError as e:
                 if e.args[0] in MySQL.RECONNECT_ERRORS:
                     if attempt < MySQL.RECONNECT_ATTEMPTS:
@@ -742,7 +742,12 @@ class MySQL(object):
 
                 break
             finally:
-                cursor.close()
+                # try-except for ZPS-7119
+                try:
+                    cursor.close()
+                except AttributeError:
+                    cursor._executed = None
+                    cursor.close()
 
         return results
 
@@ -751,7 +756,7 @@ class MySQL(object):
         rows = self.execute(
             "SELECT COUNT(*) FROM information_schema.tables"
             " WHERE table_name = %s",
-            params=[table])
+            [table])
 
         if rows and rows[0][0] > 0:
             return True
