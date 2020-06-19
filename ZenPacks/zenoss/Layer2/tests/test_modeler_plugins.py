@@ -7,6 +7,7 @@
 #
 ##############################################################################
 
+import collections
 import unittest
 
 from Products.DataCollector.SnmpClient import SnmpClient
@@ -69,6 +70,7 @@ class TestClientMacsState(BaseTestCase):
     def afterSetUp(self):
         obj = Mock()
         obj.getHWManufacturerName = 'Cisco'
+        obj.zSnmpVer = "v2c"
         obj.zSnmpCommunity = 'public'
         iftable = {
             'test1d': {
@@ -87,26 +89,136 @@ class TestClientMacsState(BaseTestCase):
 
         self.instance = ClientMACsState(obj, iftable)
 
-    def test_instance_attributes(self):
-        self.assertFalse(callable(self.instance.is_cisco))
-        self.assertFalse(callable(self.instance.primary_community))
-        self.assertFalse(callable(self.instance.other_communities))
-        self.assertFalse(callable(self.instance.all_communities))
-        self.assertTrue(callable(self.instance.get_snmp_client))
-
     def test_is_cisco(self):
         self.assertEqual(self.instance.is_cisco, True)
 
-    def test_snmp_communities(self):
-        self.assertEqual(
-            set(self.instance.all_communities),
-            set(['public', 'public@2', 'public@12']))
+    def test_get_all_clients_v2c(self):
+        device = Mock()
+        device.getHWManufacturerName = 'Generic'
+        device.zSnmpVer = "v2c"
+        device.zSnmpCommunity = 'public'
 
-    @patch.object(SnmpClient, 'initSnmpProxy', return_value='')
-    def test_snmp_client(self, init_snmp_proxy):
-        res = self.instance.get_snmp_client('public')
-        self.assertEqual(init_snmp_proxy.called, True)
-        self.assertIsInstance(res, SnmpClient)
+        iftable = {
+            'test1d': {
+                'vlan_id': 2.0,
+                'ifindex': 3,
+                'baseport': 0,
+                'clientmacs': [],
+                },
+            'test1q': {
+                'vlan_id': "12",
+                'ifindex': "4",
+                'baseport': None,
+                'clientmacs': [],
+                },
+            }
+
+        state = ClientMACsState(device, iftable)
+
+        self.assertEqual(
+            collections.Counter(
+                x.device.zSnmpCommunity
+                for x in state.get_all_clients()),
+            collections.Counter({
+                'public': 1,
+                }))
+
+    def test_get_all_clients_v3(self):
+        device = Mock()
+        device.getHWManufacturerName = 'Generic'
+        device.zSnmpVer = 'v3'
+        device.zSnmpContext = ''
+
+        iftable = {
+            'test1d': {
+                'vlan_id': 2.0,
+                'ifindex': 3,
+                'baseport': 0,
+                'clientmacs': [],
+                },
+            'test1q': {
+                'vlan_id': "12",
+                'ifindex': "4",
+                'baseport': None,
+                'clientmacs': [],
+                },
+            }
+
+        state = ClientMACsState(device, iftable)
+
+        self.assertEqual(
+            collections.Counter(
+                x.device.zSnmpContext
+                for x in state.get_all_clients()),
+            collections.Counter({
+                '': 1,
+                }))
+
+    def test_get_all_clients_cisco_v2c(self):
+        device = Mock()
+        device.getHWManufacturerName = 'Cisco'
+        device.zSnmpVer = "v2c"
+        device.zSnmpCommunity = 'public'
+
+        iftable = {
+            'test1d': {
+                'vlan_id': 2.0,
+                'ifindex': 3,
+                'baseport': 0,
+                'clientmacs': [],
+                },
+            'test1q': {
+                'vlan_id': "12",
+                'ifindex': "4",
+                'baseport': None,
+                'clientmacs': [],
+                },
+            }
+
+        state = ClientMACsState(device, iftable)
+
+        self.assertEqual(
+            collections.Counter(
+                x.device.zSnmpCommunity
+                for x in self.instance.get_all_clients()),
+            collections.Counter({
+                'public': 1,
+                'public@2': 1,
+                'public@12': 1,
+                }))
+
+    def test_get_all_clients_cisco_v3(self):
+        device = Mock()
+        device.getHWManufacturerName = 'Cisco'
+        device.zSnmpVer = 'v3'
+        device.zSnmpContext = ''
+
+        iftable = {
+            'test1d': {
+                'vlan_id': 2.0,
+                'ifindex': 3,
+                'baseport': 0,
+                'clientmacs': [],
+                },
+            'test1q': {
+                'vlan_id': "12",
+                'ifindex': "4",
+                'baseport': None,
+                'clientmacs': [],
+                },
+            }
+
+        state = ClientMACsState(device, iftable)
+
+        self.assertEqual(
+            collections.Counter(
+                x.device.zSnmpContext
+                for x in state.get_all_clients()),
+            collections.Counter({
+                '': 1,
+                'vlan-2': 1,
+                'vlan-12': 1,
+                }))
 
     def test_update_iftable(self):
         input_data = {

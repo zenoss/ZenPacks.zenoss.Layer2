@@ -90,7 +90,6 @@ class Suppressor(object):
 
     def __init__(self, dmd):
         self.dmd = dmd
-        self.layers = ["layer2"]
         self.clear_caches()
 
     def process_event(self, event):
@@ -460,7 +459,7 @@ class Suppressor(object):
         """Return iterator of neighbors for entity.
 
         This behaves as a standard read-through cache to
-        connections.get_neighbors().
+        connections.get_layer2_neighbors().
 
         Cached entries expire after a certain amount of time. See
         neighbors_cache in the clear_caches method for how long.
@@ -468,7 +467,7 @@ class Suppressor(object):
         """
         neighbors = self.neighbors_cache.get(entity)
         if neighbors is None:
-            neighbors = connections.get_neighbors(entity, self.layers)
+            neighbors = connections.get_layer2_neighbors(entity)
             self.neighbors_cache.set(entity, neighbors)
 
         return iter(neighbors)
